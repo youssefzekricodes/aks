@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, LogOut, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Trash2 } from "lucide-react";
 import { signOut as clearSession } from "@/lib/fake-auth";
 import {
   CAR_BODIES,
@@ -14,7 +14,6 @@ import {
   type Car,
 } from "@/lib/cars";
 import {
-  adminStatus,
   deleteCar,
   listAllCars,
   listLeads,
