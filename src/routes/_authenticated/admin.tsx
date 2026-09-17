@@ -77,7 +77,6 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("cars");
 
-  const status = useQuery({ queryKey: ["admin-status"], queryFn: () => adminStatus() });
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -85,43 +84,6 @@ function AdminPage() {
     navigate({ to: "/auth", replace: true });
   }
 
-  if (status.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!status.data?.isAdmin) {
-    return (
-      <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-6 px-6">
-        <h1 className="text-3xl font-bold">Accès restreint</h1>
-        {status.data?.adminExists ? (
-          <p className="text-muted-foreground">
-            Votre compte n'a pas les droits d'administration. Demandez à l'administrateur du site de vous les accorder.
-          </p>
-        ) : (
-          <>
-            <p className="text-muted-foreground">
-              Aucun administrateur n'est encore défini. Vous pouvez revendiquer ce rôle maintenant.
-            </p>
-            <button
-              type="button"
-              onClick={() => claim.mutate()}
-              disabled={claim.isPending}
-              className="btn-3d btn-3d-primary px-7 py-4"
-            >
-              Devenir administrateur
-            </button>
-          </>
-        )}
-        <button type="button" onClick={signOut} className="text-sm text-muted-foreground underline">
-          Se déconnecter
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
