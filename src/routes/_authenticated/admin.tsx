@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, LogOut, Plus, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, LogOut, Plus, Trash2 } from "lucide-react";
+import { signOut as clearSession } from "@/lib/fake-auth";
 import {
   CAR_BODIES,
   CAR_COUNTRIES,
@@ -15,8 +14,6 @@ import {
   type Car,
 } from "@/lib/cars";
 import {
-  adminStatus,
-  claimAdmin,
   deleteCar,
   listAllCars,
   listLeads,
@@ -25,9 +22,9 @@ import {
   saveSiteContent,
   setCarPublished,
   setLeadHandled,
-  uploadCarPhoto,
+  readFileAsDataUrl,
   type CarInput,
-} from "@/lib/admin.functions";
+} from "@/lib/data";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -79,60 +76,13 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("cars");
 
-  const status = useQuery({ queryKey: ["admin-status"], queryFn: () => adminStatus() });
-  const claim = useMutation({
-    mutationFn: () => claimAdmin(),
-    onSuccess: () => {
-      toast.success("Vous êtes maintenant administrateur.");
-      queryClient.invalidateQueries();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    clearSession();
     navigate({ to: "/auth", replace: true });
   }
 
-  if (status.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!status.data?.isAdmin) {
-    return (
-      <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-6 px-6">
-        <h1 className="text-3xl font-bold">Accès restreint</h1>
-        {status.data?.adminExists ? (
-          <p className="text-muted-foreground">
-            Votre compte n'a pas les droits d'administration. Demandez à l'administrateur du site de vous les accorder.
-          </p>
-        ) : (
-          <>
-            <p className="text-muted-foreground">
-              Aucun administrateur n'est encore défini. Vous pouvez revendiquer ce rôle maintenant.
-            </p>
-            <button
-              type="button"
-              onClick={() => claim.mutate()}
-              disabled={claim.isPending}
-              className="btn-3d btn-3d-primary px-7 py-4"
-            >
-              Devenir administrateur
-            </button>
-          </>
-        )}
-        <button type="button" onClick={signOut} className="text-sm text-muted-foreground underline">
-          Se déconnecter
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -297,7 +247,6 @@ function CarForm({
   saving: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
-  const upload = useServerFn(uploadCarPhoto);
 
   const set = <K extends keyof CarInput>(key: K, v: CarInput[K]) => onChange({ ...value, [key]: v });
 
@@ -307,14 +256,7 @@ function CarForm({
     try {
       const urls: string[] = [];
       for (const file of Array.from(files)) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-          reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
-          reader.readAsDataURL(file);
-        });
-        const res = await upload({ data: { fileName: file.name, contentType: file.type, base64 } });
-        urls.push(res.url);
+        urls.push(await readFileAsDataUrl(file));
       }
       onChange({ ...value, images: [...value.images, ...urls] });
       toast.success("Photos ajoutées.");

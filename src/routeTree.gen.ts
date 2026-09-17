@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RechercheRouteImport } from './routes/recherche'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as VehiculeSlugRouteImport } from './routes/vehicule.$slug'
-import { Route as ApiPublicCarPhotoSplatRouteImport } from './routes/api/public/car-photo.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,11 +45,6 @@ const VehiculeSlugRoute = VehiculeSlugRouteImport.update({
   path: '/vehicule/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicCarPhotoSplatRoute = ApiPublicCarPhotoSplatRouteImport.update({
-  id: '/api/public/car-photo/$',
-  path: '/api/public/car-photo/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -58,7 +52,6 @@ export interface FileRoutesByFullPath {
   '/recherche': typeof RechercheRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
-  '/api/public/car-photo/$': typeof ApiPublicCarPhotoSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -66,7 +59,6 @@ export interface FileRoutesByTo {
   '/recherche': typeof RechercheRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
-  '/api/public/car-photo/$': typeof ApiPublicCarPhotoSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -76,25 +68,12 @@ export interface FileRoutesById {
   '/recherche': typeof RechercheRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
-  '/api/public/car-photo/$': typeof ApiPublicCarPhotoSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/recherche'
-    | '/admin'
-    | '/vehicule/$slug'
-    | '/api/public/car-photo/$'
+  fullPaths: '/' | '/auth' | '/recherche' | '/admin' | '/vehicule/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/recherche'
-    | '/admin'
-    | '/vehicule/$slug'
-    | '/api/public/car-photo/$'
+  to: '/' | '/auth' | '/recherche' | '/admin' | '/vehicule/$slug'
   id:
     | '__root__'
     | '/'
@@ -103,7 +82,6 @@ export interface FileRouteTypes {
     | '/recherche'
     | '/_authenticated/admin'
     | '/vehicule/$slug'
-    | '/api/public/car-photo/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,7 +90,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   RechercheRoute: typeof RechercheRoute
   VehiculeSlugRoute: typeof VehiculeSlugRoute
-  ApiPublicCarPhotoSplatRoute: typeof ApiPublicCarPhotoSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,13 +136,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiculeSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/car-photo/$': {
-      id: '/api/public/car-photo/$'
-      path: '/api/public/car-photo/$'
-      fullPath: '/api/public/car-photo/$'
-      preLoaderRoute: typeof ApiPublicCarPhotoSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -186,7 +156,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   RechercheRoute: RechercheRoute,
   VehiculeSlugRoute: VehiculeSlugRoute,
-  ApiPublicCarPhotoSplatRoute: ApiPublicCarPhotoSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
