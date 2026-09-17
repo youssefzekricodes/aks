@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { listPublicCars, listPublicSiteContent } from "./cars.functions";
+import { listPublicCars, listPublicSiteContent } from "./data";
 
 export const publicCarsQuery = queryOptions({
   queryKey: ["public-cars"],
