@@ -81,10 +81,9 @@ Railway can host this application because it supports a long-running Docker serv
    ```text
    APP_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
    DATABASE_PATH=/app/data/aks.sqlite
-   RAILWAY_RUN_UID=0
    ```
 
-   `RAILWAY_RUN_UID=0` allows the service to write to Railway's attached volume. Railway supplies `PORT`; do not hard-code it.
+   Railway supplies `PORT`; do not hard-code it.
 5. Optionally set the service health-check path to `/`, then deploy. Open the generated domain and create the first administrator from the Railway shell:
 
    ```sh
