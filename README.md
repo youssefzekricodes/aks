@@ -1,114 +1,118 @@
-# AKS
+# Auto Kontor Sfax
 
-Build a premium, dark-themed website for Auto Kontor Sfax (AKS), a car showroom/dealership based in Sfax, Tunisia. The site should feel high-end, automotive, and tactile — like a luxury dealership meets a modern SaaS product, not a generic template.
+Standalone React + TanStack Start application with a Node server and a local SQLite database. No Supabase or hosted database is required. The public site and admin panel share persistent server data.
 
-Brand Identity
+## Run locally
 
-Logo: bold angular "AKS" wordmark in white with a red "K", pure black background, sharp aggressive geometric cuts (like a speed/motion mark).
+Use Node.js 22.17+ (Node 24 recommended) and npm. In PowerShell:
 
-Color palette:
-
-Background: near-black (#0A0A0A / #0D0D0D)
-
-Primary accent: racing red (#E10600 or similar)
-
-Secondary: pure white (#FFFFFF) and steel gray (#8A8A8A, #1C1C1C) for panels
-
-Optional metallic gradient accents (silver/chrome gradient) for a premium automotive feel
-
-Typography: bold, condensed/geometric sans-serif for headings (e.g. Poppins, Space Grotesk, or Orbitron for accents), clean sans-serif for body text (Inter). Headings should feel confident and heavy, like automotive branding.
-
-Overall Design Direction
-
-Dark, premium, "showroom at night" atmosphere — think spotlighted cars on a black background, subtle red glow accents, glassmorphism panels for content sections.
-
-Add depth everywhere: layered shadows, subtle gradients, soft ambient glows behind key elements (especially red glow behind CTAs and hero car image).
-
-Micro-interactions: smooth hover states, slight scale/lift on cards, parallax or fade-in on scroll.
-
-Buttons — Critical Requirement (3D / Tactile, YouTube-style depth)
-
-All primary and secondary buttons must have real tactile depth, not flat design:
-
-Use a layered/skeuomorphic style: a slightly darker "base" shadow layer beneath the button that mimics physical height (like a raised keycap or YouTube's subscribe/like buttons).
-
-On default state: subtle top-light gradient (lighter red/white at top, darker at bottom) plus a crisp drop shadow beneath (e.g. box-shadow: 0 4px 0 #8a0000, 0 6px 12px rgba(0,0,0,0.5)).
-
-On hover: slight lift (translateY(-2px)) with shadow growing softly.
-
-On active/click: button presses down (translateY(2px) or 3px), shadow collapses (0 1px 0), simulating a physical push — exactly like a real button being pressed.
-
-Primary buttons: red gradient with white text. Secondary/outline buttons: dark steel gray with white border, same pressed-depth behavior.
-
-Apply this same tactile treatment consistently to nav CTAs, "Book a Test Drive," "View Inventory," "Contact Us," and filter/sort buttons in the car listings.
-
-Pages / Sections
-
-1. Hero Section
-
-Full-width, full-bleed dark hero with a large premium car image (or car silhouette) and dramatic lighting/red glow.
-
-AKS logo top-left in navbar (transparent navbar over hero, becomes solid black on scroll).
-
-Bold headline (e.g. "Sfax's Premium Auto Showroom" / "Drive Excellence") + short subtext.
-
-Two 3D CTA buttons: "Explore Inventory" (primary, red) and "Book a Test Drive" (secondary, outlined).
-
-2. Featured Vehicles / Inventory
-
-Grid of car cards (image, make/model, year, price, key specs) with dark glass-panel cards, subtle red-glow border on hover, and a 3D "View Details" button on each card.
-
-Filter bar (by brand, price range, body type, new/used) — filter chips should also have the tactile pressed-button style.
-
-3. About Auto Kontor Sfax
-
-Brief brand story, years of experience, trust signals (number of cars sold, brands represented, customer satisfaction), with a stat counter section (animated numbers) on a dark panel with red accents.
-
-4. Services
-
-Icon-based cards: Financing options, Trade-in, After-sales/Maintenance, Import/Export or Custom Orders, Warranty — each in a card with soft depth/shadow.
-
-5. Testimonials
-
-Customer reviews carousel with star ratings, dark cards, subtle glow.
-
-6. Showroom / Location
-
-Embedded map (Sfax location), address, opening hours, and a prominent "Get Directions" 3D button plus WhatsApp/Call CTA buttons (since this is common for Tunisian dealerships).
-
-7. Contact / Footer
-
-Contact form (name, phone, message) with dark input fields with subtle inner shadow (depth on inputs too).
-
-Footer: logo, social links (Facebook/Instagram — common for Tunisian showrooms), quick links, address, phone, and copyright.
-
-Additional Notes
-
-Fully responsive, mobile-first, since many visitors will browse on phones.
-
-Keep animations smooth and premium — avoid anything cheap-feeling or overly bouncy.
-
-Use the red accent sparingly and intentionally (CTAs, highlights, glows) so it stays premium rather than loud.
-
-Site language: French and/or Arabic-friendly layout consideration (Sfax, Tunisia audience) — default content in French, structured so translation/RTL could be added later.
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/630ea8e2-4132-4bf2-ad1e-c25d51eefadb).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```powershell
+npm ci
+Copy-Item .env.example .env
+npm run db:init
+npm run admin:create
 npm run dev
 ```
+
+Open http://localhost:3000 and sign in at http://localhost:3000/auth. The admin command prompts for an e-mail and a hidden password (12?256 characters). No default password or public registration exists. Run the same command with an existing e-mail to reset its password and revoke its sessions. Never put passwords in source files or command-line arguments.
+
+SQLite lives at `data/aks.sqlite` by default. It is created automatically; the existing showroom catalog is seeded on first application use, only once. Database files and .env are excluded from Git. Contact forms now save inquiries that appear under **Demandes** in the admin panel. This does not send e-mail notifications.
+
+The previous browser-local demo data and fake sessions are no longer used. Edits previously saved only in localStorage are not imported automatically: preserve/export that browser data before clearing it if you need those edits.
+
+## Gérer le contenu depuis l’administration
+
+Ouvrez `/admin`, puis **Contenu du site**. Les rubriques permettent de modifier les textes, boutons, logo, image d’accueil, favicon, coordonnées, réseaux sociaux, carte et titres/descriptions de référencement. La recherche retrouve les champs dans toutes les rubriques.
+
+- Les listes de navigation, chiffres clés, services, témoignages, horaires, services inclus et budgets permettent d’ajouter, supprimer et réordonner les éléments.
+- La rubrique **Sections de la page d’accueil** permet d’afficher ou masquer chaque section.
+- Les images peuvent être importées depuis votre ordinateur (JPG/PNG/WebP, 2 Mo maximum) ou remplacées par une URL.
+- **Publier les modifications** enregistre les changements dans SQLite et les rend publics. Les changements non publiés restent en mémoire pendant les changements d’onglet de l’administration. Ils sont perdus si vous vous déconnectez ou fermez la page après l’avertissement.
+- **Annuler les modifications** abandonne le brouillon. **Rétablir les valeurs initiales** prépare une réinitialisation de la rubrique ; elle ne devient publique qu’après publication.
+- Les modèles de résultat de recherche acceptent la variable `{count}`. Les libellés des filtres sont personnalisables ; les marques, carrosseries et états de l’inventaire proviennent des véhicules publiés.
+
+Les véhicules, caractéristiques, tarifs et photos se gèrent dans **Véhicules**. L’éditeur de contenu conserve la mise en page du site : il ne s’agit pas d’un éditeur de code ou de CSS. Les nouvelles rubriques utilisent leurs valeurs initiales si aucune valeur n’est enregistrée, sans écraser les contenus existants. Les autorisations et la validation sont appliquées côté serveur.
+
+Le catalogue des champs se trouve dans `src/features/content/fields.json`, les modèles des listes dans `collections.json` et la validation partagée dans `definition.ts`. Les composants publics utilisent `useSiteText` et `useSiteCollection`.
+
+## Organisation des fichiers
+
+```text
+src/routes/                 Route definitions and public pages
+src/features/admin/         Admin dashboard and editing forms
+src/features/auth/          Authentication server functions
+src/features/catalog/       Catalog server functions, validation, shared types
+src/server/auth/            Password hashing and session authorization
+src/server/db/              SQLite connection, migrations, repository, initial seed
+src/components/aks/         Public showroom components
+src/components/ui/          Reusable UI primitives
+src/lib/                    Shared helpers and compatibility facade
+public/images/              Locally hosted original project images
+scripts/                    Database, backup, and administrator commands
+tests/                      Database/password and production HTTP tests
+```
+
+Route guards improve navigation; server authorization protects every admin read and mutation. Passwords use salted scrypt hashes. Sessions use random tokens stored as SHA-256 hashes in SQLite and an HttpOnly, SameSite=Strict cookie, with an eight-hour absolute expiry. Production cookies require HTTPS. Login attempts and public lead submissions have persistent rate limits. Mutations validate the exact Origin and inputs. There is no public account creation. Admin recovery requires access to the server terminal.
+
+Existing images were copied from Lovable into public/images. The build no longer uses Lovable's Vite wrapper or asset proxy. Lovable project metadata remains for history continuity; no git history has been rewritten. The old PostgreSQL/Drizzle scaffold has been removed. Use npm/package-lock.json for this standalone setup.
+
+## Verify
+
+```sh
+npm run typecheck
+npm test
+```
+
+Tests build the application and launch a temporary production server on port 4319 with an isolated database. They cover login, cookies, anonymous access, CSRF, validation, database persistence, publication visibility, inquiries, session expiry, and logout. Node 22 may print experimental warnings for its built-in SQLite and TypeScript stripping APIs.
+
+## Host on a server
+
+Use a Node server with persistent local disk; SQLite is not suitable for an ephemeral static/edge deployment. Run one application instance, keep the database outside the deployed build directory, and put an HTTPS reverse proxy in front of the app.
+
+## Deploy on Railway
+
+Railway can host this application because it supports a long-running Docker service with persistent volumes. Do not deploy this SQLite-backed version to Vercel serverless functions.
+
+1. Push this repository to GitHub, then create a Railway project and choose **Deploy from GitHub repo**. Railway automatically detects the root `Dockerfile`.
+2. In the service **Settings**, generate a public domain.
+3. Add a **Volume** at mount path `/app/data`. This is required: it stores the SQLite database, administrator accounts, vehicles, content edits, and contact requests across deployments.
+4. In the service **Variables**, set:
+
+   ```text
+   APP_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
+   DATABASE_PATH=/app/data/aks.sqlite
+   RAILWAY_RUN_UID=0
+   ```
+
+   `RAILWAY_RUN_UID=0` allows the service to write to Railway's attached volume. Railway supplies `PORT`; do not hard-code it.
+5. Optionally set the service health-check path to `/`, then deploy. Open the generated domain and create the first administrator from the Railway shell:
+
+   ```sh
+   node --experimental-strip-types scripts/create-admin.ts
+   ```
+
+   Run this command inside the deployed service so it uses the same persistent `DATABASE_PATH` as the website.
+
+1. Install dependencies with npm ci and build with npm run build.
+2. Configure DATABASE_PATH to an absolute persistent path and APP_ORIGIN to your exact HTTPS origin (for example https://cars.example.com, without a trailing slash).
+3. Set NODE_ENV=production, HOST=127.0.0.1, and PORT=3000. Create the admin using the same DATABASE_PATH, then run npm start under your service manager.
+4. Proxy HTTPS traffic to the Node port. Preserve Host; allow request bodies up to 36 MB for image uploads. Do not expose the data directory over HTTP.
+
+The database includes uploaded car images as validated data URLs (JPG/PNG/WebP, 2 MB per image, maximum 12 images per car). This keeps backup and relocation simple for a small showroom. For a large catalog, move uploaded images to a dedicated persistent file store later.
+
+A Dockerfile is also provided (not executed as part of local verification):
+
+```sh
+docker build -t aks-showroom .
+docker volume create aks-data
+docker run -d --name aks -p 127.0.0.1:3000:3000 -e APP_ORIGIN=https://cars.example.com -v aks-data:/app/data aks-showroom
+docker exec -it aks node --experimental-strip-types scripts/create-admin.ts
+```
+
+Terminate HTTPS at your reverse proxy. Keep the named volume when replacing the container.
+
+## Back up and move the database
+
+Run npm run db:backup to create a consistent snapshot in data/backups, including while the app is running. Copy backups off the PC/server and protect access: they contain customer inquiries and password hashes. To migrate, stop the destination app, copy a backup to the destination DATABASE_PATH, and restart. Do not copy only aks.sqlite while a running database may have uncheckpointed WAL data. Keep the old database until the restored site is verified.
+
+Reference: [Node SQLite](https://nodejs.org/download/release/latest-v24.x/docs/api/sqlite.html) and [TanStack server functions](https://tanstack.com/start/latest/docs/framework/react/guide/server-functions).
