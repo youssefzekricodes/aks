@@ -1,8 +1,11 @@
+import { useSiteText } from "@/lib/site-content";
 import { Fuel, Gauge, Settings2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { carImage, type Car } from "@/lib/cars";
 
 export function CarCard({ car }: { car: Car }) {
+  const text = useSiteText();
+
   return (
     <article className="group glass-panel h-full overflow-hidden rounded-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_0_50px_-12px_var(--primary)]">
       <div className="relative aspect-[4/3] overflow-hidden bg-black">
@@ -27,7 +30,7 @@ export function CarCard({ car }: { car: Car }) {
             <p className="text-sm text-muted-foreground">{car.year}</p>
           </div>
           <p className="shrink-0 font-display text-lg font-bold text-primary">
-            {car.price.toLocaleString("fr-FR")} DT
+            {car.price.toLocaleString("fr-FR")} {text("card.text_1", "DT")}
           </p>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 border-y border-border py-3 text-xs text-muted-foreground">
@@ -49,7 +52,7 @@ export function CarCard({ car }: { car: Car }) {
           params={{ slug: car.slug }}
           className="btn-3d btn-3d-primary mt-4 flex w-full items-center justify-center px-4 py-2 text-xs uppercase tracking-wider"
         >
-          Voir les détails
+          {text("card.text_2", "Voir les détails")}
         </Link>
       </div>
     </article>

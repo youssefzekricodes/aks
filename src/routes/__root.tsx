@@ -1,3 +1,5 @@
+import { siteContentQuery } from "@/lib/queries";
+import { resolveContent } from "@/features/content/definition";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -10,9 +12,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
-import { Toaster } from "@/components/ui/sonner";
 
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -40,7 +41,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    console.error(error);
   }, [error]);
 
   return (
@@ -75,32 +76,48 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Auto Kontor Sfax" },
-      { name: "description", content: "Showroom automobile premium à Sfax, Tunisie." },
-      { name: "author", content: "Auto Kontor Sfax" },
-      { property: "og:title", content: "Auto Kontor Sfax" },
-      { property: "og:description", content: "Showroom automobile premium à Sfax, Tunisie." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
-      },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-    ],
+  loader: async ({ context }) => ({
+    content: await context.queryClient.ensureQueryData(siteContentQuery),
   }),
+  head: ({ loaderData }) => {
+    const favicon = resolveContent(loaderData?.content ?? {}, "identity.favicon");
+    const faviconHref = favicon.startsWith("data:")
+      ? favicon
+      : `${favicon}${favicon.includes("?") ? "&" : "?"}v=20260919-3`;
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: resolveContent(loaderData?.content ?? {}, "seo.home_title") },
+        { name: "description", content: "Showroom automobile premium à Sfax, Tunisie." },
+        { name: "author", content: resolveContent(loaderData?.content ?? {}, "seo.site_name") },
+        {
+          property: "og:title",
+          content: resolveContent(loaderData?.content ?? {}, "seo.site_name"),
+        },
+        { property: "og:description", content: "Showroom automobile premium à Sfax, Tunisie." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
+        },
+        {
+          rel: "icon",
+          type: "image/png",
+          href: faviconHref,
+        },
+      ],
+    };
+  },
 
   shellComponent: RootShell,
   component: RootComponent,
@@ -110,7 +127,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <head>
         <HeadContent />
       </head>
@@ -133,4 +150,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

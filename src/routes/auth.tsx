@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { signIn } from "@/lib/fake-auth";
+import { signIn } from "@/features/auth/auth.functions";
 import { Btn } from "@/components/aks/Btn";
 import logo from "@/assets/aks-logo.png.asset.json";
 
@@ -29,19 +29,33 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const onSubmit = (e: FormEvent) => {
+  const [pending, setPending] = useState(false);
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Demo mode: any e-mail and any password are accepted.
-    signIn(email || "admin@demo.local");
-    toast.success("Connecté");
-    navigate({ to: "/admin" });
+    if (pending) return;
+    setPending(true);
+    try {
+      await signIn({ data: { email, password } });
+      toast.success("Connexion réussie");
+      await navigate({ to: "/admin" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Connexion impossible.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-5 py-16">
       <div className="w-full max-w-md">
         <Link to="/" className="mx-auto flex w-fit items-center gap-3">
-          <img src={logo.url} alt="Auto Kontor Sfax" width={44} height={44} className="h-11 w-11 rounded-md object-cover" />
+          <img
+            src={logo.url}
+            alt="Auto Kontor Sfax"
+            width={132}
+            height={44}
+            className="h-11 w-[132px] object-contain"
+          />
           <span className="font-display text-sm font-bold uppercase tracking-[0.22em]">
             Auto Kontor <span className="text-primary">Sfax</span>
           </span>
@@ -50,35 +64,45 @@ function AuthPage() {
         <div className="glass-panel mt-8 rounded-2xl p-7 sm:p-9">
           <h1 className="text-2xl font-bold">Espace administration</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Mode démonstration : n'importe quel e-mail et n'importe quel mot de passe fonctionnent.
+            Connectez-vous avec votre compte administrateur.
           </p>
 
           <form onSubmit={onSubmit} className="mt-7 space-y-5">
             <div>
-              <label htmlFor="email" className="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <label
+                htmlFor="email"
+                className="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+              >
                 E-mail
               </label>
               <input
                 id="email"
-                type="text"
+                type="email"
+                autoComplete="username"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-depth w-full rounded-lg px-4 py-3 text-sm text-foreground"
               />
             </div>
             <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <label
+                htmlFor="password"
+                className="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+              >
                 Mot de passe
               </label>
               <input
                 id="password"
                 type="password"
+                autoComplete="current-password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-depth w-full rounded-lg px-4 py-3 text-sm text-foreground"
               />
             </div>
-            <Btn type="submit" size="lg" className="w-full">
+            <Btn disabled={pending} type="submit" size="lg" className="w-full">
               Se connecter
             </Btn>
           </form>

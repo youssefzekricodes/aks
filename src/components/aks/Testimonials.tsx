@@ -1,37 +1,17 @@
+import { useSiteCollection } from "@/lib/site-content";
+import { useSiteText } from "@/lib/site-content";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Reveal } from "./Reveal";
 
-const reviews = [
-  {
-    name: "Mohamed Trabelsi",
-    city: "Sfax",
-    stars: 5,
-    text: "Achat d'un SUV en toute confiance. Historique clair, essai sans pression et livraison en une semaine. Une équipe vraiment professionnelle.",
-  },
-  {
-    name: "Ines Charfi",
-    city: "Sakiet Ezzit",
-    stars: 5,
-    text: "Ils ont repris mon ancienne voiture à un prix juste et monté le dossier de financement à ma place. Rien à redire.",
-  },
-  {
-    name: "Karim Bouzid",
-    city: "Sfax",
-    stars: 5,
-    text: "Commande d'un modèle importé avec les options exactes que je voulais. Suivi impeccable du début à la fin.",
-  },
-  {
-    name: "Sarra Mahfoudh",
-    city: "Mahdia",
-    stars: 4,
-    text: "Showroom impressionnant et conseils honnêtes. J'ai été orientée vers un modèle moins cher que prévu, et c'était le bon choix.",
-  },
-];
-
 export function Testimonials() {
+  const text = useSiteText();
+
+  const reviews = useSiteCollection("testimonials.items");
+
   const [i, setI] = useState(0);
-  const r = reviews[i]!;
+  const r = reviews[i % reviews.length];
+  if (!r) return null;
 
   return (
     <section id="avis" className="relative overflow-hidden border-y border-border bg-panel">
@@ -42,9 +22,11 @@ export function Testimonials() {
       <div className="relative mx-auto max-w-4xl px-5 py-24 text-center lg:py-32">
         <Reveal>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-            Témoignages
+            {text("testimonials.text_1", "Témoignages")}
           </p>
-          <h2 className="mt-4 text-4xl font-bold sm:text-5xl">Ils nous font confiance</h2>
+          <h2 className="mt-4 text-4xl font-bold sm:text-5xl">
+            {text("testimonials.text_2", "Ils nous font confiance")}
+          </h2>
 
           <div className="glass-panel mt-12 rounded-2xl p-8 sm:p-12">
             <div className="flex justify-center gap-1">
@@ -64,7 +46,7 @@ export function Testimonials() {
 
           <div className="mt-8 flex items-center justify-center gap-3">
             <button
-              aria-label="Précédent"
+              aria-label={text("testimonials.text_3", "Précédent")}
               onClick={() => setI((v) => (v - 1 + reviews.length) % reviews.length)}
               className="btn-3d btn-3d-steel p-3"
             >
@@ -77,13 +59,13 @@ export function Testimonials() {
                   aria-label={`Avis ${d + 1}`}
                   onClick={() => setI(d)}
                   className={`h-2 rounded-full transition-all ${
-                    d === i ? "w-7 bg-primary" : "w-2 bg-border"
+                    d === i % reviews.length ? "w-7 bg-primary" : "w-2 bg-border"
                   }`}
                 />
               ))}
             </div>
             <button
-              aria-label="Suivant"
+              aria-label={text("testimonials.text_4", "Suivant")}
               onClick={() => setI((v) => (v + 1) % reviews.length)}
               className="btn-3d btn-3d-steel p-3"
             >

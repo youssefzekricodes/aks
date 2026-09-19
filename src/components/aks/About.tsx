@@ -1,12 +1,7 @@
+import { useSiteCollection } from "@/lib/site-content";
+import { useSiteText } from "@/lib/site-content";
 import { useEffect, useRef, useState } from "react";
 import { Reveal } from "./Reveal";
-
-const stats = [
-  { value: 2400, suffix: "+", label: "Véhicules livrés" },
-  { value: 18, suffix: " ans", label: "D'expérience à Sfax" },
-  { value: 25, suffix: "", label: "Marques représentées" },
-  { value: 98, suffix: "%", label: "Clients satisfaits" },
-];
 
 function Counter({ value, suffix }: { value: number; suffix: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -40,6 +35,10 @@ function Counter({ value, suffix }: { value: number; suffix: string }) {
 }
 
 export function About() {
+  const text = useSiteText();
+
+  const stats = useSiteCollection("about.items");
+
   return (
     <section id="apropos" className="relative overflow-hidden border-y border-border bg-panel">
       <div
@@ -50,31 +49,33 @@ export function About() {
         <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
           <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              À propos
+              {text("about.text_1", "À propos")}
             </p>
             <h2 className="mt-4 text-4xl font-bold sm:text-5xl">
-              Auto Kontor Sfax,
+              {text("about.text_2", "Auto Kontor Sfax,")}
               <br />
-              <span className="text-chrome">l'exigence automobile</span>
+              <span className="text-chrome">{text("about.text_3", "l'exigence automobile")}</span>
             </h2>
             <div className="mt-6 space-y-4 text-muted-foreground">
               <p>
-                Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la région dans
-                l'achat, la reprise et l'importation de véhicules haut de gamme. Notre showroom
-                réunit berlines, SUV et sportives sélectionnés un par un.
+                {text(
+                  "about.textarea_1",
+                  "Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la région dans l'achat, la reprise et l'importation de véhicules haut de gamme. Notre showroom réunit berlines, SUV et sportives sélectionnés un par un.",
+                )}
               </p>
               <p>
-                Transparence sur l'historique, garantie écrite, financement négocié avec nos
-                partenaires bancaires : nous construisons des relations durables, pas des ventes
-                rapides.
+                {text(
+                  "about.textarea_2",
+                  "Transparence sur l'historique, garantie écrite, financement négocié avec nos partenaires bancaires : nous construisons des relations durables, pas des ventes rapides.",
+                )}
               </p>
             </div>
           </Reveal>
 
           <Reveal delay={120}>
             <div className="glass-panel grid grid-cols-2 gap-px overflow-hidden rounded-2xl">
-              {stats.map((s) => (
-                <div key={s.label} className="bg-background/40 p-8">
+              {stats.map((s, index) => (
+                <div key={index} className="bg-background/40 p-8">
                   <Counter value={s.value} suffix={s.suffix} />
                   <p className="mt-2 text-sm text-muted-foreground">{s.label}</p>
                 </div>

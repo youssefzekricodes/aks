@@ -1,45 +1,44 @@
+import { useSiteText } from "@/lib/site-content";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, ChevronDown } from "lucide-react";
-import storefront from "@/assets/aks-storefront.jpg.asset.json";
 import { Btn } from "./Btn";
 
-const priceOptions = [
-  { value: "all", label: "Prix" },
-  { value: "0-30000", label: "0 - 30 000 DT" },
-  { value: "30000-50000", label: "30 000 - 50 000 DT" },
-  { value: "50000-100000", label: "50 000 - 100 000 DT" },
-  { value: "100000-200000", label: "100 000 - 200 000 DT" },
-  { value: "200000+", label: "200 000 DT +" },
-];
-
-const typeOptions = [
-  { value: "all", label: "Type" },
-  { value: "SUV", label: "SUV" },
-  { value: "Berline", label: "Berline" },
-  { value: "Coupé", label: "Coupé" },
-  { value: "Citadine", label: "Citadine" },
-  { value: "Pick-up", label: "Pick-up" },
-];
-
-const kmOptions = [
-  { value: "all", label: "Kilométrage" },
-  { value: "0-50000", label: "0 - 50 000 km" },
-  { value: "50000-100000", label: "50 000 - 100 000 km" },
-  { value: "100000-200000", label: "100 000 - 200 000 km" },
-  { value: "200000+", label: "200 000 km +" },
-];
-
-const countryOptions = [
-  { value: "all", label: "Pays" },
-  { value: "Japan", label: "Japon" },
-  { value: "China", label: "Chine" },
-  { value: "Germany", label: "Allemagne" },
-  { value: "Italy", label: "Italie" },
-  { value: "France", label: "France" },
-];
-
 export function Hero() {
+  const text = useSiteText();
+
+  const priceOptions = [
+    { value: "all", label: text("hero.text_1", "Prix") },
+    { value: "0-30000", label: text("hero.text_2", "0 - 30 000 DT") },
+    { value: "30000-50000", label: text("hero.text_3", "30 000 - 50 000 DT") },
+    { value: "50000-100000", label: text("hero.text_4", "50 000 - 100 000 DT") },
+    { value: "100000-200000", label: text("hero.text_5", "100 000 - 200 000 DT") },
+    { value: "200000+", label: text("hero.text_6", "200 000 DT +") },
+  ];
+  const typeOptions = [
+    { value: "all", label: text("hero.text_7", "Type") },
+    { value: "SUV", label: text("hero.text_8", "SUV") },
+    { value: "Berline", label: text("hero.text_9", "Berline") },
+    { value: "Coupé", label: text("hero.text_10", "Coupé") },
+    { value: "Citadine", label: text("hero.text_11", "Citadine") },
+    { value: "Pick-up", label: text("hero.text_12", "Pick-up") },
+  ];
+  const kmOptions = [
+    { value: "all", label: text("hero.text_13", "Kilométrage") },
+    { value: "0-50000", label: text("hero.text_14", "0 - 50 000 km") },
+    { value: "50000-100000", label: text("hero.text_15", "50 000 - 100 000 km") },
+    { value: "100000-200000", label: text("hero.text_16", "100 000 - 200 000 km") },
+    { value: "200000+", label: text("hero.text_17", "200 000 km +") },
+  ];
+  const countryOptions = [
+    { value: "all", label: text("hero.text_18", "Pays") },
+    { value: "Japan", label: text("hero.text_19", "Japon") },
+    { value: "China", label: text("hero.text_20", "Chine") },
+    { value: "Germany", label: text("hero.text_21", "Allemagne") },
+    { value: "Italy", label: text("hero.text_22", "Italie") },
+    { value: "France", label: text("hero.text_23", "France") },
+  ];
+
   const navigate = useNavigate({ from: "/" });
   const [price, setPrice] = useState("all");
   const [type, setType] = useState("all");
@@ -58,8 +57,11 @@ export function Hero() {
     <section id="top" className="relative isolate min-h-[92vh]">
       {/* Showroom photo — centered full-bleed background */}
       <img
-        src={storefront.url}
-        alt="Façade du showroom Auto Kontor Sfax de nuit, enseigne AKS éclairée et véhicules premium en vitrine"
+        src={text("hero.image_1", "/images/aks-storefront.jpg")}
+        alt={text(
+          "hero.text_24",
+          "Façade du showroom Auto Kontor Sfax de nuit, enseigne AKS éclairée et véhicules premium en vitrine",
+        )}
         width={1100}
         height={1400}
         className="absolute inset-0 h-full w-full object-cover object-center"
@@ -78,7 +80,9 @@ export function Hero() {
       <div
         aria-hidden
         className="absolute inset-0 mix-blend-multiply opacity-25"
-        style={{ background: "linear-gradient(200deg, oklch(0.4 0.14 28.5), oklch(0.1 0.01 28.5))" }}
+        style={{
+          background: "linear-gradient(200deg, oklch(0.4 0.14 28.5), oklch(0.1 0.01 28.5))",
+        }}
       />
       <div
         aria-hidden
@@ -98,31 +102,54 @@ export function Hero() {
       {/* Centered content */}
       <div className="relative flex min-h-[92vh] flex-col items-center justify-center px-6 py-24 text-center">
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.42em] text-muted-foreground">
-          Sfax · Tunisie
+          {text("hero.text_25", "Sfax · Tunisie")}{" "}
           <span className="mx-auto mt-3 block h-px w-14 bg-primary" />
         </p>
 
         <h1 className="mt-10 max-w-4xl font-display text-[clamp(2.4rem,6vw,5rem)] font-bold uppercase leading-[0.95] tracking-[-0.03em] text-foreground">
-          Le showroom automobile <span className="text-primary">premium de Sfax</span>
+          {text("hero.text_26", "Le showroom automobile")}{" "}
+          <span className="text-primary">{text("hero.text_27", "premium de Sfax")}</span>
         </h1>
 
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Véhicules neufs et d'occasion sélectionnés avec exigence. Financement, reprise et
-          garantie — accompagnés par une équipe qui connaît chaque voiture qu'elle vend.
+          {text(
+            "hero.textarea_1",
+            "Véhicules neufs et d'occasion sélectionnés avec exigence. Financement, reprise et garantie — accompagnés par une équipe qui connaît chaque voiture qu'elle vend.",
+          )}
         </p>
 
         {/* Search bar */}
         <div className="glass-panel mt-12 w-full max-w-5xl rounded-2xl p-5 sm:p-7">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <SearchField label="Prix" value={price} onChange={setPrice} options={priceOptions} />
-              <SearchField label="Type" value={type} onChange={setType} options={typeOptions} />
-              <SearchField label="Kilométrage" value={km} onChange={setKm} options={kmOptions} />
-              <SearchField label="Pays fabricant" value={country} onChange={setCountry} options={countryOptions} />
+              <SearchField
+                label={text("hero.text_1", "Prix")}
+                value={price}
+                onChange={setPrice}
+                options={priceOptions}
+              />
+              <SearchField
+                label={text("hero.text_7", "Type")}
+                value={type}
+                onChange={setType}
+                options={typeOptions}
+              />
+              <SearchField
+                label={text("hero.text_13", "Kilométrage")}
+                value={km}
+                onChange={setKm}
+                options={kmOptions}
+              />
+              <SearchField
+                label={text("hero.text_28", "Pays fabricant")}
+                value={country}
+                onChange={setCountry}
+                options={countryOptions}
+              />
             </div>
             <Btn type="submit" size="lg" className="w-full">
               <Search className="h-4 w-4" />
-              Rechercher
+              {text("hero.text_29", "Rechercher")}
             </Btn>
           </form>
         </div>

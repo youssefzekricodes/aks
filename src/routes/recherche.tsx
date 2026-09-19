@@ -1,3 +1,5 @@
+import { resolveContent } from "@/features/content/definition";
+import { useSiteText } from "@/lib/site-content";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -8,16 +10,13 @@ import { SellCarBanner } from "@/components/aks/SellCarBanner";
 import { CarCard } from "@/components/aks/CarCard";
 import { Reveal } from "@/components/aks/Reveal";
 
-const title = "Résultats de recherche — Auto Kontor Sfax";
-const description =
-  "Trouvez votre véhicule neuf ou d'occasion premium chez Auto Kontor Sfax, showroom automobile à Sfax.";
-
 export const Route = createFileRoute("/recherche")({
   loader: async ({ context }) => {
-    await Promise.all([
+    const [, content] = await Promise.all([
       context.queryClient.ensureQueryData(publicCarsQuery),
       context.queryClient.ensureQueryData(siteContentQuery),
     ]);
+    return { content };
   },
   validateSearch: (search) => ({
     price: String(search["price"] || "all"),
@@ -25,16 +24,20 @@ export const Route = createFileRoute("/recherche")({
     km: String(search["km"] || "all"),
     country: String(search["country"] || "all"),
   }),
-  head: () => ({
-    meta: [
-      { title },
-      { name: "description", content: description },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const title = resolveContent(loaderData?.content ?? {}, "seo.search_title");
+    const description = resolveContent(loaderData?.content ?? {}, "seo.search_description");
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+    };
+  },
   component: RecherchePage,
 });
 
@@ -58,6 +61,8 @@ function matchesKm(km: string, car: Car) {
 }
 
 function RecherchePage() {
+  const text = useSiteText();
+
   const { price, type, km, country } = Route.useSearch();
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
 
@@ -78,13 +83,17 @@ function RecherchePage() {
           className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Retour à l'accueil
+          {text("search.text_1", "Retour à l'accueil")}
         </Link>
 
-        <h1 className="mt-8 text-4xl font-bold sm:text-5xl">Résultats de recherche</h1>
+        <h1 className="mt-8 text-4xl font-bold sm:text-5xl">
+          {text("search.text_2", "Résultats de recherche")}
+        </h1>
         <p className="mt-4 text-muted-foreground">
-          {filtered.length} véhicule{filtered.length !== 1 ? "s" : ""} trouvé
-          {filtered.length !== 1 ? "s" : ""}
+          {text(
+            filtered.length === 1 ? "search.results_one" : "search.results_many",
+            "{count} véhicules trouvés",
+          ).replaceAll("{count}", String(filtered.length))}
         </p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -97,13 +106,15 @@ function RecherchePage() {
 
         {filtered.length === 0 && (
           <div className="mt-16 text-center">
-            <p className="text-lg text-foreground">Aucun véhicule ne correspond à ces critères.</p>
+            <p className="text-lg text-foreground">
+              {text("search.text_5", "Aucun véhicule ne correspond à ces critères.")}
+            </p>
             <Link
               to="/recherche"
               search={{ price: "all", type: "all", km: "all", country: "all" }}
               className="btn-3d btn-3d-primary mt-6 inline-flex"
             >
-              Voir tout l'inventaire
+              {text("search.text_6", "Voir tout l'inventaire")}
             </Link>
           </div>
         )}

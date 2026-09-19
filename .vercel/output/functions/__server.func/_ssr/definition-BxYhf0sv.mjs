@@ -1,0 +1,255 @@
+//#region node_modules/.nitro/vite/services/ssr/assets/definition-BxYhf0sv.js
+var fields_default = /*#__PURE__*/ JSON.parse("[{\"key\":\"navbar.items\",\"group\":\"navbar\",\"label\":\"Liens du menu\",\"type\":\"collection\",\"value\":\"[{\\\"href\\\":\\\"/#inventaire\\\",\\\"label\\\":\\\"Inventaire\\\"},{\\\"href\\\":\\\"/#apropos\\\",\\\"label\\\":\\\"À propos\\\"},{\\\"href\\\":\\\"/#services\\\",\\\"label\\\":\\\"Services\\\"},{\\\"href\\\":\\\"/#avis\\\",\\\"label\\\":\\\"Avis\\\"},{\\\"href\\\":\\\"/#showroom\\\",\\\"label\\\":\\\"Showroom\\\"}]\"},{\"key\":\"navbar.link_1\",\"group\":\"navbar\",\"label\":\"Lien — #top\",\"type\":\"link\",\"value\":\"/#top\"},{\"key\":\"identity.logo\",\"group\":\"identity\",\"label\":\"Logo\",\"type\":\"image\",\"value\":\"/images/aks-logo.png\"},{\"key\":\"navbar.text_1\",\"group\":\"navbar\",\"label\":\"Description image — Auto Kontor Sfax\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax\"},{\"key\":\"identity.brand\",\"group\":\"identity\",\"label\":\"Nom de l’enseigne\",\"type\":\"text\",\"value\":\"Auto Kontor\"},{\"key\":\"navbar.link_2\",\"group\":\"navbar\",\"label\":\"Lien — #contact\",\"type\":\"link\",\"value\":\"/#contact\"},{\"key\":\"navbar.text_3\",\"group\":\"navbar\",\"label\":\"Bouton — Nous contacter\",\"type\":\"text\",\"value\":\"Nous contacter\"},{\"key\":\"navbar.text_4\",\"group\":\"navbar\",\"label\":\"Libellé accessible — Menu\",\"type\":\"text\",\"value\":\"Menu\"},{\"key\":\"hero.text_1\",\"group\":\"hero\",\"label\":\"Libellé — Prix\",\"type\":\"text\",\"value\":\"Prix\"},{\"key\":\"hero.text_2\",\"group\":\"hero\",\"label\":\"Libellé — 0 - 30 000 DT\",\"type\":\"text\",\"value\":\"0 - 30 000 DT\"},{\"key\":\"hero.text_3\",\"group\":\"hero\",\"label\":\"Libellé — 30 000 - 50 000 DT\",\"type\":\"text\",\"value\":\"30 000 - 50 000 DT\"},{\"key\":\"hero.text_4\",\"group\":\"hero\",\"label\":\"Libellé — 50 000 - 100 000 DT\",\"type\":\"text\",\"value\":\"50 000 - 100 000 DT\"},{\"key\":\"hero.text_5\",\"group\":\"hero\",\"label\":\"Libellé — 100 000 - 200 000 DT\",\"type\":\"text\",\"value\":\"100 000 - 200 000 DT\"},{\"key\":\"hero.text_6\",\"group\":\"hero\",\"label\":\"Libellé — 200 000 DT +\",\"type\":\"text\",\"value\":\"200 000 DT +\"},{\"key\":\"hero.text_7\",\"group\":\"hero\",\"label\":\"Libellé — Type\",\"type\":\"text\",\"value\":\"Type\"},{\"key\":\"hero.text_8\",\"group\":\"hero\",\"label\":\"Libellé — SUV\",\"type\":\"text\",\"value\":\"SUV\"},{\"key\":\"hero.text_9\",\"group\":\"hero\",\"label\":\"Libellé — Berline\",\"type\":\"text\",\"value\":\"Berline\"},{\"key\":\"hero.text_10\",\"group\":\"hero\",\"label\":\"Libellé — Coupé\",\"type\":\"text\",\"value\":\"Coupé\"},{\"key\":\"hero.text_11\",\"group\":\"hero\",\"label\":\"Libellé — Citadine\",\"type\":\"text\",\"value\":\"Citadine\"},{\"key\":\"hero.text_12\",\"group\":\"hero\",\"label\":\"Libellé — Pick-up\",\"type\":\"text\",\"value\":\"Pick-up\"},{\"key\":\"hero.text_13\",\"group\":\"hero\",\"label\":\"Libellé — Kilométrage\",\"type\":\"text\",\"value\":\"Kilométrage\"},{\"key\":\"hero.text_14\",\"group\":\"hero\",\"label\":\"Libellé — 0 - 50 000 km\",\"type\":\"text\",\"value\":\"0 - 50 000 km\"},{\"key\":\"hero.text_15\",\"group\":\"hero\",\"label\":\"Libellé — 50 000 - 100 000 km\",\"type\":\"text\",\"value\":\"50 000 - 100 000 km\"},{\"key\":\"hero.text_16\",\"group\":\"hero\",\"label\":\"Libellé — 100 000 - 200 000 km\",\"type\":\"text\",\"value\":\"100 000 - 200 000 km\"},{\"key\":\"hero.text_17\",\"group\":\"hero\",\"label\":\"Libellé — 200 000 km +\",\"type\":\"text\",\"value\":\"200 000 km +\"},{\"key\":\"hero.text_18\",\"group\":\"hero\",\"label\":\"Libellé — Pays\",\"type\":\"text\",\"value\":\"Pays\"},{\"key\":\"hero.text_19\",\"group\":\"hero\",\"label\":\"Libellé — Japon\",\"type\":\"text\",\"value\":\"Japon\"},{\"key\":\"hero.text_20\",\"group\":\"hero\",\"label\":\"Libellé — Chine\",\"type\":\"text\",\"value\":\"Chine\"},{\"key\":\"hero.text_21\",\"group\":\"hero\",\"label\":\"Libellé — Allemagne\",\"type\":\"text\",\"value\":\"Allemagne\"},{\"key\":\"hero.text_22\",\"group\":\"hero\",\"label\":\"Libellé — Italie\",\"type\":\"text\",\"value\":\"Italie\"},{\"key\":\"hero.text_23\",\"group\":\"hero\",\"label\":\"Libellé — France\",\"type\":\"text\",\"value\":\"France\"},{\"key\":\"hero.image_1\",\"group\":\"hero\",\"label\":\"Image ou carte — /images/aks-storefront.jpg\",\"type\":\"image\",\"value\":\"/images/aks-storefront.jpg\"},{\"key\":\"hero.text_24\",\"group\":\"hero\",\"label\":\"Description image — Façade du showroom Auto Kontor Sfax de nuit, enseigne AKS éc\",\"type\":\"textarea\",\"value\":\"Façade du showroom Auto Kontor Sfax de nuit, enseigne AKS éclairée et véhicules premium en vitrine\"},{\"key\":\"hero.text_25\",\"group\":\"hero\",\"label\":\"Texte — Sfax · Tunisie\",\"type\":\"text\",\"value\":\"Sfax · Tunisie\"},{\"key\":\"hero.text_26\",\"group\":\"hero\",\"label\":\"Titre principal — Le showroom automobile\",\"type\":\"text\",\"value\":\"Le showroom automobile\"},{\"key\":\"hero.text_27\",\"group\":\"hero\",\"label\":\"Texte — premium de Sfax\",\"type\":\"text\",\"value\":\"premium de Sfax\"},{\"key\":\"hero.textarea_1\",\"group\":\"hero\",\"label\":\"Paragraphe — Véhicules neufs et d'occasion sélectionnés avec exigence. Finance\",\"type\":\"textarea\",\"value\":\"Véhicules neufs et d'occasion sélectionnés avec exigence. Financement, reprise et garantie — accompagnés par une équipe qui connaît chaque voiture qu'elle vend.\"},{\"key\":\"hero.text_28\",\"group\":\"hero\",\"label\":\"Libellé — Pays fabricant\",\"type\":\"text\",\"value\":\"Pays fabricant\"},{\"key\":\"hero.text_29\",\"group\":\"hero\",\"label\":\"Bouton — Rechercher\",\"type\":\"text\",\"value\":\"Rechercher\"},{\"key\":\"inventory.text_1\",\"group\":\"inventory\",\"label\":\"Texte — Inventaire\",\"type\":\"text\",\"value\":\"Inventaire\"},{\"key\":\"inventory_title\",\"group\":\"inventory\",\"label\":\"inventory_title\",\"type\":\"textarea\",\"value\":\"Véhicules en vitrine\"},{\"key\":\"inventory_subtitle\",\"group\":\"inventory\",\"label\":\"inventory_subtitle\",\"type\":\"textarea\",\"value\":\"Chaque véhicule est inspecté sur 120 points avant d'entrer dans notre showroom.\"},{\"key\":\"inventory.text_2\",\"group\":\"inventory\",\"label\":\"Texte — Aucun véhicule ne correspond à ces filtres.\",\"type\":\"text\",\"value\":\"Aucun véhicule ne correspond à ces filtres.\"},{\"key\":\"about.items\",\"group\":\"about\",\"label\":\"Chiffres clés\",\"type\":\"collection\",\"value\":\"[{\\\"value\\\":2400,\\\"suffix\\\":\\\"+\\\",\\\"label\\\":\\\"Véhicules livrés\\\"},{\\\"value\\\":18,\\\"suffix\\\":\\\" ans\\\",\\\"label\\\":\\\"D'expérience à Sfax\\\"},{\\\"value\\\":25,\\\"suffix\\\":\\\"\\\",\\\"label\\\":\\\"Marques représentées\\\"},{\\\"value\\\":98,\\\"suffix\\\":\\\"%\\\",\\\"label\\\":\\\"Clients satisfaits\\\"}]\"},{\"key\":\"about.text_1\",\"group\":\"about\",\"label\":\"Texte — À propos\",\"type\":\"text\",\"value\":\"À propos\"},{\"key\":\"about.text_2\",\"group\":\"about\",\"label\":\"Titre — Auto Kontor Sfax,\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax,\"},{\"key\":\"about.text_3\",\"group\":\"about\",\"label\":\"Texte — l'exigence automobile\",\"type\":\"text\",\"value\":\"l'exigence automobile\"},{\"key\":\"about.textarea_1\",\"group\":\"about\",\"label\":\"Paragraphe — Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la\",\"type\":\"textarea\",\"value\":\"Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la région dans l'achat, la reprise et l'importation de véhicules haut de gamme. Notre showroom réunit berlines, SUV et sportives sélectionnés un par un.\"},{\"key\":\"about.textarea_2\",\"group\":\"about\",\"label\":\"Paragraphe — Transparence sur l'historique, garantie écrite, financement négoc\",\"type\":\"textarea\",\"value\":\"Transparence sur l'historique, garantie écrite, financement négocié avec nos partenaires bancaires : nous construisons des relations durables, pas des ventes rapides.\"},{\"key\":\"services.items\",\"group\":\"services\",\"label\":\"Prestations\",\"type\":\"collection\",\"value\":\"[{\\\"icon\\\":\\\"Banknote\\\",\\\"title\\\":\\\"Financement\\\",\\\"text\\\":\\\"Leasing et crédit auto négociés avec nos partenaires bancaires, réponse sous 48 h.\\\"},{\\\"icon\\\":\\\"Repeat\\\",\\\"title\\\":\\\"Reprise\\\",\\\"text\\\":\\\"Estimation gratuite de votre véhicule actuel et déduction immédiate du prix.\\\"},{\\\"icon\\\":\\\"Wrench\\\",\\\"title\\\":\\\"Après-vente\\\",\\\"text\\\":\\\"Entretien, révision et pièces d'origine dans notre atelier partenaire à Sfax.\\\"},{\\\"icon\\\":\\\"Ship\\\",\\\"title\\\":\\\"Import / Commande\\\",\\\"text\\\":\\\"Recherche et importation du modèle exact que vous voulez, options comprises.\\\"},{\\\"icon\\\":\\\"ShieldCheck\\\",\\\"title\\\":\\\"Garantie\\\",\\\"text\\\":\\\"Jusqu'à 24 mois de garantie mécanique écrite sur les véhicules éligibles.\\\"}]\"},{\"key\":\"services.text_1\",\"group\":\"services\",\"label\":\"Texte — Services\",\"type\":\"text\",\"value\":\"Services\"},{\"key\":\"services.text_2\",\"group\":\"services\",\"label\":\"Titre — Tout, sous le même toit\",\"type\":\"text\",\"value\":\"Tout, sous le même toit\"},{\"key\":\"testimonials.items\",\"group\":\"testimonials\",\"label\":\"Avis clients\",\"type\":\"collection\",\"value\":\"[{\\\"name\\\":\\\"Mohamed Trabelsi\\\",\\\"city\\\":\\\"Sfax\\\",\\\"stars\\\":5,\\\"text\\\":\\\"Achat d'un SUV en toute confiance. Historique clair, essai sans pression et livraison en une semaine. Une équipe vraiment professionnelle.\\\"},{\\\"name\\\":\\\"Ines Charfi\\\",\\\"city\\\":\\\"Sakiet Ezzit\\\",\\\"stars\\\":5,\\\"text\\\":\\\"Ils ont repris mon ancienne voiture à un prix juste et monté le dossier de financement à ma place. Rien à redire.\\\"},{\\\"name\\\":\\\"Karim Bouzid\\\",\\\"city\\\":\\\"Sfax\\\",\\\"stars\\\":5,\\\"text\\\":\\\"Commande d'un modèle importé avec les options exactes que je voulais. Suivi impeccable du début à la fin.\\\"},{\\\"name\\\":\\\"Sarra Mahfoudh\\\",\\\"city\\\":\\\"Mahdia\\\",\\\"stars\\\":4,\\\"text\\\":\\\"Showroom impressionnant et conseils honnêtes. J'ai été orientée vers un modèle moins cher que prévu, et c'était le bon choix.\\\"}]\"},{\"key\":\"testimonials.text_1\",\"group\":\"testimonials\",\"label\":\"Texte — Témoignages\",\"type\":\"text\",\"value\":\"Témoignages\"},{\"key\":\"testimonials.text_2\",\"group\":\"testimonials\",\"label\":\"Titre — Ils nous font confiance\",\"type\":\"text\",\"value\":\"Ils nous font confiance\"},{\"key\":\"testimonials.text_3\",\"group\":\"testimonials\",\"label\":\"Libellé accessible — Précédent\",\"type\":\"text\",\"value\":\"Précédent\"},{\"key\":\"testimonials.text_4\",\"group\":\"testimonials\",\"label\":\"Libellé accessible — Suivant\",\"type\":\"text\",\"value\":\"Suivant\"},{\"key\":\"showroom.items\",\"group\":\"showroom\",\"label\":\"Horaires\",\"type\":\"collection\",\"value\":\"[{\\\"day\\\":\\\"Lundi – Vendredi\\\",\\\"time\\\":\\\"08:30 – 18:30\\\"},{\\\"day\\\":\\\"Samedi\\\",\\\"time\\\":\\\"09:00 – 16:00\\\"},{\\\"day\\\":\\\"Dimanche\\\",\\\"time\\\":\\\"Sur rendez-vous\\\"}]\"},{\"key\":\"showroom.text_1\",\"group\":\"showroom\",\"label\":\"Texte — Showroom\",\"type\":\"text\",\"value\":\"Showroom\"},{\"key\":\"showroom.text_2\",\"group\":\"showroom\",\"label\":\"Titre — Venez nous voir à Sfax\",\"type\":\"text\",\"value\":\"Venez nous voir à Sfax\"},{\"key\":\"showroom.text_3\",\"group\":\"showroom\",\"label\":\"Texte — Route de Tunis km 4, Sfax 3000, Tunisie\",\"type\":\"text\",\"value\":\"Route de Tunis km 4, Sfax 3000, Tunisie\"},{\"key\":\"identity.phone_link\",\"group\":\"identity\",\"label\":\"Lien téléphone\",\"type\":\"link\",\"value\":\"tel:+21674000000\"},{\"key\":\"identity.phone\",\"group\":\"identity\",\"label\":\"Téléphone affiché\",\"type\":\"text\",\"value\":\"+216 74 000 000\"},{\"key\":\"showroom.link_1\",\"group\":\"showroom\",\"label\":\"Lien — https://www.google.com/maps/search/?api=1&query=Sfax+Tunisie\",\"type\":\"link\",\"value\":\"https://www.google.com/maps/search/?api=1&query=Sfax+Tunisie\"},{\"key\":\"showroom.text_4\",\"group\":\"showroom\",\"label\":\"Bouton — Itinéraire\",\"type\":\"text\",\"value\":\"Itinéraire\"},{\"key\":\"identity.whatsapp\",\"group\":\"identity\",\"label\":\"Lien WhatsApp\",\"type\":\"link\",\"value\":\"https://wa.me/21674000000\"},{\"key\":\"showroom.text_5\",\"group\":\"showroom\",\"label\":\"Bouton — WhatsApp\",\"type\":\"text\",\"value\":\"WhatsApp\"},{\"key\":\"showroom.text_6\",\"group\":\"showroom\",\"label\":\"Bouton — Appeler\",\"type\":\"text\",\"value\":\"Appeler\"},{\"key\":\"showroom.text_7\",\"group\":\"showroom\",\"label\":\"Titre — Carte du showroom Auto Kontor Sfax\",\"type\":\"text\",\"value\":\"Carte du showroom Auto Kontor Sfax\"},{\"key\":\"showroom.map_1\",\"group\":\"showroom\",\"label\":\"Image ou carte — https://www.openstreetmap.org/export/embed.html?bbox=10.68%2\",\"type\":\"map\",\"value\":\"https://www.openstreetmap.org/export/embed.html?bbox=10.68%2C34.70%2C10.82%2C34.79&layer=mapnik\"},{\"key\":\"contact.items\",\"group\":\"contact\",\"label\":\"Liens du pied de page\",\"type\":\"collection\",\"value\":\"[{\\\"href\\\":\\\"/#inventaire\\\",\\\"label\\\":\\\"Inventaire\\\"},{\\\"href\\\":\\\"/#apropos\\\",\\\"label\\\":\\\"À propos\\\"},{\\\"href\\\":\\\"/#services\\\",\\\"label\\\":\\\"Services\\\"},{\\\"href\\\":\\\"/#showroom\\\",\\\"label\\\":\\\"Showroom\\\"}]\"},{\"key\":\"contact.text_1\",\"group\":\"contact\",\"label\":\"Texte — Contact\",\"type\":\"text\",\"value\":\"Contact\"},{\"key\":\"contact.text_2\",\"group\":\"contact\",\"label\":\"Titre — Parlons de votre projet\",\"type\":\"text\",\"value\":\"Parlons de votre projet\"},{\"key\":\"contact.text_3\",\"group\":\"contact\",\"label\":\"Texte — Essai, reprise ou commande spécifique — écrivez-nous, on vous rép\",\"type\":\"text\",\"value\":\"Essai, reprise ou commande spécifique — écrivez-nous, on vous répond vite.\"},{\"key\":\"contact.text_4\",\"group\":\"contact\",\"label\":\"Texte — Nom\",\"type\":\"text\",\"value\":\"Nom\"},{\"key\":\"contact.text_5\",\"group\":\"contact\",\"label\":\"Exemple du champ — Votre nom\",\"type\":\"text\",\"value\":\"Votre nom\"},{\"key\":\"contact.text_6\",\"group\":\"contact\",\"label\":\"Texte — Téléphone\",\"type\":\"text\",\"value\":\"Téléphone\"},{\"key\":\"contact.text_7\",\"group\":\"contact\",\"label\":\"Exemple du champ — +216 ...\",\"type\":\"text\",\"value\":\"+216 ...\"},{\"key\":\"contact.text_8\",\"group\":\"contact\",\"label\":\"Texte — Message\",\"type\":\"text\",\"value\":\"Message\"},{\"key\":\"contact.text_9\",\"group\":\"contact\",\"label\":\"Exemple du champ — Quel véhicule vous intéresse ?\",\"type\":\"text\",\"value\":\"Quel véhicule vous intéresse ?\"},{\"key\":\"contact.text_10\",\"group\":\"contact\",\"label\":\"Description image — Auto Kontor Sfax\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax\"},{\"key\":\"contact.text_12\",\"group\":\"contact\",\"label\":\"Paragraphe — Showroom automobile premium à Sfax. Vente, reprise, financement e\",\"type\":\"textarea\",\"value\":\"Showroom automobile premium à Sfax. Vente, reprise, financement et importation de véhicules sélectionnés.\"},{\"key\":\"contact.link_1\",\"group\":\"contact\",\"label\":\"Lien — Facebook\",\"type\":\"link\",\"value\":\"https://www.facebook.com/profile.php?id=61560475294948\"},{\"key\":\"contact.text_13\",\"group\":\"contact\",\"label\":\"Libellé accessible — Facebook\",\"type\":\"text\",\"value\":\"Facebook\"},{\"key\":\"contact.link_2\",\"group\":\"contact\",\"label\":\"Lien — Gmail\",\"type\":\"link\",\"value\":\"https://mail.google.com/mail/?view=cm&fs=1&to=autokontorsfax@gmail.com\"},{\"key\":\"contact.text_14\",\"group\":\"contact\",\"label\":\"Libellé accessible — Gmail\",\"type\":\"text\",\"value\":\"Gmail\"},{\"key\":\"contact.text_15\",\"group\":\"contact\",\"label\":\"Titre — Navigation\",\"type\":\"text\",\"value\":\"Navigation\"},{\"key\":\"contact.text_16\",\"group\":\"contact\",\"label\":\"Titre — Coordonnées\",\"type\":\"text\",\"value\":\"Coordonnées\"},{\"key\":\"contact.text_17\",\"group\":\"contact\",\"label\":\"Texte — Route de Tunis km 4, Sfax 3000\",\"type\":\"text\",\"value\":\"Route de Tunis km 4, Sfax 3000\"},{\"key\":\"identity.email_link\",\"group\":\"identity\",\"label\":\"Lien e-mail\",\"type\":\"link\",\"value\":\"mailto:contact@autokontorsfax.tn\"},{\"key\":\"identity.email\",\"group\":\"identity\",\"label\":\"E-mail affiché\",\"type\":\"text\",\"value\":\"contact@autokontorsfax.tn\"},{\"key\":\"contact.text_18\",\"group\":\"contact\",\"label\":\"Texte — Auto Kontor Sfax. Tous droits réservés.\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax. Tous droits réservés.\"},{\"key\":\"sell.text_1\",\"group\":\"sell\",\"label\":\"Texte — Reprise automobile\",\"type\":\"text\",\"value\":\"Reprise automobile\"},{\"key\":\"sell.text_2\",\"group\":\"sell\",\"label\":\"Titre — Vous voulez vendre votre voiture ?\",\"type\":\"text\",\"value\":\"Vous voulez vendre votre voiture ?\"},{\"key\":\"sell.text_3\",\"group\":\"sell\",\"label\":\"Texte — Recevez une estimation claire et rapide de votre véhicule par not\",\"type\":\"text\",\"value\":\"Recevez une estimation claire et rapide de votre véhicule par notre équipe.\"},{\"key\":\"sell.text_4\",\"group\":\"sell\",\"label\":\"Bouton — Évaluer gratuitement\",\"type\":\"text\",\"value\":\"Évaluer gratuitement\"},{\"key\":\"card.text_1\",\"group\":\"card\",\"label\":\"Texte — DT\",\"type\":\"text\",\"value\":\"DT\"},{\"key\":\"card.text_2\",\"group\":\"card\",\"label\":\"Bouton — Voir les détails\",\"type\":\"text\",\"value\":\"Voir les détails\"},{\"key\":\"vehicle.text_1\",\"group\":\"vehicle\",\"label\":\"Libellé — Année\",\"type\":\"text\",\"value\":\"Année\"},{\"key\":\"vehicle.text_2\",\"group\":\"vehicle\",\"label\":\"Libellé — Kilométrage\",\"type\":\"text\",\"value\":\"Kilométrage\"},{\"key\":\"vehicle.text_3\",\"group\":\"vehicle\",\"label\":\"Libellé — Carburant\",\"type\":\"text\",\"value\":\"Carburant\"},{\"key\":\"vehicle.text_4\",\"group\":\"vehicle\",\"label\":\"Libellé — Boîte\",\"type\":\"text\",\"value\":\"Boîte\"},{\"key\":\"vehicle.text_5\",\"group\":\"vehicle\",\"label\":\"Libellé — Carrosserie\",\"type\":\"text\",\"value\":\"Carrosserie\"},{\"key\":\"vehicle.text_6\",\"group\":\"vehicle\",\"label\":\"Libellé — Origine\",\"type\":\"text\",\"value\":\"Origine\"},{\"key\":\"vehicle.text_7\",\"group\":\"vehicle\",\"label\":\"Bouton — Retour à l'inventaire\",\"type\":\"text\",\"value\":\"Retour à l'inventaire\"},{\"key\":\"vehicle.text_8\",\"group\":\"vehicle\",\"label\":\"Texte — Disponible dans notre showroom à Sfax\",\"type\":\"text\",\"value\":\"Disponible dans notre showroom à Sfax\"},{\"key\":\"vehicle.text_9\",\"group\":\"vehicle\",\"label\":\"Texte — DT\",\"type\":\"text\",\"value\":\"DT\"},{\"key\":\"vehicle.text_10\",\"group\":\"vehicle\",\"label\":\"Texte — Présentation\",\"type\":\"text\",\"value\":\"Présentation\"},{\"key\":\"vehicle.text_11\",\"group\":\"vehicle\",\"label\":\"Titre — Description du véhicule\",\"type\":\"text\",\"value\":\"Description du véhicule\"},{\"key\":\"vehicle.textarea_1\",\"group\":\"vehicle\",\"label\":\"Paragraphe — Le véhicule est visible sur rendez-vous chez Auto Kontor Sfax. No\",\"type\":\"textarea\",\"value\":\"Le véhicule est visible sur rendez-vous chez Auto Kontor Sfax. Notre équipe peut vous accompagner pour l'essai, la reprise de votre ancien véhicule et les solutions de financement.\"},{\"key\":\"vehicle.text_12\",\"group\":\"vehicle\",\"label\":\"Titre — Caractéristiques\",\"type\":\"text\",\"value\":\"Caractéristiques\"},{\"key\":\"vehicle.text_13\",\"group\":\"vehicle\",\"label\":\"Titre — Services inclus\",\"type\":\"text\",\"value\":\"Services inclus\"},{\"key\":\"vehicle.text_14\",\"group\":\"vehicle\",\"label\":\"Titre — Ce véhicule vous intéresse ?\",\"type\":\"text\",\"value\":\"Ce véhicule vous intéresse ?\"},{\"key\":\"vehicle.text_15\",\"group\":\"vehicle\",\"label\":\"Texte — Échangez avec notre équipe pour vérifier sa disponibilité ou orga\",\"type\":\"text\",\"value\":\"Échangez avec notre équipe pour vérifier sa disponibilité ou organiser un essai.\"},{\"key\":\"vehicle.link_1\",\"group\":\"vehicle\",\"label\":\"Lien — #contact\",\"type\":\"link\",\"value\":\"#contact\"},{\"key\":\"vehicle.text_16\",\"group\":\"vehicle\",\"label\":\"Bouton — Réserver un essai\",\"type\":\"text\",\"value\":\"Réserver un essai\"},{\"key\":\"vehicle.text_17\",\"group\":\"vehicle\",\"label\":\"Bouton — Demander une offre\",\"type\":\"text\",\"value\":\"Demander une offre\"},{\"key\":\"search.text_1\",\"group\":\"search\",\"label\":\"Bouton — Retour à l'accueil\",\"type\":\"text\",\"value\":\"Retour à l'accueil\"},{\"key\":\"search.text_2\",\"group\":\"search\",\"label\":\"Titre principal — Résultats de recherche\",\"type\":\"text\",\"value\":\"Résultats de recherche\"},{\"key\":\"search.text_5\",\"group\":\"search\",\"label\":\"Texte — Aucun véhicule ne correspond à ces critères.\",\"type\":\"text\",\"value\":\"Aucun véhicule ne correspond à ces critères.\"},{\"key\":\"search.text_6\",\"group\":\"search\",\"label\":\"Bouton — Voir tout l'inventaire\",\"type\":\"text\",\"value\":\"Voir tout l'inventaire\"},{\"key\":\"sections.hero\",\"group\":\"sections\",\"label\":\"Afficher : Accueil — bannière\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.inventory\",\"group\":\"sections\",\"label\":\"Afficher : Inventaire\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.about\",\"group\":\"sections\",\"label\":\"Afficher : À propos\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.services\",\"group\":\"sections\",\"label\":\"Afficher : Services\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.testimonials\",\"group\":\"sections\",\"label\":\"Afficher : Témoignages\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.showroom\",\"group\":\"sections\",\"label\":\"Afficher : Showroom et horaires\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.contact\",\"group\":\"sections\",\"label\":\"Afficher : Contact et pied de page\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"sections.sell\",\"group\":\"sections\",\"label\":\"Afficher : Bannière de reprise\",\"type\":\"boolean\",\"value\":\"true\"},{\"key\":\"seo.home_title\",\"group\":\"seo\",\"label\":\"Titre de la page d’accueil\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax — Showroom automobile premium à Sfax\"},{\"key\":\"seo.home_description\",\"group\":\"seo\",\"label\":\"Description de la page d’accueil\",\"type\":\"textarea\",\"value\":\"Auto Kontor Sfax : vente de véhicules neufs et d'occasion premium à Sfax. Financement, reprise, garantie et importation sur commande.\"},{\"key\":\"seo.search_title\",\"group\":\"seo\",\"label\":\"Titre de la recherche\",\"type\":\"text\",\"value\":\"Résultats de recherche — Auto Kontor Sfax\"},{\"key\":\"seo.search_description\",\"group\":\"seo\",\"label\":\"Description de la recherche\",\"type\":\"textarea\",\"value\":\"Trouvez votre véhicule neuf ou d'occasion premium chez Auto Kontor Sfax, showroom automobile à Sfax.\"},{\"key\":\"seo.site_name\",\"group\":\"seo\",\"label\":\"Nom du site dans les titres des véhicules\",\"type\":\"text\",\"value\":\"Auto Kontor Sfax\"},{\"key\":\"identity.favicon\",\"group\":\"identity\",\"label\":\"Icône de l’onglet (favicon)\",\"type\":\"image\",\"value\":\"/favicon.png\"},{\"key\":\"identity.brand_suffix\",\"group\":\"identity\",\"label\":\"Complément du nom de l’enseigne\",\"type\":\"text\",\"value\":\"Sfax\"},{\"key\":\"contact.submit\",\"group\":\"contact\",\"label\":\"Bouton d’envoi\",\"type\":\"text\",\"value\":\"Envoyer le message\"},{\"key\":\"contact.sending\",\"group\":\"contact\",\"label\":\"Bouton pendant l’envoi\",\"type\":\"text\",\"value\":\"Envoi…\"},{\"key\":\"contact.success\",\"group\":\"contact\",\"label\":\"Confirmation de réception\",\"type\":\"text\",\"value\":\"Message enregistré. Notre équipe vous contactera.\"},{\"key\":\"vehicle.items\",\"group\":\"vehicle\",\"label\":\"Services inclus dans les fiches\",\"type\":\"collection\",\"value\":\"[{\\\"text\\\":\\\"Contrôle qualité avant livraison\\\"},{\\\"text\\\":\\\"Historique et dossier du véhicule\\\"},{\\\"text\\\":\\\"Solutions de financement\\\"},{\\\"text\\\":\\\"Reprise de votre ancien véhicule\\\"}]\"},{\"key\":\"inventory.all_brands\",\"group\":\"inventory\",\"label\":\"Filtre : toutes les marques\",\"type\":\"text\",\"value\":\"Toutes marques\"},{\"key\":\"inventory.all_bodies\",\"group\":\"inventory\",\"label\":\"Filtre : toutes les carrosseries\",\"type\":\"text\",\"value\":\"Toutes carrosseries\"},{\"key\":\"inventory.all_states\",\"group\":\"inventory\",\"label\":\"Filtre : tous les états\",\"type\":\"text\",\"value\":\"Tous\"},{\"key\":\"inventory.all_budgets\",\"group\":\"inventory\",\"label\":\"Filtre : tous les budgets\",\"type\":\"text\",\"value\":\"Tous budgets\"},{\"key\":\"sell.destination\",\"group\":\"sell\",\"label\":\"Destination du bouton de reprise\",\"type\":\"link\",\"value\":\"/#contact\"},{\"key\":\"search.results_one\",\"group\":\"search\",\"label\":\"Résultat au singulier (variable {count})\",\"value\":\"{count} véhicule trouvé\",\"type\":\"text\"},{\"key\":\"search.results_many\",\"group\":\"search\",\"label\":\"Résultats au pluriel (variable {count})\",\"value\":\"{count} véhicules trouvés\",\"type\":\"text\"},{\"key\":\"inventory.budgets\",\"group\":\"inventory\",\"label\":\"Filtres par budget\",\"value\":\"[{\\\"label\\\":\\\"< 120 000 DT\\\",\\\"max\\\":120000},{\\\"label\\\":\\\"< 250 000 DT\\\",\\\"max\\\":250000},{\\\"label\\\":\\\"< 500 000 DT\\\",\\\"max\\\":500000}]\",\"type\":\"collection\"}]");
+var collections_default = {
+	"navbar.items": [
+		{
+			"href": "/#inventaire",
+			"label": "Inventaire"
+		},
+		{
+			"href": "/#apropos",
+			"label": "À propos"
+		},
+		{
+			"href": "/#services",
+			"label": "Services"
+		},
+		{
+			"href": "/#avis",
+			"label": "Avis"
+		},
+		{
+			"href": "/#showroom",
+			"label": "Showroom"
+		}
+	],
+	"about.items": [
+		{
+			"value": 2400,
+			"suffix": "+",
+			"label": "Véhicules livrés"
+		},
+		{
+			"value": 18,
+			"suffix": " ans",
+			"label": "D'expérience à Sfax"
+		},
+		{
+			"value": 25,
+			"suffix": "",
+			"label": "Marques représentées"
+		},
+		{
+			"value": 98,
+			"suffix": "%",
+			"label": "Clients satisfaits"
+		}
+	],
+	"services.items": [
+		{
+			"icon": "Banknote",
+			"title": "Financement",
+			"text": "Leasing et crédit auto négociés avec nos partenaires bancaires, réponse sous 48 h."
+		},
+		{
+			"icon": "Repeat",
+			"title": "Reprise",
+			"text": "Estimation gratuite de votre véhicule actuel et déduction immédiate du prix."
+		},
+		{
+			"icon": "Wrench",
+			"title": "Après-vente",
+			"text": "Entretien, révision et pièces d'origine dans notre atelier partenaire à Sfax."
+		},
+		{
+			"icon": "Ship",
+			"title": "Import / Commande",
+			"text": "Recherche et importation du modèle exact que vous voulez, options comprises."
+		},
+		{
+			"icon": "ShieldCheck",
+			"title": "Garantie",
+			"text": "Jusqu'à 24 mois de garantie mécanique écrite sur les véhicules éligibles."
+		}
+	],
+	"testimonials.items": [
+		{
+			"name": "Mohamed Trabelsi",
+			"city": "Sfax",
+			"stars": 5,
+			"text": "Achat d'un SUV en toute confiance. Historique clair, essai sans pression et livraison en une semaine. Une équipe vraiment professionnelle."
+		},
+		{
+			"name": "Ines Charfi",
+			"city": "Sakiet Ezzit",
+			"stars": 5,
+			"text": "Ils ont repris mon ancienne voiture à un prix juste et monté le dossier de financement à ma place. Rien à redire."
+		},
+		{
+			"name": "Karim Bouzid",
+			"city": "Sfax",
+			"stars": 5,
+			"text": "Commande d'un modèle importé avec les options exactes que je voulais. Suivi impeccable du début à la fin."
+		},
+		{
+			"name": "Sarra Mahfoudh",
+			"city": "Mahdia",
+			"stars": 4,
+			"text": "Showroom impressionnant et conseils honnêtes. J'ai été orientée vers un modèle moins cher que prévu, et c'était le bon choix."
+		}
+	],
+	"showroom.items": [
+		{
+			"day": "Lundi – Vendredi",
+			"time": "08:30 – 18:30"
+		},
+		{
+			"day": "Samedi",
+			"time": "09:00 – 16:00"
+		},
+		{
+			"day": "Dimanche",
+			"time": "Sur rendez-vous"
+		}
+	],
+	"contact.items": [
+		{
+			"href": "/#inventaire",
+			"label": "Inventaire"
+		},
+		{
+			"href": "/#apropos",
+			"label": "À propos"
+		},
+		{
+			"href": "/#services",
+			"label": "Services"
+		},
+		{
+			"href": "/#showroom",
+			"label": "Showroom"
+		}
+	],
+	"vehicle.items": [
+		{ "text": "Contrôle qualité avant livraison" },
+		{ "text": "Historique et dossier du véhicule" },
+		{ "text": "Solutions de financement" },
+		{ "text": "Reprise de votre ancien véhicule" }
+	],
+	"inventory.budgets": [
+		{
+			"label": "< 120 000 DT",
+			"max": 12e4
+		},
+		{
+			"label": "< 250 000 DT",
+			"max": 25e4
+		},
+		{
+			"label": "< 500 000 DT",
+			"max": 5e5
+		}
+	]
+};
+var groups_default = {
+	identity: "Identité et coordonnées",
+	navbar: "Navigation",
+	hero: "Accueil — bannière",
+	inventory: "Inventaire",
+	about: "À propos",
+	services: "Services",
+	testimonials: "Témoignages",
+	showroom: "Showroom et horaires",
+	contact: "Contact et pied de page",
+	sell: "Bannière de reprise",
+	vehicle: "Fiche véhicule",
+	search: "Page de recherche",
+	card: "Cartes véhicules",
+	seo: "Référencement",
+	sections: "Sections de la page d’accueil"
+};
+var CONTENT_FIELDS = fields_default;
+var CONTENT_GROUPS = groups_default;
+var COLLECTION_DEFAULTS = collections_default;
+var CONTENT_DEFAULTS = Object.fromEntries(CONTENT_FIELDS.map((field) => [field.key, field.value]));
+var CONTENT_BY_KEY = new Map(CONTENT_FIELDS.map((field) => [field.key, field]));
+var COLLECTION_LABELS = {
+	href: "Destination du lien",
+	label: "Libellé",
+	title: "Titre",
+	text: "Description",
+	icon: "Icône",
+	value: "Nombre",
+	suffix: "Suffixe",
+	name: "Nom",
+	city: "Ville",
+	stars: "Note sur 5",
+	day: "Jour(s)",
+	time: "Horaires",
+	max: "Prix maximum (DT)"
+};
+var SERVICE_ICONS = [
+	"Banknote",
+	"Repeat",
+	"Wrench",
+	"Ship",
+	"ShieldCheck"
+];
+function resolveContent(values, key, fallback = "") {
+	return values[key] ?? CONTENT_DEFAULTS[key] ?? fallback;
+}
+function isSafeLink(value) {
+	if (!value) return true;
+	if ([...value].some((character) => character.charCodeAt(0) <= 32 || character === "\\")) return false;
+	return /^\/(?!\/)/.test(value) || /^#[\w-]*$/.test(value) || /^(https?:\/\/|mailto:|tel:)/i.test(value);
+}
+function isSafeImage(value) {
+	return !value || /^https?:\/\//i.test(value) && isSafeLink(value) || /^\/(?!\/)/.test(value) && isSafeLink(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+function isSafeMap(value) {
+	if (!value) return true;
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" && [
+			"www.openstreetmap.org",
+			"www.google.com",
+			"maps.google.com"
+		].includes(url.hostname) && !url.username && !url.password;
+	} catch {
+		return false;
+	}
+}
+/** Shared by the editor and the server. No arbitrary keys, HTML, or executable URLs. */
+function validateContentValue(field, value) {
+	const invalid = (message) => `${field.label} : ${message}`;
+	if (value.length > (field.type === "image" ? 3e6 : field.type === "collection" ? 15e4 : 2e4)) return invalid("contenu trop long.");
+	if (field.type === "link" && !isSafeLink(value)) return invalid("utilisez un lien https://, http://, /, #, mailto: ou tel:.");
+	if (field.type === "image" && !isSafeImage(value)) return invalid("image JPG, PNG, WebP ou URL HTTP(S) attendue.");
+	if (field.type === "map" && !isSafeMap(value)) return invalid("utilisez une carte HTTPS Google Maps ou OpenStreetMap.");
+	if (field.type === "boolean" && !["true", "false"].includes(value)) return invalid("visibilité non valide.");
+	if (field.type === "collection") {
+		const template = COLLECTION_DEFAULTS[field.key]?.[0];
+		if (!template) return invalid("liste inconnue.");
+		try {
+			const rows = JSON.parse(value);
+			if (!Array.isArray(rows) || rows.length > 30) return invalid("maximum 30 éléments.");
+			for (const row of rows) {
+				if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).length !== Object.keys(template).length) return invalid("élément non valide.");
+				for (const [key, example] of Object.entries(template)) {
+					const current = row[key];
+					if (typeof current !== typeof example) return invalid(`champ ${key} non valide.`);
+					if (typeof current === "string" && current.length > 5e3) return invalid(`champ ${key} trop long.`);
+					if (key === "href" && !isSafeLink(current)) return invalid("destination du lien non valide.");
+					if (key === "icon" && !SERVICE_ICONS.includes(current)) return invalid("icône non valide.");
+					if (typeof current === "number" && (!Number.isFinite(current) || !Number.isInteger(current) || current < 0 || current > 1e8)) return invalid("nombre non valide.");
+					if (key === "stars" && (current < 1 || current > 5)) return invalid("la note doit être comprise entre 1 et 5.");
+				}
+			}
+		} catch {
+			return invalid("liste non valide.");
+		}
+	}
+	return null;
+}
+//#endregion
+export { CONTENT_GROUPS as a, validateContentValue as c, CONTENT_FIELDS as i, COLLECTION_LABELS as n, SERVICE_ICONS as o, CONTENT_BY_KEY as r, resolveContent as s, COLLECTION_DEFAULTS as t };

@@ -1,0 +1,159 @@
+{
+  "navbar.items": [
+    {
+      "href": "/#inventaire",
+      "label": "Inventaire"
+    },
+    {
+      "href": "/#apropos",
+      "label": "À propos"
+    },
+    {
+      "href": "/#services",
+      "label": "Services"
+    },
+    {
+      "href": "/#avis",
+      "label": "Avis"
+    },
+    {
+      "href": "/#showroom",
+      "label": "Showroom"
+    }
+  ],
+  "about.items": [
+    {
+      "value": 2400,
+      "suffix": "+",
+      "label": "Véhicules livrés"
+    },
+    {
+      "value": 18,
+      "suffix": " ans",
+      "label": "D'expérience à Sfax"
+    },
+    {
+      "value": 25,
+      "suffix": "",
+      "label": "Marques représentées"
+    },
+    {
+      "value": 98,
+      "suffix": "%",
+      "label": "Clients satisfaits"
+    }
+  ],
+  "services.items": [
+    {
+      "icon": "Banknote",
+      "title": "Financement",
+      "text": "Leasing et crédit auto négociés avec nos partenaires bancaires, réponse sous 48 h."
+    },
+    {
+      "icon": "Repeat",
+      "title": "Reprise",
+      "text": "Estimation gratuite de votre véhicule actuel et déduction immédiate du prix."
+    },
+    {
+      "icon": "Wrench",
+      "title": "Après-vente",
+      "text": "Entretien, révision et pièces d'origine dans notre atelier partenaire à Sfax."
+    },
+    {
+      "icon": "Ship",
+      "title": "Import / Commande",
+      "text": "Recherche et importation du modèle exact que vous voulez, options comprises."
+    },
+    {
+      "icon": "ShieldCheck",
+      "title": "Garantie",
+      "text": "Jusqu'à 24 mois de garantie mécanique écrite sur les véhicules éligibles."
+    }
+  ],
+  "testimonials.items": [
+    {
+      "name": "Mohamed Trabelsi",
+      "city": "Sfax",
+      "stars": 5,
+      "text": "Achat d'un SUV en toute confiance. Historique clair, essai sans pression et livraison en une semaine. Une équipe vraiment professionnelle."
+    },
+    {
+      "name": "Ines Charfi",
+      "city": "Sakiet Ezzit",
+      "stars": 5,
+      "text": "Ils ont repris mon ancienne voiture à un prix juste et monté le dossier de financement à ma place. Rien à redire."
+    },
+    {
+      "name": "Karim Bouzid",
+      "city": "Sfax",
+      "stars": 5,
+      "text": "Commande d'un modèle importé avec les options exactes que je voulais. Suivi impeccable du début à la fin."
+    },
+    {
+      "name": "Sarra Mahfoudh",
+      "city": "Mahdia",
+      "stars": 4,
+      "text": "Showroom impressionnant et conseils honnêtes. J'ai été orientée vers un modèle moins cher que prévu, et c'était le bon choix."
+    }
+  ],
+  "showroom.items": [
+    {
+      "day": "Lundi – Vendredi",
+      "time": "08:30 – 18:30"
+    },
+    {
+      "day": "Samedi",
+      "time": "09:00 – 16:00"
+    },
+    {
+      "day": "Dimanche",
+      "time": "Sur rendez-vous"
+    }
+  ],
+  "contact.items": [
+    {
+      "href": "/#inventaire",
+      "label": "Inventaire"
+    },
+    {
+      "href": "/#apropos",
+      "label": "À propos"
+    },
+    {
+      "href": "/#services",
+      "label": "Services"
+    },
+    {
+      "href": "/#showroom",
+      "label": "Showroom"
+    }
+  ],
+  "vehicle.items": [
+    {
+      "text": "Contrôle qualité avant livraison"
+    },
+    {
+      "text": "Historique et dossier du véhicule"
+    },
+    {
+      "text": "Solutions de financement"
+    },
+    {
+      "text": "Reprise de votre ancien véhicule"
+    }
+  ],
+  "inventory.budgets": [
+    {
+      "label": "< 120 000 DT",
+      "max": 120000
+    },
+    {
+      "label": "< 250 000 DT",
+      "max": 250000
+    },
+    {
+      "label": "< 500 000 DT",
+      "max": 500000
+    }
+  ]
+}

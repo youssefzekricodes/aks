@@ -1,3 +1,5 @@
+import { useSiteText } from "@/lib/site-content";
+import { resolveContent } from "@/features/content/definition";
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/aks/Navbar";
 import { SellCarBanner } from "@/components/aks/SellCarBanner";
@@ -10,43 +12,45 @@ import { Showroom } from "@/components/aks/Showroom";
 import { ContactFooter } from "@/components/aks/ContactFooter";
 import { publicCarsQuery, siteContentQuery } from "@/lib/queries";
 
-const title = "Auto Kontor Sfax — Showroom automobile premium à Sfax";
-const description =
-  "Auto Kontor Sfax : vente de véhicules neufs et d'occasion premium à Sfax. Financement, reprise, garantie et importation sur commande.";
-
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
-    await Promise.all([
+    const [, content] = await Promise.all([
       context.queryClient.ensureQueryData(publicCarsQuery),
       context.queryClient.ensureQueryData(siteContentQuery),
     ]);
+    return { content };
   },
-  head: () => ({
-    meta: [
-      { title },
-      { name: "description", content: description },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const title = resolveContent(loaderData?.content ?? {}, "seo.home_title");
+    const description = resolveContent(loaderData?.content ?? {}, "seo.home_description");
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+    };
+  },
   component: Index,
 });
 
 function Index() {
+  const text = useSiteText();
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main>
-        <Hero />
-        <Inventory />
-        <SellCarBanner className="pb-24 lg:pb-32" />
-        <About />
-        <Services />
-        <Testimonials />
-        <Showroom />
-        <ContactFooter />
+        {text("sections.hero", "true") === "true" && <Hero />}
+        {text("sections.inventory", "true") === "true" && <Inventory />}
+        {text("sections.sell", "true") === "true" && <SellCarBanner className="pb-24 lg:pb-32" />}
+        {text("sections.about", "true") === "true" && <About />}
+        {text("sections.services", "true") === "true" && <Services />}
+        {text("sections.testimonials", "true") === "true" && <Testimonials />}
+        {text("sections.showroom", "true") === "true" && <Showroom />}
+        {text("sections.contact", "true") === "true" && <ContactFooter />}
       </main>
     </div>
   );
