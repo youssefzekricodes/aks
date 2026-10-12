@@ -14,7 +14,7 @@ export function Services() {
   }));
 
   return (
-    <section id="services" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
+    <section id="services" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
       <Reveal>
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
           {text("services.text_1", "Services")}

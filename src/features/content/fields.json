@@ -177,9 +177,9 @@
   {
     "key": "hero.text_18",
     "group": "hero",
-    "label": "Libellé — Pays",
+    "label": "Libellé — Toutes marques",
     "type": "text",
-    "value": "Pays"
+    "value": "Toutes marques"
   },
   {
     "key": "hero.text_19",
@@ -261,9 +261,9 @@
   {
     "key": "hero.text_28",
     "group": "hero",
-    "label": "Libellé — Pays fabricant",
+    "label": "Libellé — Marque",
     "type": "text",
-    "value": "Pays fabricant"
+    "value": "Marque"
   },
   {
     "key": "hero.text_29",
@@ -305,7 +305,7 @@
     "group": "about",
     "label": "Chiffres clés",
     "type": "collection",
-    "value": "[{\"value\":2400,\"suffix\":\"+\",\"label\":\"Véhicules livrés\"},{\"value\":18,\"suffix\":\" ans\",\"label\":\"D'expérience à Sfax\"},{\"value\":25,\"suffix\":\"\",\"label\":\"Marques représentées\"},{\"value\":98,\"suffix\":\"%\",\"label\":\"Clients satisfaits\"}]"
+    "value": "[{\"value\": 18, \"suffix\": \" ans\", \"label\": \"D'expérience à Sfax\"}]"
   },
   {
     "key": "about.text_1",
@@ -347,7 +347,7 @@
     "group": "services",
     "label": "Prestations",
     "type": "collection",
-    "value": "[{\"icon\":\"Banknote\",\"title\":\"Financement\",\"text\":\"Leasing et crédit auto négociés avec nos partenaires bancaires, réponse sous 48 h.\"},{\"icon\":\"Repeat\",\"title\":\"Reprise\",\"text\":\"Estimation gratuite de votre véhicule actuel et déduction immédiate du prix.\"},{\"icon\":\"Wrench\",\"title\":\"Après-vente\",\"text\":\"Entretien, révision et pièces d'origine dans notre atelier partenaire à Sfax.\"},{\"icon\":\"Ship\",\"title\":\"Import / Commande\",\"text\":\"Recherche et importation du modèle exact que vous voulez, options comprises.\"},{\"icon\":\"ShieldCheck\",\"title\":\"Garantie\",\"text\":\"Jusqu'à 24 mois de garantie mécanique écrite sur les véhicules éligibles.\"}]"
+    "value": "[{\"icon\": \"Banknote\", \"title\": \"Achat\", \"text\": \"Vous cherchez un véhicule dans notre showroom ? Notre équipe vous accompagne lors de l'achat neuf ou d'occasion.\"}, {\"icon\": \"Repeat\", \"title\": \"Vendre\", \"text\": \"Vous voulez vendre votre voiture ? Recevez une estimation claire et rapide de votre véhicule par notre équipe.\"}, {\"icon\": \"Wrench\", \"title\": \"Echange\", \"text\": \"Vous souhaitez échanger votre véhicule ? Contactez notre équipe pour organiser un essai ou valider les modalités.\"}, {\"icon\": \"Ship\", \"title\": \"Importation\", \"text\": \"Recherche et importation du modèle exact que vous voulez, options comprises.\"}, {\"icon\": \"ShieldCheck\", \"title\": \"Garantie\", \"text\": \"Jusqu'à 24 mois de garantie mécanique écrite sur les véhicules éligibles.\"}]"
   },
   {
     "key": "services.text_1",

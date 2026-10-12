@@ -45,7 +45,7 @@ function Index() {
       <main>
         {text("sections.hero", "true") === "true" && <Hero />}
         {text("sections.inventory", "true") === "true" && <Inventory />}
-        {text("sections.sell", "true") === "true" && <SellCarBanner className="pb-24 lg:pb-32" />}
+        {text("sections.sell", "true") === "true" && <SellCarBanner className="pb-16 lg:pb-20" />}
         {text("sections.about", "true") === "true" && <About />}
         {text("sections.services", "true") === "true" && <Services />}
         {text("sections.testimonials", "true") === "true" && <Testimonials />}

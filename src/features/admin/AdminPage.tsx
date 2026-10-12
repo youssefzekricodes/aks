@@ -32,6 +32,7 @@ const emptyCar: CarInput = {
   country: "Germany",
   year: new Date().getFullYear(),
   price: 0,
+  price_on_request: false,
   km: "0 km",
   km_value: 0,
   fuel: "Essence",
@@ -201,7 +202,10 @@ function CarsTab() {
                 {car.brand} {car.name}
               </p>
               <p className="text-sm text-muted-foreground">
-                {car.year} · {car.km} · {car.price.toLocaleString("fr-FR")} DT
+                {car.year} · {car.km} ·{" "}
+                {car.price_on_request
+                  ? "Prix à discuter"
+                  : `${car.price.toLocaleString("fr-FR")} DT`}
               </p>
             </div>
             <span
@@ -328,11 +332,27 @@ function CarForm({
           Prix (DT)
           <input
             type="number"
+            min={0}
             className={inputClass}
             value={value.price}
             onChange={(e) => set("price", Number(e.target.value))}
-            required
+            required={!value.price_on_request}
+            disabled={value.price_on_request}
           />
+        </label>
+        <label className="flex items-center gap-3 text-sm font-semibold sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={value.price_on_request === true}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                price_on_request: e.target.checked,
+                price: e.target.checked ? 0 : value.price,
+              })
+            }
+          />
+          Prix à discuter (le prix n'est pas affiché sur le site)
         </label>
         <label className="grid gap-2 text-sm font-semibold">
           Année

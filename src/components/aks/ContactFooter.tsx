@@ -53,7 +53,7 @@ export function ContactFooter() {
           aria-hidden
           className="absolute bottom-0 left-1/4 h-72 w-72 rounded-full bg-primary/15 blur-[140px]"
         />
-        <div className="relative mx-auto max-w-3xl px-5 py-24 lg:py-32">
+        <div className="relative mx-auto max-w-3xl px-5 py-16 lg:py-20">
           <Reveal>
             <div className="text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">

@@ -23,45 +23,30 @@
   ],
   "about.items": [
     {
-      "value": 2400,
-      "suffix": "+",
-      "label": "Véhicules livrés"
-    },
-    {
       "value": 18,
       "suffix": " ans",
       "label": "D'expérience à Sfax"
-    },
-    {
-      "value": 25,
-      "suffix": "",
-      "label": "Marques représentées"
-    },
-    {
-      "value": 98,
-      "suffix": "%",
-      "label": "Clients satisfaits"
     }
   ],
   "services.items": [
     {
       "icon": "Banknote",
-      "title": "Financement",
-      "text": "Leasing et crédit auto négociés avec nos partenaires bancaires, réponse sous 48 h."
+      "title": "Achat",
+      "text": "Vous cherchez un véhicule dans notre showroom ? Notre équipe vous accompagne lors de l'achat neuf ou d'occasion."
     },
     {
       "icon": "Repeat",
-      "title": "Reprise",
-      "text": "Estimation gratuite de votre véhicule actuel et déduction immédiate du prix."
+      "title": "Vendre",
+      "text": "Vous voulez vendre votre voiture ? Recevez une estimation claire et rapide de votre véhicule par notre équipe."
     },
     {
       "icon": "Wrench",
-      "title": "Après-vente",
-      "text": "Entretien, révision et pièces d'origine dans notre atelier partenaire à Sfax."
+      "title": "Echange",
+      "text": "Vous souhaitez échanger votre véhicule ? Contactez notre équipe pour organiser un essai ou valider les modalités."
     },
     {
       "icon": "Ship",
-      "title": "Import / Commande",
+      "title": "Importation",
       "text": "Recherche et importation du modèle exact que vous voulez, options comprises."
     },
     {

@@ -35,6 +35,13 @@ export const COLLECTION_LABELS: Record<string, string> = {
   max: "Prix maximum (DT)",
 };
 export const SERVICE_ICONS = ["Banknote", "Repeat", "Wrench", "Ship", "ShieldCheck"];
+export const SERVICE_LABELS: Record<string, string> = {
+  Banknote: "Achat",
+  Repeat: "Vendre",
+  Wrench: "Echange",
+  Ship: "Importation",
+  ShieldCheck: "Garantie",
+};
 
 export function resolveContent(values: Record<string, string>, key: string, fallback = "") {
   return values[key] ?? CONTENT_DEFAULTS[key] ?? fallback;

@@ -19,7 +19,7 @@ export function Testimonials() {
         aria-hidden
         className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/12 blur-[140px]"
       />
-      <div className="relative mx-auto max-w-4xl px-5 py-24 text-center lg:py-32">
+      <div className="relative mx-auto max-w-4xl px-5 py-16 text-center lg:py-20">
         <Reveal>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
             {text("testimonials.text_1", "Témoignages")}

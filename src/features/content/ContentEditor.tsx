@@ -10,6 +10,7 @@ import {
   COLLECTION_DEFAULTS,
   COLLECTION_LABELS,
   SERVICE_ICONS,
+  SERVICE_LABELS,
   validateContentValue,
   type ContentField,
   type CollectionKey,
@@ -378,9 +379,9 @@ function CollectionInput({
                     onChange={(event) => change(event.target.value)}
                     className={inputClass}
                   >
-                    {SERVICE_ICONS.map((icon, i) => (
+                    {SERVICE_ICONS.map((icon) => (
                       <option key={icon} value={icon}>
-                        {["Financement", "Reprise", "Atelier", "Importation", "Garantie"][i]}
+                        {SERVICE_LABELS[icon]}
                       </option>
                     ))}
                   </select>

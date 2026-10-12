@@ -22,7 +22,7 @@ export const Route = createFileRoute("/recherche")({
     price: String(search["price"] || "all"),
     type: String(search["type"] || "all"),
     km: String(search["km"] || "all"),
-    country: String(search["country"] || "all"),
+    brand: String(search["brand"] || "all"),
   }),
   head: ({ loaderData }) => {
     const title = resolveContent(loaderData?.content ?? {}, "seo.search_title");
@@ -43,6 +43,8 @@ export const Route = createFileRoute("/recherche")({
 
 function matchesPrice(price: string, car: Car) {
   if (price === "all") return true;
+  // "Prix à discuter" vehicles have no known price: they never match a band.
+  if (car.price_on_request === true) return false;
   if (price === "0-30000") return car.price >= 0 && car.price < 30000;
   if (price === "30000-50000") return car.price >= 30000 && car.price < 50000;
   if (price === "50000-100000") return car.price >= 50000 && car.price < 100000;
@@ -63,7 +65,7 @@ function matchesKm(km: string, car: Car) {
 function RecherchePage() {
   const text = useSiteText();
 
-  const { price, type, km, country } = Route.useSearch();
+  const { price, type, km, brand } = Route.useSearch();
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
 
   const filtered = cars.filter(
@@ -71,7 +73,7 @@ function RecherchePage() {
       matchesPrice(price, car) &&
       (type === "all" || car.body === type) &&
       matchesKm(km, car) &&
-      (country === "all" || car.country === country),
+      (brand === "all" || car.brand === brand),
   );
 
   return (
@@ -111,7 +113,7 @@ function RecherchePage() {
             </p>
             <Link
               to="/recherche"
-              search={{ price: "all", type: "all", km: "all", country: "all" }}
+              search={{ price: "all", type: "all", km: "all", brand: "all" }}
               className="btn-3d btn-3d-primary mt-6 inline-flex"
             >
               {text("search.text_6", "Voir tout l'inventaire")}

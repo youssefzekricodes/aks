@@ -29,8 +29,14 @@ export function CarCard({ car }: { car: Car }) {
             </h3>
             <p className="text-sm text-muted-foreground">{car.year}</p>
           </div>
-          <p className="shrink-0 font-display text-lg font-bold text-primary">
-            {car.price.toLocaleString("fr-FR")} {text("card.text_1", "DT")}
+          <p
+            className={`shrink-0 text-right font-display font-bold text-primary ${
+              car.price_on_request ? "max-w-28 text-sm" : "text-lg"
+            }`}
+          >
+            {car.price_on_request
+              ? text("card.text_3", "Prix à discuter")
+              : `${car.price.toLocaleString("fr-FR")} ${text("card.text_1", "DT")}`}
           </p>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 border-y border-border py-3 text-xs text-muted-foreground">

@@ -1,4 +1,6 @@
 import { useSiteText } from "@/lib/site-content";
+import { publicCarsQuery } from "@/lib/queries";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, ChevronDown } from "lucide-react";
@@ -30,26 +32,26 @@ export function Hero() {
     { value: "100000-200000", label: text("hero.text_16", "100 000 - 200 000 km") },
     { value: "200000+", label: text("hero.text_17", "200 000 km +") },
   ];
-  const countryOptions = [
-    { value: "all", label: text("hero.text_18", "Pays") },
-    { value: "Japan", label: text("hero.text_19", "Japon") },
-    { value: "China", label: text("hero.text_20", "Chine") },
-    { value: "Germany", label: text("hero.text_21", "Allemagne") },
-    { value: "Italy", label: text("hero.text_22", "Italie") },
-    { value: "France", label: text("hero.text_23", "France") },
+  // The brand filter comes from the published vehicles, like the rest of the catalog.
+  const { data: cars } = useSuspenseQuery(publicCarsQuery);
+  const brandOptions = [
+    { value: "all", label: text("hero.text_18", "Toutes marques") },
+    ...[...new Set(cars.map((car) => car.brand))]
+      .sort((a, b) => a.localeCompare(b, "fr"))
+      .map((brand) => ({ value: brand, label: brand })),
   ];
 
   const navigate = useNavigate({ from: "/" });
   const [price, setPrice] = useState("all");
   const [type, setType] = useState("all");
   const [km, setKm] = useState("all");
-  const [country, setCountry] = useState("all");
+  const [brand, setBrand] = useState("all");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     navigate({
       to: "/recherche",
-      search: { price, type, km, country },
+      search: { price, type, km, brand },
     });
   };
 
@@ -141,10 +143,10 @@ export function Hero() {
                 options={kmOptions}
               />
               <SearchField
-                label={text("hero.text_28", "Pays fabricant")}
-                value={country}
-                onChange={setCountry}
-                options={countryOptions}
+                label={text("hero.text_28", "Marque")}
+                value={brand}
+                onChange={setBrand}
+                options={brandOptions}
               />
             </div>
             <Btn type="submit" size="lg" className="w-full">

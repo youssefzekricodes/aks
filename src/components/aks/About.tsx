@@ -45,7 +45,7 @@ export function About() {
         aria-hidden
         className="absolute right-0 top-0 h-72 w-72 rounded-full bg-primary/15 blur-[130px]"
       />
-      <div className="relative mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
+      <div className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
         <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
           <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
@@ -73,9 +73,16 @@ export function About() {
           </Reveal>
 
           <Reveal delay={120}>
-            <div className="glass-panel grid grid-cols-2 gap-px overflow-hidden rounded-2xl">
+            <div
+              className={`glass-panel grid gap-px overflow-hidden rounded-2xl ${
+                stats.length > 1 ? "grid-cols-2" : ""
+              }`}
+            >
               {stats.map((s, index) => (
-                <div key={index} className="bg-background/40 p-8">
+                <div
+                  key={index}
+                  className={`bg-background/40 p-8 ${stats.length > 1 ? "" : "text-center"}`}
+                >
                   <Counter value={s.value} suffix={s.suffix} />
                   <p className="mt-2 text-sm text-muted-foreground">{s.label}</p>
                 </div>

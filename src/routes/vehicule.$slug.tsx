@@ -40,7 +40,11 @@ export const Route = createFileRoute("/vehicule/$slug")({
       ? `${loaderData.car.brand} ${loaderData.car.name} — ${siteName}`
       : `Véhicule — ${siteName}`;
     const description = loaderData
-      ? `${loaderData.car.brand} ${loaderData.car.name} ${loaderData.car.year}, ${loaderData.car.km}, ${loaderData.car.fuel} — ${loaderData.car.price.toLocaleString("fr-FR")} DT chez ${siteName}.`
+      ? `${loaderData.car.brand} ${loaderData.car.name} ${loaderData.car.year}, ${loaderData.car.km}, ${loaderData.car.fuel} — ${
+          loaderData.car.price_on_request
+            ? "Prix à discuter"
+            : `${loaderData.car.price.toLocaleString("fr-FR")} DT`
+        } chez ${siteName}.`
       : `Détails du véhicule chez ${siteName}.`;
     return {
       meta: [
@@ -218,8 +222,14 @@ function VehiculePage() {
               {text("vehicle.text_8", "Disponible dans notre showroom à Sfax")}
             </p>
           </div>
-          <p className="mt-5 shrink-0 font-display text-3xl font-bold text-primary sm:mt-0 sm:text-4xl">
-            {car.price.toLocaleString("fr-FR")} {text("vehicle.text_9", "DT")}
+          <p
+            className={`mt-5 shrink-0 font-display font-bold text-primary sm:mt-0 ${
+              car.price_on_request ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
+            }`}
+          >
+            {car.price_on_request
+              ? text("vehicle.text_18", "Prix à discuter")
+              : `${car.price.toLocaleString("fr-FR")} ${text("vehicle.text_9", "DT")}`}
           </p>
         </section>
 

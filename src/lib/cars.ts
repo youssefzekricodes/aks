@@ -6,6 +6,8 @@ export type Car = {
   country: string;
   year: number;
   price: number;
+  /** true when the price is not published and shown as "Prix à discuter". */
+  price_on_request?: boolean;
   km: string;
   km_value: number;
   fuel: string;

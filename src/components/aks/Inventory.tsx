@@ -32,10 +32,6 @@ export function Inventory() {
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
   const text = useSiteText();
   const budgetItems = useSiteCollection("inventory.budgets");
-  const brands = useMemo(
-    () => ["Toutes marques", ...new Set(cars.map((car) => car.brand))],
-    [cars],
-  );
   const bodies = useMemo(
     () => ["Toutes carrosseries", ...new Set(cars.map((car) => car.body))],
     [cars],
@@ -45,7 +41,6 @@ export function Inventory() {
     { label: text("inventory.all_budgets", "Tous budgets"), max: Infinity },
     ...budgetItems,
   ];
-  const [brand, setBrand] = useState(brands[0]!);
   const [body, setBody] = useState(bodies[0]!);
   const [state, setState] = useState(states[0]!);
   const [budget, setBudget] = useState(budgets[0]!);
@@ -53,17 +48,15 @@ export function Inventory() {
   const filtered = useMemo(
     () =>
       cars.filter(
-        (c) =>
-          (brand === brands[0] || c.brand === brand) &&
-          (body === bodies[0] || c.body === body) &&
-          (state === states[0] || c.state === state) &&
-          c.price <= budget.max,
+        (c) =>        (body === bodies[0] || c.body === body) &&
+        (state === states[0] || c.state === state) &&
+        (budget.max === Infinity || (c.price_on_request !== true && c.price <= budget.max)),
       ),
-    [cars, brand, body, state, budget, brands, bodies, states],
+    [cars, body, state, budget, bodies, states],
   );
 
   return (
-    <section id="inventaire" className="relative mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
+    <section id="inventaire" className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
       <Reveal>
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
           {text("inventory.text_1", "Inventaire")}
@@ -82,20 +75,17 @@ export function Inventory() {
       <Reveal delay={80}>
         <div className="glass-panel mt-10 flex flex-col gap-4 rounded-xl p-5">
           {[
-            { items: brands, value: brand, set: setBrand },
             { items: bodies, value: body, set: setBody },
             { items: states, value: state, set: setState },
           ].map((row, i) => (
             <div key={i} className="flex flex-wrap gap-2.5">
               {row.items.map((item) => (
                 <Chip key={item} active={row.value === item} onClick={() => row.set(item)}>
-                  {item === brands[0]
-                    ? text("inventory.all_brands", item)
-                    : item === bodies[0]
-                      ? text("inventory.all_bodies", item)
-                      : item === states[0]
-                        ? text("inventory.all_states", item)
-                        : item}
+                  {item === bodies[0]
+                    ? text("inventory.all_bodies", item)
+                    : item === states[0]
+                      ? text("inventory.all_states", item)
+                      : item}
                 </Chip>
               ))}
             </div>

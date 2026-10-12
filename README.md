@@ -92,6 +92,16 @@ Railway can host this application because it supports a long-running Docker serv
 
    Run this command inside the deployed service so it uses the same persistent `DATABASE_PATH` as the website.
 
+## Connect a Cloudflare domain
+
+First deploy the app on Railway using the steps above. You need a domain added to Cloudflare; a Railway deployment alone also provides a public `*.railway.app` URL.
+
+1. In Railway, open the app service **Settings** and add a **Custom Domain** such as `www.example.com`. Railway displays the DNS records for that domain.
+2. In Cloudflare, open the domain's **DNS** page and add the `CNAME` and `TXT` records exactly as Railway displays them. Both records are required for verification; do not guess their names or values.
+3. Wait until Railway shows the custom domain as verified and its HTTPS certificate is active. Keep the CNAME DNS-only (gray cloud) while Railway verifies it. Afterward, you can enable Cloudflare proxying (orange cloud); if enabled, set Cloudflare **SSL/TLS** encryption mode to **Full (strict)**.
+4. In Railway service **Variables**, update `APP_ORIGIN` to the exact public HTTPS origin, for example `https://www.example.com` (no trailing slash), then redeploy. This allows authenticated admin and contact form requests from the custom domain.
+5. Open the HTTPS custom domain and confirm the site loads. Keep the Railway volume mounted at `/app/data` so the database and admin account persist.
+
 1. Install dependencies with npm ci and build with npm run build.
 2. Configure DATABASE_PATH to an absolute persistent path and APP_ORIGIN to your exact HTTPS origin (for example https://cars.example.com, without a trailing slash).
 3. Set NODE_ENV=production, HOST=127.0.0.1, and PORT=3000. Create the admin using the same DATABASE_PATH, then run npm start under your service manager.

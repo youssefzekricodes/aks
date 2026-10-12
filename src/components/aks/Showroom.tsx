@@ -10,7 +10,7 @@ export function Showroom() {
   const hours = useSiteCollection("showroom.items");
 
   return (
-    <section id="showroom" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
+    <section id="showroom" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-stretch">
         <Reveal>
           <div className="glass-panel h-full rounded-2xl p-8 sm:p-10">

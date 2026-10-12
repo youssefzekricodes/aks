@@ -13,6 +13,7 @@ export const carSchema = z.object({
   country: text,
   year: z.number().int().min(1900).max(2100),
   price: z.number().finite().min(0).max(1e9),
+  price_on_request: z.boolean().optional().default(false),
   km: text,
   km_value: z.number().int().min(0).max(1e8),
   fuel: text,

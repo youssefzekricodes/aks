@@ -17,8 +17,6 @@ const digest = (token: string) => createHash("sha256").update(token).digest("hex
 export function checkOrigin() {
   const request = getRequest();
   const expected = process.env["APP_ORIGIN"] || new URL(request.url).origin;
-  if (process.env["NODE_ENV"] === "production" && !process.env["APP_ORIGIN"])
-    throw new Error("APP_ORIGIN is required in production.");
   if (request.headers.get("origin") !== expected) throw new Error("Origine non autorisée.");
 }
 export function currentAdmin() {
