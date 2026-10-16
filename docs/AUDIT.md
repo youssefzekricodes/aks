@@ -3,7 +3,7 @@
 Repository review requested before sharing the project: is it safe to push/share, what is
 not good, and how good is the project overall.
 
-- **Repository**: `github.com/mechribaderdine123/aks` — branch `main` @ `4f78481`, in sync with `origin/main`
+- **Repository**: `github.com/mechribaderdine123/aks` — review taken at `4f78481`; the fixes below are committed and pushed as `03f8f4a` on `main`
 - **Visibility**: private (verified: unauthenticated GitHub API returns `404`)
 - **Scope**: tracked files, full Git history, build artifacts, secrets, line endings, CI, lint,
   typecheck, tests, documentation
@@ -15,7 +15,8 @@ The application code is in good shape and the security model is sound for a self
 showroom site. The problems were all *repository* problems: a plaintext admin credential
 and an environment file committed to Git, 5 MB of build output under version control, a
 broken nested-repository reference, and a lint command that failed on every file. Those are
-fixed in the working tree (§3); two items need decisions only the owner can make (§4).
+fixed, committed and pushed (§3), and the leaked administrator password has been rotated and
+re-verified over HTTP (§4). Two owner decisions remain open (§4).
 
 **Overall rating: 7.5 / 10** — a solid, deployable small-business application, held back by
 missing CI/licence and by scalability limits that are inherent to the SQLite design.
@@ -25,7 +26,7 @@ missing CI/licence and by scalability limits that are inherent to the SQLite des
 | Dimension | Before | Now | Rationale |
 | --------- | ------ | --- | --------- |
 | Repository & release hygiene | 3/10 | 8/10 | Was tracking `.env`, build output and a broken gitlink; now clean. Still no CI and no licence |
-| Secret & credential management | 3/10 | 7/10 | A live admin password was in Git; untracked now, but **rotation is still pending** (§4) and the sibling project leaks a service-role key |
+| Secret & credential management | 3/10 | 8/10 | A live admin password was in Git; it is untracked, no longer valid (rotated and re-verified, §4) and only readable in the history of older commits. The sibling project's service-role key is still outstanding |
 | Application security | 8/10 | 8/10 | scrypt + salt, hashed sessions, HttpOnly/SameSite=Strict cookies, CSRF middleware, exact-origin checks, Zod validation, bound parameters, persistent rate limits, security headers. Lost points for no 2FA/roles/audit log and a minimal CSP |
 | Architecture & readability | 8.5/10 | 8.5/10 | Clear layering (routes → server functions → repository → SQLite), one obvious place for each concern, typed end to end, no dead backend |
 | Tests & verification | 6.5/10 | 6.5/10 | The HTTP integration test drives the real production bundle (login, CSRF, authorization, CRUD, expiry, logout) — unusually good. Only 4 test cases: no unit tests for the repository, no browser E2E, no CI running them |
@@ -38,21 +39,27 @@ missing CI/licence and by scalability limits that are inherent to the SQLite des
 
 | # | Severity | Finding | Fix |
 | - | -------- | ------- | --- |
-| 1 | **Critical** | `scripts/reset-admin-password.ts` was committed with the administrator e-mail address and the account password in clear text. Anyone who can read the repository could sign in to `/admin` and take over the catalogue, the site copy and every customer inquiry | File deleted; resets now go only through the interactive `npm run admin:create`. **The credential must still be rotated** (§4) |
+| 1 | **Critical** | `scripts/reset-admin-password.ts` was committed with the administrator e-mail address and the account password in clear text. Anyone who can read the repository could sign in to `/admin` and take over the catalogue, the site copy and every customer inquiry | File deleted; resets now go only through the interactive `npm run admin:create`. The credential was then rotated on the local database and the new one verified over HTTP (§4) |
 | 2 | **High** | `.env` was tracked since the first commit with Supabase project URL, project ID and publishable key. Stale — no Supabase code remains in the app | Untracked (`git rm --cached`), `.gitignore` rule verified, local `.env` rewritten with real local settings and a `.env.example` that documents them |
 | 3 | **High** | 86 files under `.vercel/output/**` (≈5 MB) were committed: stale deployed server bundles and assets, and the reason `npm run lint` scanned minified code and never finished | Untracked + added to `.gitignore`, `.prettierignore` and the ESLint ignores |
 | 4 | **Medium** | `page-hugger-delight` was recorded as a bare gitlink (mode `160000`) with no `.gitmodules`, so a fresh clone would contain an empty, unusable directory pointing at a different private repository | Gitlink removed from tracking; path ignored so it cannot return. Local folder untouched |
 | 5 | **Medium** | `npm run lint` failed on a clean checkout: 4,597 Prettier errors, all CRLF-vs-LF line endings caused by `core.autocrlf=true` on a repository mixing both | Added `.gitattributes` (`* text=auto eol=lf`), normalized the working tree, applied the 3 genuine formatting fixes. Now **0 errors, 6 warnings** (see §5) |
 | 6 | **Low** | README had a mangled range (`12?256`) and its "Host on a server" steps had drifted below the Cloudflare section | Both corrected, and the verify section now lists all three gates |
-| 7 | **Low** | 1.5 MB `my.html` scratch dump and a duplicate admin script left in the tree | Duplicate script deleted; `my.html` flagged in §4 (kept for now) |
+| 7 | **Low** | 1.5 MB `my.html` scratch dump and a duplicate admin script tracked in the tree | Both removed from the repository |
 | 8 | **High (self-inflicted, caught here)** | The first version of the refreshed `.env` set `NODE_ENV=development`. Vite loads `.env` during `npm run build`, so the build emitted React's development JSX runtime and **every server-rendered page failed** with `jsxDEV is not a function` — the full test suite went red | `NODE_ENV`, `HOST` and `PORT` removed from `.env`/`.env.example`, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and `.env.example`; build and **4/4 tests** green again, `/` renders 63 KB of HTML |
 
-## 4. Open items needing your decision
+## 4. Actions taken and open items
 
-1. **Rotate the administrator password** — finding 1 cannot be undone by removing the file:
-   the credential is still in the Git history of a pushed branch, visible to anyone you invite
-   as a collaborator. Rotating it is the only effective fix (history rewriting is off-limits
-   for this repository).
+1. **Administrator password — rotated** (finding 1). Removing the file could not undo a
+   credential already in the history of a pushed branch, so the account password was replaced
+   with a randomly generated one, every existing session was revoked and the login was verified
+   again over HTTP: wrong password refused, new password accepted, cookie `HttpOnly`/`Secure`/
+   `SameSite=Strict`, authenticated read allowed, read refused after signing out. The password
+   was generated in memory and never written to a file (checked), and the temporary scripts were
+   deleted. This covers the **local** database only — the production account must be given a new
+   password separately (`node --experimental-strip-types scripts/create-admin.ts` in the host
+   shell). Rotation is the effective remedy here; rewriting published history is not an option
+   for this repository.
 2. **Rotate the Supabase `service_role` key** of the sibling repository
    `mechribaderdine123/page-hugger-delight`. That repository tracks its own `.env` with
    `SUPABASE_SERVICE_ROLE_KEY` (bypasses row-level security, full database access) and
@@ -60,9 +67,9 @@ missing CI/licence and by scalability limits that are inherent to the SQLite des
    It is private today, but it is the more dangerous of the two leaks and it is outside this
    project's scope. Revoke the key in the Supabase dashboard and inject it as an environment
    variable instead.
-3. **Junk in the repository** — `my.html` (1.5 MB saved page), `roadmap.md` (a 2-line note) and
-   leftovers from the pre-SQLite era (`drizzle/migrations`, untracked). Safe to delete, but
-   they are yours to remove.
+3. **Junk in the repository** — the 1.5 MB `my.html` snapshot has been removed. Still present
+   if you want a leaner tree: `roadmap.md` (a 2-line note) and pre-SQLite leftovers
+   (`drizzle/migrations`, untracked).
 
 ## 5. Verification
 
