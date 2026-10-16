@@ -1,7 +1,14 @@
 node_modules
 .output
+.vercel
+.tanstack
+.nitro
 .git
+.gitattributes
 .env
 .env.*
 data
 *.sqlite*
+my.html
+page-hugger-delight
+tests

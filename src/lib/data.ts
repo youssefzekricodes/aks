@@ -27,8 +27,10 @@ export async function readVehicleImageAsDataUrl(file: File) {
     });
     const targetRatio = 4 / 3;
     const sourceRatio = image.naturalWidth / image.naturalHeight;
-    const sourceWidth = sourceRatio > targetRatio ? image.naturalHeight * targetRatio : image.naturalWidth;
-    const sourceHeight = sourceRatio > targetRatio ? image.naturalHeight : image.naturalWidth / targetRatio;
+    const sourceWidth =
+      sourceRatio > targetRatio ? image.naturalHeight * targetRatio : image.naturalWidth;
+    const sourceHeight =
+      sourceRatio > targetRatio ? image.naturalHeight : image.naturalWidth / targetRatio;
     const sourceX = (image.naturalWidth - sourceWidth) / 2;
     const sourceY = (image.naturalHeight - sourceHeight) / 2;
     const width = Math.min(1600, Math.round(sourceWidth));

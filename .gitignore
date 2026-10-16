@@ -18,6 +18,7 @@ data/
 dist
 dist-ssr
 .output
+.vercel
 .vinxi
 .tanstack/**
 .nitro
@@ -37,3 +38,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Independent project checked out inside this repository (own git repo and remote)
+page-hugger-delight/

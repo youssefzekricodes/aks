@@ -14,7 +14,7 @@ npm run admin:create
 npm run dev
 ```
 
-Open http://localhost:3000 and sign in at http://localhost:3000/auth. The admin command prompts for an e-mail and a hidden password (12?256 characters). No default password or public registration exists. Run the same command with an existing e-mail to reset its password and revoke its sessions. Never put passwords in source files or command-line arguments.
+Open http://localhost:3000 and sign in at http://localhost:3000/auth. The admin command prompts for an e-mail and a hidden password (12–256 characters). No default password or public registration exists. Run the same command with an existing e-mail to reset its password and revoke its sessions. Never put passwords in source files or command-line arguments.
 
 SQLite lives at `data/aks.sqlite` by default. It is created automatically; the existing showroom catalog is seeded on first application use, only once. Database files and .env are excluded from Git. Contact forms now save inquiries that appear under **Demandes** in the admin panel. This does not send e-mail notifications.
 
@@ -50,24 +50,44 @@ src/lib/                    Shared helpers and compatibility facade
 public/images/              Locally hosted original project images
 scripts/                    Database, backup, and administrator commands
 tests/                      Database/password and production HTTP tests
+docs/                       Architecture, security, contribution and audit notes
 ```
 
 Route guards improve navigation; server authorization protects every admin read and mutation. Passwords use salted scrypt hashes. Sessions use random tokens stored as SHA-256 hashes in SQLite and an HttpOnly, SameSite=Strict cookie, with an eight-hour absolute expiry. Production cookies require HTTPS. Login attempts and public lead submissions have persistent rate limits. Mutations validate the exact Origin and inputs. There is no public account creation. Admin recovery requires access to the server terminal.
 
+Only source, assets and configuration are tracked in Git. The database (`data/`), `.env`, build output (`.output`, `.vercel`) and the nested `page-hugger-delight/` project are ignored. `.gitattributes` normalizes line endings to LF so checkouts behave the same on Windows, macOS and Linux. Before sharing the repository or inviting a collaborator, work through the pre-share checklist in [docs/SECURITY.md](docs/SECURITY.md#6-pre-share-checklist-before-making-the-repository-public-or-inviting-a-collaborator).
+
 Existing images were copied from Lovable into public/images. The build no longer uses Lovable's Vite wrapper or asset proxy. Lovable project metadata remains for history continuity; no git history has been rewritten. The old PostgreSQL/Drizzle scaffold has been removed. Use npm/package-lock.json for this standalone setup.
+
+## Documentation
+
+| Document | Contents |
+| -------- | -------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, module map, data model, request flows, content system, extension recipes |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security controls, secrets policy, credential/rotation and restore runbooks, accepted limitations, pre-share checklist |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Setup, commands, conventions, how to add a server function or a migration |
+| [docs/AUDIT.md](docs/AUDIT.md) | Dated repository audit, ratings per dimension, open items |
 
 ## Verify
 
 ```sh
 npm run typecheck
+npm run lint
 npm test
 ```
+
+All three gates must pass. Lint reports zero errors (six cosmetic `react-refresh` warnings in the shadcn/ui primitives are expected).
 
 Tests build the application and launch a temporary production server on port 4319 with an isolated database. They cover login, cookies, anonymous access, CSRF, validation, database persistence, publication visibility, inquiries, session expiry, and logout. Node 22 may print experimental warnings for its built-in SQLite and TypeScript stripping APIs.
 
 ## Host on a server
 
 Use a Node server with persistent local disk; SQLite is not suitable for an ephemeral static/edge deployment. Run one application instance, keep the database outside the deployed build directory, and put an HTTPS reverse proxy in front of the app.
+
+1. Install dependencies with `npm ci` and build with `npm run build`.
+2. Configure `DATABASE_PATH` to an absolute persistent path and `APP_ORIGIN` to your exact HTTPS origin (for example `https://cars.example.com`, without a trailing slash).
+3. Set `NODE_ENV=production`, `HOST=127.0.0.1`, and `PORT=3000`. Create the admin using the same `DATABASE_PATH`, then run `npm start` under your service manager.
+4. Proxy HTTPS traffic to the Node port. Preserve `Host`; allow request bodies up to 36 MB for image uploads. Do not expose the data directory over HTTP.
 
 ## Deploy on Railway
 
@@ -101,11 +121,6 @@ First deploy the app on Railway using the steps above. You need a domain added t
 3. Wait until Railway shows the custom domain as verified and its HTTPS certificate is active. Keep the CNAME DNS-only (gray cloud) while Railway verifies it. Afterward, you can enable Cloudflare proxying (orange cloud); if enabled, set Cloudflare **SSL/TLS** encryption mode to **Full (strict)**.
 4. In Railway service **Variables**, update `APP_ORIGIN` to the exact public HTTPS origin, for example `https://www.example.com` (no trailing slash), then redeploy. This allows authenticated admin and contact form requests from the custom domain.
 5. Open the HTTPS custom domain and confirm the site loads. Keep the Railway volume mounted at `/app/data` so the database and admin account persist.
-
-1. Install dependencies with npm ci and build with npm run build.
-2. Configure DATABASE_PATH to an absolute persistent path and APP_ORIGIN to your exact HTTPS origin (for example https://cars.example.com, without a trailing slash).
-3. Set NODE_ENV=production, HOST=127.0.0.1, and PORT=3000. Create the admin using the same DATABASE_PATH, then run npm start under your service manager.
-4. Proxy HTTPS traffic to the Node port. Preserve Host; allow request bodies up to 36 MB for image uploads. Do not expose the data directory over HTTP.
 
 The database includes uploaded car images as validated data URLs (JPG/PNG/WebP, 2 MB per image, maximum 12 images per car). This keeps backup and relocation simple for a small showroom. For a large catalog, move uploaded images to a dedicated persistent file store later.
 

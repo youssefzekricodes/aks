@@ -1,1 +1,0 @@
-import{f as e,p as t}from"./definition-Cjw-z1CY.js";function n(e){return e}var r=n({queryKey:[`public-cars`],queryFn:()=>e()}),i=n({queryKey:[`site-content`],queryFn:()=>t()});export{i as n,r as t};

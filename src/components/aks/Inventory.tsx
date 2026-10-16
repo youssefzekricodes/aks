@@ -48,9 +48,10 @@ export function Inventory() {
   const filtered = useMemo(
     () =>
       cars.filter(
-        (c) =>        (body === bodies[0] || c.body === body) &&
-        (state === states[0] || c.state === state) &&
-        (budget.max === Infinity || (c.price_on_request !== true && c.price <= budget.max)),
+        (c) =>
+          (body === bodies[0] || c.body === body) &&
+          (state === states[0] || c.state === state) &&
+          (budget.max === Infinity || (c.price_on_request !== true && c.price <= budget.max)),
       ),
     [cars, body, state, budget, bodies, states],
   );

@@ -1,1 +1,0 @@
-import{o as e}from"./useStore-DICX4aVi.js";import{s as t}from"./index-DMwiJOOU.js";var n=e(),r=()=>(0,n.jsx)(t,{});export{r as component};

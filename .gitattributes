@@ -1,0 +1,13 @@
+# Keep line endings consistent for every contributor and platform.
+* text=auto eol=lf
+
+# Binary assets are never converted or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.sqlite binary
+*.sqlite-wal binary
+*.sqlite-shm binary
