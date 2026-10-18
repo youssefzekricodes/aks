@@ -4,8 +4,9 @@ import { buttonVariants } from "@heroui/styles";
 import { MessageCircle } from "lucide-react";
 
 import { useSiteText } from "@/lib/site-content";
-import { carImage, formatKm, formatPrice, GEARBOX_LABELS, label, type Car } from "@/lib/cars";
+import { carImage, discountPercent, formatKm, GEARBOX_LABELS, label, type Car } from "@/lib/cars";
 import { BrandLogo } from "./BrandLogo";
+import { DiscountBadge, Price } from "./Price";
 
 /**
  * Listing card: photo, brand, model, one line of key specs, price.
@@ -38,6 +39,12 @@ export function CarCard({ car, priority = false }: { car: Car; priority?: boolea
         >
           {car.state}
         </Chip>
+        {!car.price_on_request && (
+          <DiscountBadge
+            percent={discountPercent(car)}
+            className="absolute right-3 top-3 px-2.5 py-1 shadow-sm"
+          />
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
@@ -72,9 +79,12 @@ export function CarCard({ car, priority = false }: { car: Car; priority?: boolea
             </Link>
           </div>
         ) : (
-          <p className="tabular mt-auto pt-4 text-lg font-semibold">
-            {formatPrice(car.price, text("card.text_1", "DT"))}
-          </p>
+          <Price
+            car={car}
+            currency={text("card.text_1", "DT")}
+            badge={false}
+            className="mt-auto pt-4"
+          />
         )}
       </div>
     </article>

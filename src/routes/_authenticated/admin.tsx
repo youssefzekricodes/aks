@@ -16,6 +16,6 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminRoute() {
-  const { section = "cars" } = Route.useSearch();
+  const { section = "dashboard" } = Route.useSearch();
   return <AdminPage section={section} />;
 }

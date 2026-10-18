@@ -1,9 +1,30 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, SearchField, Spinner, Table, toast } from "@heroui/react";
-import { Car as CarIcon, Eye, EyeOff, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
-import { carImage, formatKm, formatPrice } from "@/lib/cars";
-import { deleteCar, saveCar, setCarPublished, type CarInput } from "@/lib/data";
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
+  BadgeCheck,
+  Car as CarIcon,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import { carImage, discountPercent, formatKm, formatPrice, salePrice } from "@/lib/cars";
+import {
+  deleteCar,
+  reorderCars,
+  saveCar,
+  setCarPublished,
+  setCarSold,
+  type CarInput,
+} from "@/lib/data";
 import { CarForm } from "./CarForm";
 import { useDialogTarget } from "./hooks";
 import {
@@ -20,6 +41,7 @@ import {
 import {
   ConfirmDialog,
   EmptyState,
+  IconButton,
   LoadError,
   PageHeader,
   RowMenu,
@@ -29,12 +51,16 @@ import {
   Toolbar,
 } from "./ui";
 
-type Status = "all" | "published" | "draft";
+type Status = "all" | "published" | "draft" | "sold";
 const STATUS_OPTIONS = [
   { id: "all", label: "Tous" },
-  { id: "published", label: "Publiés" },
+  { id: "published", label: "En vente" },
   { id: "draft", label: "Brouillons" },
+  { id: "sold", label: "Vendus" },
 ];
+const matchesStatus = (car: AdminCar, status: Status) =>
+  status === "all" ||
+  (status === "sold" ? car.sold === true : !car.sold && car.published === (status === "published"));
 
 type Sort = "order" | "updated" | "price-asc" | "price-desc" | "year" | "name";
 const SORT_OPTIONS = [
@@ -46,13 +72,13 @@ const SORT_OPTIONS = [
   { id: "name", label: "Marque et modèle (A–Z)" },
 ];
 
-const COLUMNS = ["Photo", "Véhicule", "Prix", "Statut", "Mise à jour", ""];
+const COLUMNS = ["Ordre", "Photo", "Véhicule", "Prix", "Statut", "Mise à jour", ""];
 const titleOf = (car: Pick<AdminCar, "brand" | "name">) => `${car.brand} ${car.name}`.trim();
 
 function sortCars(cars: AdminCar[], sort: Sort) {
   if (sort === "order") return cars;
   const sorted = [...cars];
-  const price = (car: AdminCar) => (car.price_on_request ? null : car.price);
+  const price = (car: AdminCar) => (car.price_on_request ? null : salePrice(car));
   sorted.sort((a, b) => {
     switch (sort) {
       case "updated":
@@ -139,6 +165,54 @@ export function CarsTab() {
     onError: (e: Error) => toast.danger(e.message),
   });
 
+  /** Optimistic change of some cars in the cached list, rolled back on error. */
+  const patchList = async (patch: (list: AdminCar[]) => AdminCar[]) => {
+    await queryClient.cancelQueries({ queryKey: adminCarsQueryKey });
+    const previous = queryClient.getQueryData<AdminCar[]>(adminCarsQueryKey);
+    queryClient.setQueryData<AdminCar[]>(adminCarsQueryKey, (list) => list && patch(list));
+    return { previous };
+  };
+  const rollback = (e: Error, context?: { previous?: AdminCar[] | undefined }) => {
+    if (context?.previous) queryClient.setQueryData(adminCarsQueryKey, context.previous);
+    toast.danger(e.message);
+  };
+
+  const sell = useMutation({
+    mutationFn: (data: { id: string; sold: boolean }) => setCarSold({ data }),
+    onMutate: ({ id, sold }) =>
+      patchList((list) => list.map((car) => (car.id === id ? { ...car, sold } : car))),
+    onError: (e: Error, _vars, context) => rollback(e, context),
+    onSuccess: (_, { sold }) =>
+      toast.success(
+        sold
+          ? "Véhicule marqué comme vendu : il n’apparaît plus sur le site."
+          : "Véhicule remis en vente.",
+      ),
+    onSettled: () => invalidate(),
+  });
+
+  /** Saves the display order of the whole list (first = shown first on the site). */
+  const reorder = useMutation({
+    mutationFn: (ids: string[]) => reorderCars({ data: { ids } }),
+    onMutate: (ids) =>
+      patchList((list) => {
+        const rank = new Map(ids.map((id, index) => [id, index]));
+        return list
+          .map((car) => ({ ...car, sort_order: rank.get(car.id) ?? car.sort_order }))
+          .sort((a, b) => a.sort_order - b.sort_order);
+      }),
+    onError: (e: Error, _vars, context) => rollback(e, context),
+    onSettled: () => invalidate(),
+  });
+  const move = (car: AdminCar, to: "up" | "down" | "first" | "last") => {
+    const ids = (cars.data ?? []).map((c) => c.id).filter((id) => id !== car.id);
+    const index = (cars.data ?? []).findIndex((c) => c.id === car.id);
+    const target =
+      to === "first" ? 0 : to === "last" ? ids.length : to === "up" ? index - 1 : index + 1;
+    ids.splice(Math.max(0, Math.min(ids.length, target)), 0, car.id);
+    reorder.mutate(ids);
+  };
+
   const open = (car: CarInput) => {
     const draft = toDraft(car);
     setEditing({ draft, original: JSON.stringify(draft) });
@@ -163,15 +237,18 @@ export function CarsTab() {
   const query = normalize(search.trim());
   const filtered = all.filter(
     (car) =>
-      (status === "all" || car.published === (status === "published")) &&
+      matchesStatus(car, status) &&
       (!query ||
         normalize(`${car.brand} ${car.name} ${car.model ?? ""} ${car.version ?? ""}`).includes(
           query,
         )),
   );
   const visible = sortCars(filtered, sort);
-  const published = all.filter((car) => car.published).length;
+  const published = all.filter((car) => car.published && !car.sold).length;
+  const sold = all.filter((car) => car.sold).length;
   const filtersActive = query !== "" || status !== "all";
+  // Arrows reorder the full list, so they only make sense in display order without filters.
+  const canReorder = sort === "order" && !filtersActive;
 
   return (
     <div className="grid gap-6">
@@ -179,7 +256,7 @@ export function CarsTab() {
         title="Véhicules"
         description={
           cars.data
-            ? `${plural(all.length, "véhicule", "véhicules")} · ${plural(published, "publié", "publiés")}`
+            ? `${plural(all.length, "véhicule", "véhicules")} · ${plural(published, "en vente", "en vente")} · ${plural(sold, "vendu", "vendus")}`
             : "Gérez le stock affiché sur le site."
         }
         actions={
@@ -223,13 +300,16 @@ export function CarsTab() {
       {cars.isError ? (
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
       ) : cars.isPending ? (
-        <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[760px]" />
+        <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[860px]" />
       ) : (
         <>
           <Table>
             <Table.ScrollContainer>
-              <Table.Content aria-label="Véhicules" className="min-w-[760px]">
+              <Table.Content aria-label="Véhicules" className="min-w-[860px]">
                 <Table.Header>
+                  <Table.Column className="w-24">
+                    <span className="sr-only">Ordre d’affichage</span>
+                  </Table.Column>
                   <Table.Column className="w-24">Photo</Table.Column>
                   <Table.Column isRowHeader>Véhicule</Table.Column>
                   <Table.Column>Prix</Table.Column>
@@ -276,10 +356,21 @@ export function CarsTab() {
                     )
                   }
                 >
-                  {visible.map((car) => (
+                  {visible.map((car, index) => (
                     <CarRow
                       key={car.id}
                       car={car}
+                      order={
+                        canReorder
+                          ? {
+                              first: index === 0,
+                              last: index === visible.length - 1,
+                              busy: reorder.isPending,
+                              onMove: (to) => move(car, to),
+                            }
+                          : undefined
+                      }
+                      onToggleSold={() => sell.mutate({ id: car.id, sold: !car.sold })}
                       publishing={publishing.has(car.id)}
                       onEdit={() => open(car)}
                       onTogglePublished={() =>
@@ -292,6 +383,12 @@ export function CarsTab() {
               </Table.Content>
             </Table.ScrollContainer>
           </Table>
+          {!canReorder && visible.length > 1 && (
+            <p className="text-sm text-muted">
+              Pour changer l’ordre d’affichage sur le site, choisissez « Ordre d’affichage » et
+              retirez les filtres.
+            </p>
+          )}
           {visible.length > 0 && filtersActive && (
             <p className="text-sm text-muted" aria-live="polite">
               {plural(visible.length, "véhicule affiché", "véhicules affichés")} sur {all.length}
@@ -316,22 +413,51 @@ export function CarsTab() {
   );
 }
 
+type MoveTo = "up" | "down" | "first" | "last";
+
 function CarRow({
   car,
+  order,
   publishing,
   onEdit,
   onTogglePublished,
+  onToggleSold,
   onDelete,
 }: {
   car: AdminCar;
+  /** Present when the list can be reordered. */
+  order?:
+    { first: boolean; last: boolean; busy: boolean; onMove: (to: MoveTo) => void } | undefined;
   publishing: boolean;
   onEdit: () => void;
   onTogglePublished: () => void;
+  onToggleSold: () => void;
   onDelete: () => void;
 }) {
   const title = titleOf(car);
+  const percent = discountPercent(car);
   return (
-    <Table.Row id={car.id}>
+    <Table.Row id={car.id} className={car.sold ? "opacity-70" : ""}>
+      <Table.Cell>
+        {order ? (
+          <div className="flex items-center gap-0.5">
+            <IconButton
+              label={`Monter ${title}`}
+              icon={ArrowUp}
+              isDisabled={order.first || order.busy}
+              onPress={() => order.onMove("up")}
+            />
+            <IconButton
+              label={`Descendre ${title}`}
+              icon={ArrowDown}
+              isDisabled={order.last || order.busy}
+              onPress={() => order.onMove("down")}
+            />
+          </div>
+        ) : (
+          <span className="block w-16" aria-hidden />
+        )}
+      </Table.Cell>
       <Table.Cell>
         <img
           src={carImage(car)}
@@ -355,15 +481,27 @@ function CarRow({
       <Table.Cell className="whitespace-nowrap text-sm">
         {car.price_on_request ? (
           <span className="text-muted">Prix masqué</span>
+        ) : percent ? (
+          <span className="grid">
+            <span className="font-medium text-accent">
+              {formatPrice(salePrice(car))}{" "}
+              <span className="text-xs font-semibold">−{percent} %</span>
+            </span>
+            <del className="text-xs text-muted">{formatPrice(car.price)}</del>
+          </span>
         ) : (
           formatPrice(car.price)
         )}
       </Table.Cell>
       <Table.Cell>
         <span className="inline-flex items-center gap-2">
-          <StatusChip tone={car.published ? "success" : "default"}>
-            {car.published ? "Publié" : "Brouillon"}
-          </StatusChip>
+          {car.sold ? (
+            <StatusChip tone="warning">Vendu</StatusChip>
+          ) : (
+            <StatusChip tone={car.published ? "success" : "default"}>
+              {car.published ? "En vente" : "Brouillon"}
+            </StatusChip>
+          )}
           {publishing && <Spinner size="sm" aria-label="Mise à jour du statut" />}
         </span>
       </Table.Cell>
@@ -382,6 +520,26 @@ function CarRow({
               href: `/vehicule/${car.slug}`,
               external: true,
             },
+            {
+              id: "sold",
+              label: car.sold ? "Remettre en vente" : "Marquer comme vendu",
+              icon: car.sold ? RotateCcw : BadgeCheck,
+              onAction: onToggleSold,
+            },
+            order &&
+              !order.first && {
+                id: "first",
+                label: "Afficher en premier",
+                icon: ArrowUpToLine,
+                onAction: () => order.onMove("first"),
+              },
+            order &&
+              !order.last && {
+                id: "last",
+                label: "Afficher en dernier",
+                icon: ArrowDownToLine,
+                onAction: () => order.onMove("last"),
+              },
             {
               id: "publish",
               label: car.published ? "Dépublier" : "Publier",

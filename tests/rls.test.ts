@@ -236,6 +236,52 @@ select count(*) from public.leads;`,
     assert.equal(sql("anon", "{}", "select count(*) from public.admin_second_factor;").ok, false);
   });
 
+  await t.test("sold cars, discounts, ordering and page views", () => {
+    const PUB = "11111111-1111-1111-1111-111111111111";
+    const DRAFT = "22222222-2222-2222-2222-222222222222";
+    // Anonymous views count for published, unsold cars only; anon cannot read them.
+    const viewed = asAdminSeeded(
+      `select public.record_car_view('pub'); select public.record_car_view('pub');
+select public.record_car_view('draft');
+reset role;
+select string_agg(views::text, ',') from public.car_views;`,
+      "anon",
+    );
+    assert.equal(viewed.ok, true, viewed.out);
+    assert.equal(viewed.out.split("\n").pop(), "2");
+    assert.equal(asAdminSeeded("select count(*) from public.car_views;", "anon").ok, false);
+    const soldView = asAdminSeeded(
+      `reset role; update public.cars set sold = true where slug = 'pub';
+set local role anon; select public.record_car_view('pub');
+reset role; select count(*) from public.car_views;`,
+      "anon",
+    );
+    assert.equal(soldView.out.split("\n").pop(), "0", "sold cars are not counted");
+    // sold_at follows sold.
+    assert.equal(
+      asAdminSeeded(
+        "update public.cars set sold = true where slug = 'pub' returning sold_at is not null;",
+        "authenticated",
+        ADMIN,
+      ).out,
+      "t",
+    );
+    // A discount must be below the price.
+    assert.equal(
+      asAdminSeeded(
+        "update public.cars set discount_price = price where slug = 'pub';",
+        "authenticated",
+        ADMIN,
+      ).ok,
+      false,
+    );
+    // Reordering: admins only.
+    const order = `select public.reorder_cars(array['${DRAFT}', '${PUB}']::uuid[]);
+select string_agg(slug, ',' order by sort_order) from public.cars;`;
+    assert.equal(asAdminSeeded(order, "authenticated", ADMIN).out.split("\n").pop(), "draft,pub");
+    assert.equal(asAdminSeeded(order, "authenticated", USER).ok, false);
+  });
+
   await t.test("brand settings: seeded, public to read, admins only to change", () => {
     assert.equal(sql("anon", "{}", "select count(*) from public.brand_settings;").out, "67");
     const hide =

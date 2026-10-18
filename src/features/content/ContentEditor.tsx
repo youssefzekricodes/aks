@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useBlocker } from "@tanstack/react-router";
 import {
@@ -9,10 +9,10 @@ import {
   Label,
   ListBox,
   NumberField,
-  SearchField,
   Select,
   Skeleton,
   Switch,
+  Tabs,
   TextArea,
   TextField,
   toast,
@@ -21,13 +21,20 @@ import { buttonVariants } from "@heroui/styles";
 import {
   ArrowDown,
   ArrowUp,
+  Clock,
   ExternalLink,
   ImageOff,
   ImageUp,
+  LayoutTemplate,
+  PanelTop,
+  Phone as PhoneIcon,
   Plus,
+  Shapes,
   Star,
   Trash2,
+  type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { listSiteContent, prepareImage, saveSiteContent, uploadImage } from "@/lib/data";
 import { useUploads, type UploadState } from "@/features/admin/hooks";
 import {
@@ -39,8 +46,9 @@ import {
   UploadProgress,
 } from "@/features/admin/ui";
 import {
-  CONTENT_FIELDS,
-  CONTENT_GROUPS,
+  CONTENT_BY_KEY,
+  isPhoneNumber,
+  type Phone,
   COLLECTION_DEFAULTS,
   COLLECTION_LABELS,
   SERVICE_ICONS,
@@ -52,11 +60,192 @@ import {
 
 type Item = Record<string, string | number>;
 
-const hiddenGroups = new Set(["navbar", "card", "vehicle", "search"]);
-const editorFields = CONTENT_FIELDS.filter(
-  (field) => !hiddenGroups.has(field.group) && field.key !== "contact.items",
-);
-const editorGroups = Object.entries(CONTENT_GROUPS).filter(([key]) => !hiddenGroups.has(key));
+/* ------------------------------------------------------------------ rubrics */
+
+type FieldRef = { key: string; label?: string; help?: string };
+type Block = { title?: string; description?: string; fields: FieldRef[] };
+type Rubric = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  description: string;
+  blocks: Block[];
+};
+
+/**
+ * What the team edits day to day. Interface labels, SEO texts and the other
+ * sections keep their saved or built-in values (still in fields.json).
+ */
+const RUBRICS: Rubric[] = [
+  {
+    id: "logo",
+    label: "Logo",
+    icon: Shapes,
+    description: "Logo de l’en-tête et du pied de page, et icône de l’onglet du navigateur.",
+    blocks: [
+      {
+        fields: [
+          {
+            key: "identity.logo",
+            label: "Logo du site",
+            help: "PNG ou WebP à fond transparent. Il s’affiche sur le bandeau sombre de l’en-tête : prévoyez une version claire.",
+          },
+          {
+            key: "identity.favicon",
+            label: "Icône de l’onglet (favicon)",
+            help: "Image carrée, au moins 64 × 64 px.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "banner",
+    label: "Bannière d’accueil",
+    icon: PanelTop,
+    description: "Le grand bandeau en haut de la page d’accueil.",
+    blocks: [
+      {
+        title: "Photo",
+        fields: [
+          {
+            key: "hero.image_1",
+            label: "Photo de fond",
+            help: "Format paysage, au moins 1 920 px de large. Le texte s’affiche en blanc par-dessus.",
+          },
+        ],
+      },
+      {
+        title: "Texte",
+        fields: [
+          { key: "hero.text_26", label: "Titre — première ligne" },
+          { key: "hero.text_27", label: "Titre — deuxième ligne (en rouge)" },
+          { key: "hero.textarea_1", label: "Texte sous le titre" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hours",
+    label: "Horaires",
+    icon: Clock,
+    description: "Affichés dans la bannière, le showroom et la page Contact.",
+    blocks: [
+      {
+        description: "Une ligne par période, par exemple « Lundi – Samedi » et « Dimanche ».",
+        fields: [{ key: "showroom.items" }],
+      },
+    ],
+  },
+  {
+    id: "contact",
+    label: "Contact",
+    icon: PhoneIcon,
+    description:
+      "Coordonnées utilisées sur tout le site : en-tête, fiche véhicule, showroom, Contact et pied de page.",
+    blocks: [
+      {
+        title: "Téléphones",
+        description:
+          "Le numéro principal s’affiche dans l’en-tête et sur les boutons « Appeler ». Les numéros WhatsApp alimentent les boutons WhatsApp.",
+        fields: [{ key: "contact.phones" }],
+      },
+      {
+        title: "E-mail et adresse",
+        fields: [
+          { key: "identity.email", label: "Adresse e-mail" },
+          { key: "showroom.text_3", label: "Adresse du showroom" },
+        ],
+      },
+      {
+        title: "Carte",
+        fields: [
+          {
+            key: "showroom.link_1",
+            label: "Lien Google Maps (bouton « Itinéraire »)",
+            help: "Dans Google Maps : Partager → Copier le lien.",
+          },
+          {
+            key: "showroom.map_1",
+            label: "Carte intégrée",
+            help: 'Dans Google Maps : Partager → Intégrer une carte, puis copiez seulement l’adresse entre les guillemets de src="…".',
+          },
+        ],
+      },
+      {
+        title: "Réseaux sociaux",
+        description: "Laissez vide pour masquer l’icône.",
+        fields: [
+          { key: "contact.link_1", label: "Page Facebook" },
+          { key: "contact.link_instagram", label: "Compte Instagram" },
+        ],
+      },
+      {
+        title: "Pied de page",
+        fields: [{ key: "contact.text_12", label: "Présentation courte (sous le logo)" }],
+      },
+    ],
+  },
+  {
+    id: "sections",
+    label: "Sections de l’accueil",
+    icon: LayoutTemplate,
+    description: "Choisissez les blocs affichés sur la page d’accueil.",
+    blocks: [],
+  },
+];
+
+/** Home page sections, top to bottom (same order as routes/index.tsx). */
+const HOME_SECTIONS: { key: string; label: string; content: string; height: number }[] = [
+  {
+    key: "hero",
+    label: "Bannière",
+    content: "Grande photo, titre et recherche rapide",
+    height: 16,
+  },
+  { key: "brands", label: "Marques", content: "Carrousel des logos de marques", height: 6 },
+  {
+    key: "bodies",
+    label: "Carrosseries",
+    content: "Silhouettes : SUV, berline, citadine…",
+    height: 6,
+  },
+  {
+    key: "inventory",
+    label: "Véhicules en vitrine",
+    content: "Une sélection du stock",
+    height: 14,
+  },
+  {
+    key: "sell",
+    label: "Reprise",
+    content: "Bandeau « Vous voulez vendre votre voiture ? »",
+    height: 5,
+  },
+  { key: "about", label: "À propos", content: "Présentation et années d’expérience", height: 9 },
+  {
+    key: "services",
+    label: "Services",
+    content: "Achat, reprise, échange, importation…",
+    height: 9,
+  },
+  { key: "testimonials", label: "Avis clients", content: "Témoignages avec étoiles", height: 8 },
+  { key: "showroom", label: "Showroom", content: "Adresse, horaires et carte", height: 10 },
+];
+
+const fieldFor = (ref: FieldRef): ContentField | null => {
+  const field = CONTENT_BY_KEY.get(ref.key);
+  return field ? { ...field, label: ref.label ?? field.label } : null;
+};
+const rubricFields = (rubric: Rubric): ContentField[] =>
+  rubric.id === "sections"
+    ? HOME_SECTIONS.map((s) => CONTENT_BY_KEY.get(`sections.${s.key}`)).filter(
+        (f): f is ContentField => !!f,
+      )
+    : rubric.blocks.flatMap((block) =>
+        block.fields.map(fieldFor).filter((f): f is ContentField => !!f),
+      );
+const editorFields = RUBRICS.flatMap(rubricFields);
 
 const cardClass = "rounded-2xl border border-separator bg-surface p-4 sm:p-6";
 const MAX_SITE_IMAGE_BYTES = 3_000_000;
@@ -65,8 +254,7 @@ export function ContentEditor() {
   const client = useQueryClient();
   const router = useRouter();
   const content = useQuery({ queryKey: ["admin-site-content"], queryFn: () => listSiteContent() });
-  const [group, setGroup] = useState("identity");
-  const [search, setSearch] = useState("");
+  const [rubricId, setRubricId] = useState(RUBRICS[0]!.id);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const uploads = useUploads();
   const uploading = uploads.busy > 0;
@@ -105,13 +293,13 @@ export function ContentEditor() {
       return next;
     });
   }
-  const visible = editorFields.filter((field) =>
-    search.trim()
-      ? `${CONTENT_GROUPS[field.group]} ${field.label} ${field.type === "image" ? "" : valueOf(field)}`
-          .toLocaleLowerCase("fr")
-          .includes(search.toLocaleLowerCase("fr").trim())
-      : field.group === group,
-  );
+  const rubric = RUBRICS.find((r) => r.id === rubricId) ?? RUBRICS[0]!;
+  // Small screens: the tab row scrolls; keep the selected tab visible.
+  useEffect(() => {
+    document
+      .querySelector(`[role="tab"][data-key="${rubricId}"], [role="tab"][aria-selected="true"]`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [rubricId]);
   const busy = save.isPending;
 
   async function upload(field: ContentField, file: File) {
@@ -127,11 +315,39 @@ export function ContentEditor() {
     }
   }
 
+  const input = (field: ContentField) =>
+    field.key === "showroom.items" ? (
+      <HoursInput
+        key={field.key}
+        field={field}
+        value={valueOf(field)}
+        onChange={(value) => change(field, value)}
+      />
+    ) : field.key === "contact.phones" ? (
+      <PhonesInput
+        key={field.key}
+        field={field}
+        value={valueOf(field)}
+        onChange={(value) => change(field, value)}
+      />
+    ) : (
+      <ContentInput
+        key={field.key}
+        field={field}
+        value={valueOf(field)}
+        onChange={(value) => change(field, value)}
+        upload={uploads.states[field.key]}
+        onUpload={(file) => void upload(field, file)}
+        isDisabled={busy}
+        bare
+      />
+    );
+
   if (content.isPending)
     return (
       <div role="status" aria-label="Chargement du contenu" className="grid gap-4">
         <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="grid gap-6 md:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
           <Skeleton className="h-64 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
@@ -148,7 +364,7 @@ export function ContentEditor() {
     <div className="grid gap-6">
       <PageHeader
         title="Contenu du site"
-        description="Modifiez chaque rubrique, puis publiez vos changements. Les véhicules et leurs photos se gèrent dans la section Véhicules."
+        description="Logo, bannière, horaires et coordonnées. Modifiez, puis publiez : le site est mis à jour immédiatement."
         actions={
           <a
             href="/"
@@ -161,78 +377,79 @@ export function ContentEditor() {
           </a>
         }
       />
-      <SearchField value={search} onChange={setSearch} aria-label="Rechercher un contenu" fullWidth>
-        <SearchField.Group>
-          <SearchField.SearchIcon />
-          <SearchField.Input placeholder="Rechercher un texte ou une rubrique…" />
-          <SearchField.ClearButton />
-        </SearchField.Group>
-      </SearchField>
-      <div className="grid gap-6 md:grid-cols-[240px_minmax(0,1fr)]">
-        <nav aria-label="Rubriques de contenu" className="min-w-0">
-          <ul className="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
-            {editorGroups.map(([key, label]) => {
-              const active = group === key && !search;
-              const dirty = editorFields.some(
-                (field) => field.group === key && draft[field.key] !== undefined,
-              );
+      <Tabs
+        selectedKey={rubric.id}
+        onSelectionChange={(key) => setRubricId(String(key))}
+        className="grid gap-6"
+      >
+        <Tabs.ListContainer className="overflow-x-auto">
+          <Tabs.List aria-label="Rubriques de contenu" className="w-max min-w-full">
+            {RUBRICS.map((item) => {
+              const dirty = rubricFields(item).some((field) => draft[field.key] !== undefined);
+              const Icon = item.icon;
               return (
-                <li key={key} className="shrink-0">
-                  <Button
-                    variant={active ? "secondary" : "ghost"}
-                    size="sm"
-                    fullWidth
-                    {...(active ? { "aria-current": "page" as const } : {})}
-                    className="justify-between gap-2 text-start"
-                    onPress={() => {
-                      setGroup(key);
-                      setSearch("");
-                    }}
-                  >
-                    <span className="truncate">{label}</span>
-                    {dirty && (
-                      <span className="size-2 shrink-0 rounded-full bg-warning">
-                        <span className="sr-only">Modifications non publiées</span>
-                      </span>
-                    )}
-                  </Button>
-                </li>
+                <Tabs.Tab key={item.id} id={item.id} className="gap-2 whitespace-nowrap">
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  {item.label}
+                  {dirty && (
+                    <span className="size-2 shrink-0 rounded-full bg-warning">
+                      <span className="sr-only"> — modifications non publiées</span>
+                    </span>
+                  )}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
               );
             })}
-          </ul>
-        </nav>
-        <fieldset disabled={busy} className="grid min-w-0 content-start gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-foreground">
-              {search ? `${visible.length} résultat(s)` : CONTENT_GROUPS[group]}
-            </h2>
-            {!search && (
-              <Button
-                variant="tertiary"
-                size="sm"
-                isDisabled={busy}
-                onPress={() => visible.forEach((field) => change(field, field.value))}
-              >
-                Rétablir les valeurs initiales de cette rubrique
-              </Button>
-            )}
-          </div>
-          {visible.map((field) => (
-            <ContentInput
-              key={field.key}
-              field={field}
-              value={valueOf(field)}
-              onChange={(value) => change(field, value)}
-              upload={uploads.states[field.key]}
-              onUpload={(file) => void upload(field, file)}
-              isDisabled={busy}
-            />
-          ))}
-          {!visible.length && (
-            <p className={`${cardClass} text-center text-sm text-muted`}>Aucun contenu trouvé.</p>
-          )}
-        </fieldset>
-      </div>
+          </Tabs.List>
+        </Tabs.ListContainer>
+        {RUBRICS.map((item) => (
+          <Tabs.Panel key={item.id} id={item.id} className="min-w-0">
+            <fieldset disabled={busy} className="grid min-w-0 content-start gap-4">
+              <p className="text-sm text-muted">{item.description}</p>
+              {item.id === "sections" ? (
+                <SectionsInput
+                  valueOf={(key) => {
+                    const field = CONTENT_BY_KEY.get(`sections.${key}`);
+                    return field ? valueOf(field) : "true";
+                  }}
+                  onChange={(key, on) => {
+                    const field = CONTENT_BY_KEY.get(`sections.${key}`);
+                    if (field) change(field, String(on));
+                  }}
+                  isDisabled={busy}
+                />
+              ) : (
+                item.blocks.map((block) => (
+                  <section key={block.title ?? "main"} className={`${cardClass} grid gap-5`}>
+                    {(block.title || block.description) && (
+                      <div>
+                        {block.title && (
+                          <h3 className="text-sm font-semibold text-foreground">{block.title}</h3>
+                        )}
+                        {block.description && (
+                          <p className={cn("text-sm text-muted", block.title && "mt-1")}>
+                            {block.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {block.fields.map((ref) => {
+                      const field = fieldFor(ref);
+                      if (!field) return null;
+                      return (
+                        <div key={field.key} className="grid gap-1.5">
+                          {input(field)}
+                          {ref.help && <p className="text-xs text-muted">{ref.help}</p>}
+                        </div>
+                      );
+                    })}
+                  </section>
+                ))
+              )}
+            </fieldset>
+          </Tabs.Panel>
+        ))}
+      </Tabs>
       <div className="sticky bottom-4 z-20 rounded-2xl border border-separator bg-surface p-4 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p aria-live="polite" className="flex items-center gap-2 text-sm text-foreground">
@@ -281,6 +498,274 @@ export function ContentEditor() {
   );
 }
 
+/* ------------------------------------------------------------------ home sections */
+
+/** Miniature of the home page with `active` highlighted and hidden sections hatched. */
+function PageWireframe({ active, hidden }: { active: string; hidden: Set<string> }) {
+  return (
+    <div
+      aria-hidden
+      className="flex w-14 shrink-0 flex-col gap-[3px] rounded-md border border-separator bg-background p-1"
+    >
+      <span className="h-[4px] rounded-[2px] bg-foreground/70" />
+      {HOME_SECTIONS.map((section) => (
+        <span
+          key={section.key}
+          style={{ height: section.height }}
+          className={cn(
+            "rounded-[2px]",
+            section.key === active
+              ? hidden.has(section.key)
+                ? "border border-dashed border-accent bg-transparent"
+                : "bg-accent"
+              : hidden.has(section.key)
+                ? "border border-dashed border-border bg-transparent"
+                : "bg-surface-secondary",
+          )}
+        />
+      ))}
+      <span className="h-[5px] rounded-[2px] bg-foreground/70" />
+    </div>
+  );
+}
+
+function SectionsInput({
+  valueOf,
+  onChange,
+  isDisabled,
+}: {
+  valueOf: (key: string) => string;
+  onChange: (key: string, on: boolean) => void;
+  isDisabled: boolean;
+}) {
+  const hidden = new Set(HOME_SECTIONS.filter((s) => valueOf(s.key) !== "true").map((s) => s.key));
+  return (
+    <ol className="grid gap-3 sm:grid-cols-2">
+      {HOME_SECTIONS.map((section, index) => {
+        const visible = !hidden.has(section.key);
+        return (
+          <li
+            key={section.key}
+            className={cn(
+              cardClass,
+              "flex items-start gap-4 p-4 sm:p-4",
+              !visible && "bg-background",
+            )}
+          >
+            <PageWireframe active={section.key} hidden={hidden} />
+            <div className="grid min-w-0 flex-1 gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  <span className="tabular-nums text-muted">{index + 1}. </span>
+                  {section.label}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">{section.content}</p>
+              </div>
+              <Switch
+                isSelected={visible}
+                onChange={(on) => onChange(section.key, on)}
+                isDisabled={isDisabled}
+                aria-label={`Afficher la section ${section.label} sur la page d’accueil`}
+              >
+                <Switch.Content>
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                  <span className="text-sm">{visible ? "Affichée" : "Masquée"}</span>
+                </Switch.Content>
+              </Switch>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/* ------------------------------------------------------------------ hours */
+
+type HoursRow = { day: string; time: string };
+
+/** Opening hours: one row per day range, e.g. "Lundi – Samedi" / "09:00 – 19:00". */
+function HoursInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: ContentField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  let rows: HoursRow[];
+  try {
+    rows = JSON.parse(value) as HoursRow[];
+  } catch {
+    rows = [];
+  }
+  const update = (next: HoursRow[]) => onChange(JSON.stringify(next));
+  const error = validateContentValue(field, value);
+  return (
+    <div className="grid gap-3">
+      {rows.map((row, index) => (
+        <div
+          key={index}
+          role="group"
+          aria-label={`Horaires ${index + 1}`}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+        >
+          <TextField
+            value={row.day}
+            onChange={(day) => update(rows.map((r, i) => (i === index ? { ...r, day } : r)))}
+            className="col-span-2 sm:col-span-1"
+            fullWidth
+          >
+            <Label>Jour(s)</Label>
+            <Input placeholder="Ex. Lundi – Samedi" />
+          </TextField>
+          <TextField
+            value={row.time}
+            onChange={(time) => update(rows.map((r, i) => (i === index ? { ...r, time } : r)))}
+            fullWidth
+          >
+            <Label>Horaires</Label>
+            <Input placeholder="Ex. 09:00 – 19:00 ou Fermé" />
+          </TextField>
+          <IconButton
+            label={`Supprimer « ${row.day || `ligne ${index + 1}`} »`}
+            icon={Trash2}
+            variant="danger-soft"
+            onPress={() => update(rows.filter((_, i) => i !== index))}
+          />
+        </div>
+      ))}
+      <div>
+        <Button
+          variant="secondary"
+          size="sm"
+          isDisabled={rows.length >= 7}
+          onPress={() => update([...rows, { day: "", time: "" }])}
+        >
+          <Plus className="size-4" aria-hidden />
+          Ajouter une ligne
+        </Button>
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ phones */
+
+type PhoneRow = Phone;
+
+/** Phone list: label, number, WhatsApp switch, and exactly one primary number. */
+function PhonesInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: ContentField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  let rows: PhoneRow[];
+  try {
+    rows = JSON.parse(value) as PhoneRow[];
+  } catch {
+    rows = [];
+  }
+  const update = (next: PhoneRow[]) => {
+    // Always exactly one primary number while the list is not empty.
+    if (next.length && !next.some((row) => row.primary)) next[0] = { ...next[0]!, primary: true };
+    onChange(JSON.stringify(next));
+  };
+  const set = (index: number, patch: Partial<PhoneRow>) =>
+    update(
+      rows.map((row, i) =>
+        i === index ? { ...row, ...patch } : patch.primary ? { ...row, primary: false } : row,
+      ),
+    );
+  const error = validateContentValue(field, value);
+  return (
+    <div className="grid gap-3">
+      {rows.map((row, index) => (
+        <div
+          key={index}
+          role="group"
+          aria-label={`Numéro ${index + 1}`}
+          className="grid gap-3 rounded-xl border border-separator bg-background p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] sm:items-end"
+        >
+          <TextField
+            value={row.label}
+            onChange={(label) => set(index, { label })}
+            maxLength={60}
+            fullWidth
+          >
+            <Label>Libellé</Label>
+            <Input placeholder="Ex. Showroom, Commercial…" />
+          </TextField>
+          <TextField
+            value={row.number}
+            onChange={(number) => set(index, { number })}
+            isInvalid={row.number !== "" && !isPhoneNumber(row.number)}
+            isRequired
+            fullWidth
+          >
+            <Label>Numéro</Label>
+            <Input type="tel" inputMode="tel" placeholder="+216 52 144 869" />
+            <FieldError>Numéro non valide.</FieldError>
+          </TextField>
+          <IconButton
+            label={`Supprimer le numéro ${row.number || index + 1}`}
+            icon={Trash2}
+            variant="danger-soft"
+            isDisabled={rows.length <= 1}
+            onPress={() => update(rows.filter((_, i) => i !== index))}
+          />
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:col-span-3">
+            <Switch isSelected={row.whatsapp} onChange={(whatsapp) => set(index, { whatsapp })}>
+              <Switch.Content>
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+                <span className="text-sm">Disponible sur WhatsApp</span>
+              </Switch.Content>
+            </Switch>
+            {row.primary ? (
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent">
+                <Star className="size-4 fill-current" aria-hidden />
+                Numéro principal
+              </span>
+            ) : (
+              <Button size="sm" variant="ghost" onPress={() => set(index, { primary: true })}>
+                <Star className="size-4" aria-hidden />
+                Définir comme principal
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+      <div>
+        <Button
+          variant="secondary"
+          size="sm"
+          isDisabled={rows.length >= 6}
+          onPress={() =>
+            update([
+              ...rows,
+              { label: "", number: "", whatsapp: false, primary: rows.length === 0 },
+            ])
+          }
+        >
+          <Plus className="size-4" aria-hidden />
+          Ajouter un numéro
+        </Button>
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
 const HELP: Partial<Record<ContentField["type"], string>> = {
   map: "Collez l’URL d’intégration Google Maps ou OpenStreetMap, sans code HTML.",
   link: "Lien web, ancre (#contact), chemin (/recherche), téléphone (tel:) ou e-mail (mailto:).",
@@ -294,6 +779,7 @@ function ContentInput({
   upload,
   onUpload,
   isDisabled,
+  bare = false,
 }: {
   field: ContentField;
   value: string;
@@ -301,10 +787,12 @@ function ContentInput({
   upload: UploadState | undefined;
   onUpload: (file: File) => void;
   isDisabled: boolean;
+  /** Inside a section card: no card of its own and no generic help text. */
+  bare?: boolean;
 }) {
   const error = validateContentValue(field, value);
   if (field.type === "collection")
-    return <CollectionInput field={field} value={value} onChange={onChange} />;
+    return <CollectionInput field={field} value={value} onChange={onChange} bare={bare} />;
   if (field.type === "boolean")
     return (
       <div className={`${cardClass} grid gap-3`}>
@@ -326,9 +814,25 @@ function ContentInput({
       </div>
     );
 
-  const help = HELP[field.type];
+  // Simple mode: images are replaced by upload only (no address field).
+  if (bare && field.type === "image")
+    return (
+      <div className="grid gap-2">
+        <p className="text-sm font-medium text-foreground">{field.label}</p>
+        <ImageControls
+          field={field}
+          value={value}
+          error={error}
+          upload={upload}
+          onUpload={onUpload}
+          onClear={() => onChange("")}
+          isDisabled={isDisabled}
+        />
+      </div>
+    );
+  const help = bare ? undefined : HELP[field.type];
   return (
-    <div className={`${cardClass} grid gap-4`}>
+    <div className={bare ? "grid gap-4" : `${cardClass} grid gap-4`}>
       <TextField
         value={value}
         onChange={onChange}
@@ -380,7 +884,13 @@ function ImageControls({
         <img
           src={value}
           alt={`Aperçu — ${field.label}`}
-          className="max-h-40 max-w-full rounded-xl border border-separator bg-surface-secondary object-contain"
+          className={cn(
+            "max-h-40 max-w-full rounded-xl border border-separator object-contain",
+            // The logo is light (made for the dark header): preview it on dark.
+            field.key === "identity.logo"
+              ? "bg-[oklch(0.17_0.004_286)] px-6 py-4"
+              : "bg-surface-secondary",
+          )}
         />
       ) : (
         <div className="flex h-24 w-40 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-background text-muted">
@@ -426,10 +936,12 @@ function CollectionInput({
   field,
   value,
   onChange,
+  bare = false,
 }: {
   field: ContentField;
   value: string;
   onChange: (value: string) => void;
+  bare?: boolean;
 }) {
   const template = COLLECTION_DEFAULTS[field.key as CollectionKey][0]! as Item;
   let rows: Item[];
@@ -461,13 +973,15 @@ function CollectionInput({
       ),
     ]);
   return (
-    <section className={`${cardClass} grid gap-4`}>
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">{field.label}</h3>
-        <p className="mt-1 text-sm text-muted">
-          Ajoutez, supprimez ou déplacez les éléments. Une liste vide n’affiche aucun élément.
-        </p>
-      </div>
+    <section className={bare ? "grid gap-4" : `${cardClass} grid gap-4`}>
+      {!bare && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">{field.label}</h3>
+          <p className="mt-1 text-sm text-muted">
+            Ajoutez, supprimez ou déplacez les éléments. Une liste vide n’affiche aucun élément.
+          </p>
+        </div>
+      )}
       {rows.map((row, index) => (
         <div
           key={index}

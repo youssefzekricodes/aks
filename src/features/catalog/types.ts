@@ -1,5 +1,9 @@
 import type { Car } from "@/lib/cars";
-export type CarInput = Omit<Car, "id"> & { id?: string | undefined };
+/** Editable vehicle; without `sort_order` a new vehicle is placed first. */
+export type CarInput = Omit<Car, "id" | "sort_order"> & {
+  id?: string | undefined;
+  sort_order?: number | undefined;
+};
 export type Lead = {
   id: string;
   name: string;

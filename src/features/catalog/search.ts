@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CAR_BODIES, carModel, slugify, type Car } from "../../lib/cars.ts";
+import { CAR_BODIES, carModel, salePrice, slugify, type Car } from "../../lib/cars.ts";
 import { BRANDS, brandInfo } from "./brands.ts";
 
 /**
@@ -97,8 +97,10 @@ function matches(car: Car, f: SearchFilters, ignore?: FilterKey) {
   const hasPriceBound = f.prix_min !== undefined || f.prix_max !== undefined;
   // Cars with a hidden price have no known price: they never match a price bound.
   if (ignore !== "prix_min" && hasPriceBound && car.price_on_request) return false;
-  if (ignore !== "prix_min" && f.prix_min !== undefined && car.price < f.prix_min) return false;
-  if (ignore !== "prix_min" && f.prix_max !== undefined && car.price > f.prix_max) return false;
+  if (ignore !== "prix_min" && f.prix_min !== undefined && salePrice(car) < f.prix_min)
+    return false;
+  if (ignore !== "prix_min" && f.prix_max !== undefined && salePrice(car) > f.prix_max)
+    return false;
   if (ignore !== "km_max" && f.km_max !== undefined && car.km_value > f.km_max) return false;
   if (ignore !== "annee_min" && f.annee_min !== undefined && car.year < f.annee_min) return false;
   if (ignore !== "q" && f.q) {
@@ -118,7 +120,7 @@ export function filterCars(cars: Car[], filters: SearchFilters) {
 }
 
 export function sortCars(cars: Car[], sort: Sort = "recent") {
-  const priced = (car: Car) => (car.price_on_request ? Number.POSITIVE_INFINITY : car.price);
+  const priced = (car: Car) => (car.price_on_request ? Number.POSITIVE_INFINITY : salePrice(car));
   const sorted = [...cars];
   switch (sort) {
     case "prix-asc":
@@ -128,7 +130,7 @@ export function sortCars(cars: Car[], sort: Sort = "recent") {
       return sorted.sort(
         (a, b) =>
           Number(Boolean(a.price_on_request)) - Number(Boolean(b.price_on_request)) ||
-          b.price - a.price,
+          salePrice(b) - salePrice(a),
       );
     case "km-asc":
       return sorted.sort((a, b) => a.km_value - b.km_value);
@@ -253,4 +255,37 @@ export function paginate<T>(items: T[], page = 1) {
     page: current,
     pages,
   };
+}
+
+/**
+ * Cars to suggest next to `car`: same model or brand, same body type, close
+ * price and year, same fuel score higher; the rest of the stock fills in so the
+ * section is never empty. Sold cars are not in `cars` (listings exclude them).
+ */
+export function relatedCars(car: Car, cars: Car[], size = 3): Car[] {
+  const brand = brandInfo(car.brand).slug;
+  const model = slugify(carModel(car));
+  const price = car.price_on_request ? null : salePrice(car);
+  const score = (other: Car) => {
+    let points = 0;
+    if (brandInfo(other.brand).slug === brand) {
+      points += 3;
+      if (slugify(carModel(other)) === model) points += 3;
+    }
+    if (other.body === car.body) points += 3;
+    if (price !== null && !other.price_on_request) {
+      const ratio = Math.abs(salePrice(other) - price) / Math.max(price, 1);
+      if (ratio <= 0.15) points += 3;
+      else if (ratio <= 0.3) points += 1;
+    }
+    if (Math.abs(other.year - car.year) <= 2) points += 1;
+    if (other.fuel === car.fuel) points += 1;
+    return points;
+  };
+  return cars
+    .filter((other) => other.id !== car.id)
+    .map((other) => ({ other, points: score(other) }))
+    .sort((a, b) => b.points - a.points || a.other.sort_order - b.other.sort_order)
+    .slice(0, size)
+    .map(({ other }) => other);
 }

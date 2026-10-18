@@ -1,16 +1,24 @@
 import { queryOptions } from "@tanstack/react-query";
 import { formatKm, slugify, type Car } from "@/lib/cars";
-import { listAllCars, listLeads, type CarInput } from "@/lib/data";
+import { getDashboardStats, listAllCars, listLeads, type CarInput } from "@/lib/data";
 import { getSession, listAdmins } from "@/features/auth/auth.functions";
 
 /** Non-component helpers shared by the admin sections. */
 
-export const ADMIN_SECTIONS = ["cars", "brands", "content", "leads", "admins"] as const;
+export const ADMIN_SECTIONS = [
+  "dashboard",
+  "cars",
+  "brands",
+  "content",
+  "leads",
+  "admins",
+] as const;
 export type AdminSection = (typeof ADMIN_SECTIONS)[number];
 export const isAdminSection = (value: unknown): value is AdminSection =>
   typeof value === "string" && (ADMIN_SECTIONS as readonly string[]).includes(value);
 
 export const SECTION_LABELS: Record<AdminSection, string> = {
+  dashboard: "Tableau de bord",
   cars: "Véhicules",
   brands: "Marques",
   content: "Contenu du site",
@@ -28,6 +36,11 @@ export const adminCarsQueryKey = ["admin-cars"] as const;
 export const adminCarsQuery = queryOptions({
   queryKey: adminCarsQueryKey,
   queryFn: () => listAllCars() as Promise<AdminCar[]>,
+});
+
+export const dashboardStatsQuery = queryOptions({
+  queryKey: ["admin-dashboard-stats"],
+  queryFn: () => getDashboardStats(),
 });
 
 export const leadsQueryOptions = queryOptions({
@@ -177,7 +190,8 @@ export const emptyCar: CarInput = {
   images: [],
   description: "",
   published: false,
-  sort_order: 0,
+  sold: false,
+  discount_price: null,
 };
 
 /** Form state for a car; legacy records without `model` get it from `name`. */

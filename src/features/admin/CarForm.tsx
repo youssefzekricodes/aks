@@ -23,7 +23,9 @@ import {
   CAR_TRANSMISSIONS,
   COUNTRY_LABELS,
   GEARBOX_LABELS,
+  discountPercent,
   formatKm,
+  formatPrice,
   slugify,
 } from "@/lib/cars";
 import { BRANDS } from "@/features/catalog/brands";
@@ -202,7 +204,7 @@ export function CarForm({
       </SectionCard>
 
       <SectionCard title="Prix">
-        <div className="grid items-end gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <IntegerField
             label="Prix (DT)"
             value={value.price}
@@ -212,11 +214,29 @@ export function CarForm({
             isDisabled={value.price_on_request === true}
             isRequired={!value.price_on_request}
           />
-          <div className="pb-2">
+          <IntegerField
+            label="Prix remisé (DT)"
+            value={value.discount_price ?? null}
+            onChange={(discount) => set("discount_price", discount ?? null)}
+            minValue={0}
+            maxValue={Math.max(0, value.price - 1)}
+            isDisabled={value.price_on_request === true || value.price <= 0}
+            description={
+              discountPercent(value)
+                ? `Remise de ${discountPercent(value)} % : le site affiche ${formatPrice(value.price)} barré.`
+                : "Facultatif. Laissez vide pour aucune remise."
+            }
+          />
+          <div className="sm:col-span-2">
             <SwitchField
               isSelected={value.price_on_request === true}
               onChange={(on) =>
-                onChange((car) => ({ ...car, price_on_request: on, price: on ? 0 : car.price }))
+                onChange((car) => ({
+                  ...car,
+                  price_on_request: on,
+                  price: on ? 0 : car.price,
+                  discount_price: on ? null : car.discount_price,
+                }))
               }
             >
               Masquer le prix (le site affiche « Contactez-nous » à la place)
@@ -337,20 +357,17 @@ export function CarForm({
       </SectionCard>
 
       <SectionCard title="Publication">
-        <div className="grid items-end gap-4 sm:grid-cols-2">
-          <div className="pb-2">
-            <SwitchField isSelected={value.published} onChange={(on) => set("published", on)}>
-              Publier sur le site
-            </SwitchField>
-          </div>
-          <IntegerField
-            label="Ordre d’affichage"
-            value={value.sort_order}
-            onChange={(order) => set("sort_order", order ?? 0)}
-            minValue={-100_000}
-            maxValue={100_000}
-            description="Les plus petits nombres apparaissent en premier."
-          />
+        <div className="grid gap-4">
+          <SwitchField isSelected={value.published} onChange={(on) => set("published", on)}>
+            Publier sur le site
+          </SwitchField>
+          <SwitchField isSelected={value.sold === true} onChange={(on) => set("sold", on)}>
+            Vendu (retiré des listes ; sa page affiche « Vendu » avec des véhicules similaires)
+          </SwitchField>
+          <p className="text-sm text-muted">
+            L’ordre d’affichage se règle depuis la liste des véhicules (flèches ou « Afficher en
+            premier »). Un nouveau véhicule apparaît en premier.
+          </p>
         </div>
       </SectionCard>
 

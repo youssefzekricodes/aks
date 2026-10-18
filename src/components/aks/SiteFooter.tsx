@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram, Mail } from "lucide-react";
-import { contactHref, useSiteCollection, useSiteText } from "@/lib/site-content";
+import { contactHref, usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
+import { telHref } from "@/features/content/definition";
 
 /** Facebook, Instagram and e-mail links (URLs editable under Contenu du site → Contact). */
 export function SocialLinks({ className }: { className?: string }) {
   const text = useSiteText();
+  const email = text("identity.email", "contact@autokontorsfax.tn");
   const links = [
     {
       href: text("contact.link_1", "https://www.facebook.com/profile.php?id=61560475294948"),
@@ -17,11 +19,8 @@ export function SocialLinks({ className }: { className?: string }) {
       Icon: Instagram,
     },
     {
-      href: text(
-        "contact.link_2",
-        "https://mail.google.com/mail/?view=cm&fs=1&to=autokontorsfax@gmail.com",
-      ),
-      label: text("contact.text_14", "Gmail"),
+      href: email ? `mailto:${email}` : "",
+      label: "E-mail",
       Icon: Mail,
     },
   ].filter((link) => link.href);
@@ -47,6 +46,7 @@ export function SocialLinks({ className }: { className?: string }) {
 /** Site-wide footer (always dark, it carries the white-and-red AKS logo). */
 export function SiteFooter() {
   const text = useSiteText();
+  const { phones } = usePhones();
   const logo = text("identity.logo", "/images/aks-logo.png");
   const quickLinks = useSiteCollection("contact.items");
 
@@ -101,18 +101,18 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold">{text("contact.text_16", "Coordonnées")}</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li>{text("contact.text_17", "Route Sidi Mansour, km 5, Sfax 3000")}</li>
+            <li>{text("showroom.text_3", "Route Sidi Mansour, km 5, Sfax 3000, Tunisie")}</li>
+            {phones.map((phone) => (
+              <li key={phone.number}>
+                <a href={telHref(phone.number)} className="tabular hover:text-foreground">
+                  {phone.number}
+                </a>
+                {phone.label && <span> · {phone.label}</span>}
+              </li>
+            ))}
             <li>
               <a
-                href={text("identity.phone_link", "tel:+21652144869")}
-                className="hover:text-foreground"
-              >
-                {text("identity.phone", "+216 52 144 869")}
-              </a>
-            </li>
-            <li>
-              <a
-                href={text("identity.email_link", "mailto:contact@autokontorsfax.tn")}
+                href={`mailto:${text("identity.email", "contact@autokontorsfax.tn")}`}
                 className="hover:text-foreground"
               >
                 {text("identity.email", "contact@autokontorsfax.tn")}

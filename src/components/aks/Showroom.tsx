@@ -1,11 +1,13 @@
 import { buttonVariants } from "@heroui/styles";
 import { Clock, MapPin, Navigation, Phone, MessageCircle } from "lucide-react";
-import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import { usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
+import { telHref, whatsappHref } from "@/features/content/definition";
 import { Section } from "./Section";
 
 export function Showroom() {
   const text = useSiteText();
   const hours = useSiteCollection("showroom.items");
+  const { phones, primary, whatsapp } = usePhones();
 
   return (
     <Section id="showroom" className="grid gap-6 lg:grid-cols-2">
@@ -23,9 +25,16 @@ export function Showroom() {
           <div className="flex gap-3">
             <Phone className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
             <dd>
-              <a href={text("identity.phone_link", "tel:+21652144869")} className="hover:underline">
-                {text("identity.phone", "+216 52 144 869")}
-              </a>
+              <ul className="space-y-1">
+                {phones.map((phone) => (
+                  <li key={phone.number}>
+                    <a href={telHref(phone.number)} className="tabular hover:underline">
+                      {phone.number}
+                    </a>
+                    {phone.label && <span className="text-muted"> · {phone.label}</span>}
+                  </li>
+                ))}
+              </ul>
             </dd>
           </div>
           <div className="flex gap-3">
@@ -52,16 +61,18 @@ export function Showroom() {
           >
             <Navigation className="size-4" /> {text("showroom.text_4", "Itinéraire")}
           </a>
+          {whatsapp && (
+            <a
+              href={whatsappHref(whatsapp.number)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              <MessageCircle className="size-4" /> {text("showroom.text_5", "WhatsApp")}
+            </a>
+          )}
           <a
-            href={text("identity.whatsapp", "https://wa.me/21652144869")}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonVariants({ variant: "secondary" })}
-          >
-            <MessageCircle className="size-4" /> {text("showroom.text_5", "WhatsApp")}
-          </a>
-          <a
-            href={text("identity.phone_link", "tel:+21652144869")}
+            href={telHref(primary?.number ?? "")}
             className={buttonVariants({ variant: "secondary" })}
           >
             <Phone className="size-4" /> {text("showroom.text_6", "Appeler")}

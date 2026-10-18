@@ -27,10 +27,27 @@ export type Car = {
   images: string[];
   description: string;
   published: boolean;
+  /** Sold: hidden from listings; its page shows a "Vendu" screen. */
+  sold?: boolean | undefined;
+  /** New price when discounted (below `price`), otherwise null. */
+  discount_price?: number | null | undefined;
   sort_order: number;
   /** ISO timestamp of the last change (admin lists). */
   updated_at?: string | undefined;
 };
+
+/** Price actually asked: the discounted one when there is a discount. */
+export function salePrice(car: Pick<Car, "price" | "discount_price">) {
+  return car.discount_price != null && car.discount_price < car.price
+    ? car.discount_price
+    : car.price;
+}
+
+/** Whole-number discount percentage, or 0 without discount. */
+export function discountPercent(car: Pick<Car, "price" | "discount_price">) {
+  const sale = salePrice(car);
+  return car.price > 0 && sale < car.price ? Math.round((1 - sale / car.price) * 100) : 0;
+}
 
 export const CAR_PLACEHOLDER =
   "data:image/svg+xml;utf8," +

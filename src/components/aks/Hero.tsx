@@ -5,7 +5,8 @@ import { Button } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import { ArrowRight, BadgeCheck, Clock, Handshake, Phone, Search, ShieldCheck } from "lucide-react";
 import { publicCarsQuery } from "@/lib/queries";
-import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
+import { telHref } from "@/features/content/definition";
 import { facetOptions, type SearchFilters } from "@/features/catalog/search";
 import { BrandLogo } from "./BrandLogo";
 import { FilterSelect } from "./FilterSelect";
@@ -16,6 +17,7 @@ export function Hero() {
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
   const budgets = useSiteCollection("inventory.budgets");
   const hours = useSiteCollection("showroom.items");
+  const { primary } = usePhones();
   const [marque, setMarque] = useState<string>();
   const [modele, setModele] = useState<string>();
   const [budget, setBudget] = useState<string>();
@@ -87,7 +89,7 @@ export function Hero() {
               <ArrowRight className="size-4" />
             </Link>
             <a
-              href={text("identity.phone_link", "tel:+21652144869")}
+              href={telHref(primary?.number ?? "")}
               className={buttonVariants({
                 size: "lg",
                 variant: "outline",
@@ -95,7 +97,7 @@ export function Hero() {
               })}
             >
               <Phone className="size-4" />
-              {text("identity.phone", "+216 52 144 869")}
+              {primary?.number}
             </a>
           </div>
         </div>

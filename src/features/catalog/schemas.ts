@@ -34,7 +34,10 @@ export const carSchema = z.object({
   images: z.array(imageSchema).max(12),
   description: z.string().max(20000),
   published: z.boolean(),
-  sort_order: z.number().int().min(-100000).max(100000),
+  sold: z.boolean().optional().default(false),
+  discount_price: z.number().finite().min(0).max(1e9).nullable().optional().default(null),
+  /** Omitted for a new vehicle: it is placed first. */
+  sort_order: z.number().int().min(-100000).max(100000).optional(),
 });
 export const leadSchema = z.object({
   name: text,

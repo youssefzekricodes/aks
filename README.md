@@ -22,7 +22,7 @@ Contact forms save inquiries that appear under **Demandes** in the admin panel (
 ## Supabase
 
 1. Create a project (Project Settings → API gives `SUPABASE_URL`, the **anon/publishable** key and the **service_role** key).
-2. Apply the schema: run each file of `supabase/migrations/` **in name order** in the SQL editor (`…_init.sql`, `…_roles_mfa.sql`, `…_brand_settings.sql`, then `…_email_2fa.sql`), or with the Supabase CLI `supabase link` then `supabase db push`.
+2. Apply the schema: run each file of `supabase/migrations/` **in name order** in the SQL editor (`…_init.sql`, `…_roles_mfa.sql`, `…_brand_settings.sql`, `…_email_2fa.sql`, then `…_sales_views.sql`), or with the Supabase CLI `supabase link` then `supabase db push`.
 3. **Authentication → Sign In / Providers → Email**: keep e-mail/password enabled and **disable “Allow new users to sign up”** (admins are created by `npm run admin:create` or by a super admin in the dashboard). Under **URL Configuration** set the Site URL to your `APP_ORIGIN`.
 4. **Two-factor authentication** (required for super administrators): after the password, a 6-digit code is e-mailed to the super admin. In **Authentication → Emails → Templates → Magic Link**, make the e-mail show the code, e.g. `<p>Votre code de connexion : <strong>{{ .Token }}</strong></p>` (without `{{ .Token }}` only a link is sent and the code cannot be typed). Supabase’s built-in mailer only delivers to members of your Supabase organisation and a few e-mails per hour: for other addresses, set a custom SMTP server under **Authentication → Emails → SMTP Settings** (Resend, Brevo, Gmail SMTP…). Authenticator-app and SMS factors are implemented too but hidden for now (`APP_FACTORS_ENABLED` in `src/features/admin/model.ts`).
 5. **Deploy the `admin-users` Edge Function** (used by super admins to manage administrators; it holds the service-role key inside Supabase so the web server never does):
@@ -124,7 +124,7 @@ npm test          # builds, then unit tests + HTTP tests (Supabase tests skip wi
   ```sh
   initdb -D /tmp/aks-pg -U postgres --auth=trust && pg_ctl -D /tmp/aks-pg -o "-p 54329 -k /tmp" start
   createdb -h /tmp -p 54329 -U postgres aks
-  psql -h /tmp -p 54329 -U postgres -d aks -f tests/supabase-stub.sql -f supabase/migrations/20261018120000_init.sql -f supabase/migrations/20261018150000_roles_mfa.sql -f supabase/migrations/20261018170000_brand_settings.sql -f supabase/migrations/20261018190000_email_2fa.sql
+  psql -h /tmp -p 54329 -U postgres -d aks -f tests/supabase-stub.sql -f supabase/migrations/20261018120000_init.sql -f supabase/migrations/20261018150000_roles_mfa.sql -f supabase/migrations/20261018170000_brand_settings.sql -f supabase/migrations/20261018190000_email_2fa.sql -f supabase/migrations/20261019120000_sales_views.sql
   PG_TEST_URL="postgresql://postgres@/aks?host=/tmp&port=54329" npm run test:rls
   ```
 

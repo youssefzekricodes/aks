@@ -462,6 +462,13 @@
     "value": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4233.124664045077!2d10.801239876594309!3d34.774284672893685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1301cd00203db7e3%3A0x137162b8c6c7278d!2sAKS%20%7C%20AUTO%20KONTOR%20SFAX!5e1!3m2!1sen!2stn!4v1792320644358!5m2!1sen!2stn"
   },
   {
+    "key": "contact.phones",
+    "group": "contact",
+    "label": "Numéros de téléphone",
+    "type": "collection",
+    "value": "[{\"label\": \"Showroom\", \"number\": \"+216 52 144 869\", \"whatsapp\": true, \"primary\": true}]"
+  },
+  {
     "key": "contact.items",
     "group": "contact",
     "label": "Liens du pied de page",
@@ -747,6 +754,48 @@
     "label": "Bouton — prix masqué (fiche)",
     "type": "text",
     "value": "Contactez-nous pour le prix"
+  },
+  {
+    "key": "vehicle.related",
+    "group": "vehicle",
+    "label": "Titre — véhicules similaires",
+    "type": "text",
+    "value": "Ces véhicules pourraient vous intéresser"
+  },
+  {
+    "key": "vehicle.sold_stamp",
+    "group": "vehicle",
+    "label": "Véhicule vendu — tampon",
+    "type": "text",
+    "value": "Vendu"
+  },
+  {
+    "key": "vehicle.sold_title",
+    "group": "vehicle",
+    "label": "Véhicule vendu — titre",
+    "type": "text",
+    "value": "Ce véhicule a trouvé preneur"
+  },
+  {
+    "key": "vehicle.sold_text",
+    "group": "vehicle",
+    "label": "Véhicule vendu — texte",
+    "type": "textarea",
+    "value": "n’est plus disponible. Notre équipe peut vous trouver un modèle équivalent ou vous prévenir dès qu’un véhicule similaire arrive."
+  },
+  {
+    "key": "vehicle.sold_cta",
+    "group": "vehicle",
+    "label": "Véhicule vendu — bouton stock",
+    "type": "text",
+    "value": "Voir les véhicules disponibles"
+  },
+  {
+    "key": "vehicle.sold_contact",
+    "group": "vehicle",
+    "label": "Véhicule vendu — bouton contact",
+    "type": "text",
+    "value": "Chercher un modèle similaire"
   },
   {
     "key": "vehicle.text_10",

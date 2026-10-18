@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Alert,
   Button,
@@ -37,6 +37,33 @@ const EMAIL_RESEND_COOLDOWN = 60;
 const FACTOR_ICONS = { email: Mail, totp: Smartphone, phone: MessageSquare } as const;
 
 const EMAIL_SENT = "email";
+/**
+ * Digits in the e-mail code: Supabase → Authentication → Email → "Email OTP
+ * Length" (8 on this project). App and SMS codes always have 6.
+ */
+export const EMAIL_CODE_LENGTH = 8;
+/**
+ * Each new e-mail code replaces the previous one, so the gate must not send a
+ * new code every time it opens (reload, back button): within this window it
+ * reuses the code already sent. Stored per browser tab.
+ */
+const EMAIL_CODE_REUSE_MS = 10 * 60_000;
+const EMAIL_SENT_KEY = "aks:code-email-envoye";
+const lastEmailSend = () => {
+  try {
+    return Number(sessionStorage.getItem(EMAIL_SENT_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+};
+const rememberEmailSend = (at: number | null) => {
+  try {
+    if (at === null) sessionStorage.removeItem(EMAIL_SENT_KEY);
+    else sessionStorage.setItem(EMAIL_SENT_KEY, String(at));
+  } catch {
+    // Storage unavailable: worst case a new code is sent on the next visit.
+  }
+};
 
 function InlineError({ message }: { message: string }) {
   return (
@@ -71,6 +98,7 @@ export function CodeChallenge({
   onVerified: () => unknown;
 }) {
   const isEmail = factor.type === "email";
+  const digits = isEmail ? EMAIL_CODE_LENGTH : 6;
   // Factors whose code is sent to the user (rather than shown in an app).
   const isPhone = factor.type === "phone" || isEmail;
   const [code, setCode] = useState("");
@@ -79,7 +107,9 @@ export function CodeChallenge({
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
   const sentFor = useRef<string | null>(null);
+  const verifyingNow = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const labelId = `otp-label-${factor.id}`;
   const descriptionId = `otp-description-${factor.id}`;
@@ -87,11 +117,17 @@ export function CodeChallenge({
   const send = useCallback(async () => {
     setSending(true);
     setError(null);
+    setNotice(null);
     try {
       if (isEmail) {
-        await emailCodeSend();
+        const result = await emailCodeSend();
         setChallengeId(EMAIL_SENT);
         setCooldown(EMAIL_RESEND_COOLDOWN);
+        if (result.alreadySent)
+          setNotice(
+            "Un code vous a été envoyé il y a moins d’une minute : utilisez celui du dernier e-mail reçu.",
+          );
+        else rememberEmailSend(Date.now());
       } else {
         const result = await mfaChallenge({ data: { factorId: factor.id } });
         setChallengeId(result.challengeId);
@@ -108,8 +144,17 @@ export function CodeChallenge({
   useEffect(() => {
     if (!isPhone || sentFor.current === factor.id) return;
     sentFor.current = factor.id;
+    const sentAt = isEmail ? lastEmailSend() : 0;
+    const age = Date.now() - sentAt;
+    if (isEmail && age < EMAIL_CODE_REUSE_MS) {
+      // A code sent moments ago is still valid: do not replace it.
+      setChallengeId(EMAIL_SENT);
+      setCooldown(Math.max(0, Math.ceil((EMAIL_RESEND_COOLDOWN * 1000 - age) / 1000)));
+      setNotice("Un code vous a déjà été envoyé : utilisez celui du dernier e-mail reçu.");
+      return;
+    }
     void send();
-  }, [isPhone, factor.id, send]);
+  }, [isPhone, isEmail, factor.id, send]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -124,12 +169,16 @@ export function CodeChallenge({
   }, [factor.id]);
 
   async function verify(value: string) {
-    if (verifying || value.length !== 6) return;
+    // Ref, not state: auto-submit and the button can fire in the same tick, and a
+    // second check of an already used code would fail.
+    if (verifyingNow.current || value.length !== digits) return;
+    verifyingNow.current = true;
     setVerifying(true);
     setError(null);
     try {
       if (isEmail) {
         await emailCodeVerify({ data: { code: value } });
+        rememberEmailSend(null);
         await onVerified();
         return;
       }
@@ -144,6 +193,7 @@ export function CodeChallenge({
       setCode("");
       input.current?.focus();
     } finally {
+      verifyingNow.current = false;
       setVerifying(false);
     }
   }
@@ -159,20 +209,30 @@ export function CodeChallenge({
   return (
     <Form onSubmit={onSubmit} className="grid gap-4">
       {error && <InlineError message={error} />}
-      <div className="grid gap-2">
+      {notice && !error && (
+        <Alert status="accent">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{notice}</Alert.Title>
+          </Alert.Content>
+        </Alert>
+      )}
+      <div className="grid min-w-0 gap-2">
         <Label id={labelId}>Code de vérification</Label>
         <p id={descriptionId} className="text-sm text-muted" aria-live="polite">
           {isPhone
             ? sending
               ? `Envoi du code ${by} ${destination}…`
               : challengeId
-                ? `Code envoyé ${by} ${destination}. Il est valable quelques minutes.`
+                ? `Code envoyé ${by} ${destination}.${isEmail ? " Seul le dernier code reçu est valable." : ""}`
                 : `Le code sera envoyé ${isEmail ? "par e-mail à" : "par SMS au"} ${destination}.`
             : "Saisissez le code à 6 chiffres affiché dans votre application d’authentification."}
         </p>
         <InputOTP
+          // Boxes share the card width (8 fixed-size boxes would overflow it).
+          className="min-w-0"
           ref={input}
-          maxLength={6}
+          maxLength={digits}
           pattern={REGEXP_ONLY_DIGITS}
           inputMode="numeric"
           autoComplete="one-time-code"
@@ -188,17 +248,17 @@ export function CodeChallenge({
           isDisabled={verifying}
           isInvalid={error !== null}
         >
-          <InputOTP.Group>
-            <InputOTP.Slot index={0} />
-            <InputOTP.Slot index={1} />
-            <InputOTP.Slot index={2} />
-          </InputOTP.Group>
-          <InputOTP.Separator />
-          <InputOTP.Group>
-            <InputOTP.Slot index={3} />
-            <InputOTP.Slot index={4} />
-            <InputOTP.Slot index={5} />
-          </InputOTP.Group>
+          {/* Two halves: 3 + 3 or 4 + 4 digits. */}
+          {[0, digits / 2].map((start, half) => (
+            <Fragment key={start}>
+              {half === 1 && <InputOTP.Separator />}
+              <InputOTP.Group className="min-w-0 flex-1 gap-1.5 sm:gap-2">
+                {Array.from({ length: digits / 2 }, (_, i) => (
+                  <InputOTP.Slot key={start + i} index={start + i} className="w-auto" />
+                ))}
+              </InputOTP.Group>
+            </Fragment>
+          ))}
         </InputOTP>
       </div>
       {isPhone && (
@@ -214,7 +274,7 @@ export function CodeChallenge({
           </Button>
         </div>
       )}
-      <Button type="submit" fullWidth isPending={verifying} isDisabled={code.length !== 6}>
+      <Button type="submit" fullWidth isPending={verifying} isDisabled={code.length !== digits}>
         {verifying ? "Vérification…" : "Vérifier"}
       </Button>
     </Form>

@@ -43,6 +43,8 @@ type CarRow = {
   fiscal_power: number | null;
   description: string;
   published: boolean;
+  sold: boolean;
+  discount_price: number | string | null;
   sort_order: number;
   updated_at: string;
   car_images?: { object_key: string; position: number }[];
@@ -78,6 +80,8 @@ function toCar(row: CarRow): Car {
     images,
     description: row.description,
     published: row.published,
+    sold: row.sold ?? false,
+    discount_price: row.discount_price == null ? null : Number(row.discount_price),
     sort_order: row.sort_order,
     updated_at: row.updated_at,
   };
@@ -85,12 +89,20 @@ function toCar(row: CarRow): Car {
 
 /** Published cars for listings: first photo only, no description (keeps pages light). */
 export async function carSummaries(): Promise<Car[]> {
-  const { data, error } = await publicClient()
-    .from("cars")
-    .select(CAR_COLUMNS)
-    .eq("published", true)
-    .order("sort_order")
-    .order("created_at", { ascending: false });
+  const query = (withSold: boolean) => {
+    const base = publicClient().from("cars").select(CAR_COLUMNS).eq("published", true);
+    return (withSold ? base.eq("sold", false) : base)
+      .order("sort_order")
+      .order("created_at", { ascending: false });
+  };
+  let { data, error } = await query(true);
+  // Before the "sales_views" migration there is no `sold` column: keep the site up.
+  if (error?.code === "42703") {
+    console.error(
+      "Colonne cars.sold absente : exécutez la migration 20261019120000_sales_views.sql.",
+    );
+    ({ data, error } = await query(false));
+  }
   if (error) failure(error, "Chargement des véhicules impossible.");
   return (data as unknown as CarRow[]).map((row) => {
     const car = toCar(row);
@@ -137,12 +149,57 @@ export async function saveCar(data: CarInput) {
   const supabase = await adminClient({ write: true });
   const keys = await imageKeys(data.images, "vehicle");
   const { images: _images, km: _km, ...fields } = data;
+  // A new vehicle goes first in the list (save_car picks the order when it is absent).
+  const car = data.id ? fields : { ...fields, sort_order: undefined };
   const { data: result, error } = await supabase
-    .rpc("save_car", { p_car: fields, p_image_keys: keys })
+    .rpc("save_car", { p_car: car, p_image_keys: keys })
     .single<{ car_id: string; removed_keys: string[] }>();
   if (error) failure(error, "Enregistrement impossible.");
   await deleteObjects(result.removed_keys ?? []);
   return { id: result.car_id };
+}
+
+/** Display order: these vehicles get 0, 1, 2… in this order. */
+export async function reorderCars(ids: string[]) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase.rpc("reorder_cars", { p_ids: ids });
+  if (error) failure(error, "Réorganisation impossible.");
+  return { ok: true };
+}
+
+export async function setCarSold(id: string, sold: boolean) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase.from("cars").update({ sold }).eq("id", id);
+  if (error) failure(error, "Mise à jour impossible.");
+  return { ok: true };
+}
+
+/** Counts a page view (published, unsold vehicles only; errors are ignored). */
+export async function recordCarView(slug: string) {
+  const { error } = await publicClient().rpc("record_car_view", { p_slug: slug });
+  if (error && error.code !== "P0001") console.error(error);
+  return { ok: true };
+}
+
+export type DashboardStats = {
+  views: { carId: string; last30: number; total: number }[];
+};
+
+/** Page views per vehicle: last 30 days and all time (vehicle details come from the car list). */
+export async function dashboardStats(): Promise<DashboardStats> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.from("car_views").select("car_id, day, views");
+  if (error) failure(error, "Chargement des statistiques impossible.");
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const byCar = new Map<string, { carId: string; last30: number; total: number }>();
+  for (const row of data ?? []) {
+    const id = row.car_id as string;
+    const entry = byCar.get(id) ?? { carId: id, last30: 0, total: 0 };
+    entry.total += row.views as number;
+    if ((row.day as string) >= since) entry.last30 += row.views as number;
+    byCar.set(id, entry);
+  }
+  return { views: [...byCar.values()] };
 }
 
 export async function publishCar(id: string, published: boolean) {

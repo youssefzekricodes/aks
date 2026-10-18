@@ -140,5 +140,13 @@
       "label": "< 500 000 DT",
       "max": 500000
     }
+  ],
+  "contact.phones": [
+    {
+      "label": "Showroom",
+      "number": "+216 52 144 869",
+      "whatsapp": true,
+      "primary": true
+    }
   ]
 }

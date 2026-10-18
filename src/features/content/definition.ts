@@ -32,6 +32,7 @@ export const COLLECTION_LABELS: Record<string, string> = {
   stars: "Note",
   day: "Jour(s)",
   time: "Horaires",
+  number: "Numéro",
   max: "Prix maximum (DT)",
 };
 export const SERVICE_ICONS = ["Banknote", "Repeat", "Wrench", "Ship", "ShieldCheck"];
@@ -125,6 +126,8 @@ export function validateContentValue(field: ContentField, value: string): string
             return invalid("nombre non valide.");
           if (key === "stars" && (current < 1 || current > 5))
             return invalid("la note doit être comprise entre 1 et 5.");
+          if (key === "number" && !isPhoneNumber(current))
+            return invalid(`numéro « ${current} » non valide (8 à 15 chiffres, + facultatif).`);
         }
       }
     } catch {
@@ -133,3 +136,46 @@ export function validateContentValue(field: ContentField, value: string): string
   }
   return null;
 }
+
+/* ------------------------------------------------------------------ phone numbers */
+
+export type Phone = { label: string; number: string; whatsapp: boolean; primary: boolean };
+
+export function isPhoneNumber(value: string) {
+  return /^\+?[\d\s().-]+$/.test(value) && /^\d{8,15}$/.test(value.replace(/\D/g, ""));
+}
+/** Tunisian numbers may be typed without the country code (8 digits). */
+const internationalDigits = (number: string) => {
+  const digits = number.replace(/\D/g, "");
+  return digits.length === 8 ? `216${digits}` : digits;
+};
+export const telHref = (number: string) => `tel:+${internationalDigits(number)}`;
+export const whatsappHref = (number: string) => `https://wa.me/${internationalDigits(number)}`;
+
+/**
+ * Phone numbers of the site. Before the list existed, a single number was kept
+ * in identity.phone / identity.whatsapp: it is used as-is until the list is saved.
+ */
+export function resolvePhones(values: Record<string, string>): Phone[] {
+  let phones: Phone[] = [];
+  if (values["contact.phones"] !== undefined) {
+    try {
+      phones = (JSON.parse(values["contact.phones"]) as Phone[]).filter((p) =>
+        isPhoneNumber(p.number),
+      );
+    } catch {
+      phones = [];
+    }
+  } else if (values["identity.phone"]) {
+    phones = [{ label: "", number: values["identity.phone"], whatsapp: true, primary: true }];
+  } else {
+    phones = COLLECTION_DEFAULTS["contact.phones"];
+  }
+  return phones;
+}
+
+/** The number shown first (header, buttons): the one marked primary, else the first. */
+export const primaryPhone = (phones: Phone[]) => phones.find((p) => p.primary) ?? phones[0];
+/** The number used for WhatsApp buttons: primary if it has WhatsApp, else the first that does. */
+export const whatsappPhone = (phones: Phone[]) =>
+  phones.find((p) => p.primary && p.whatsapp) ?? phones.find((p) => p.whatsapp);

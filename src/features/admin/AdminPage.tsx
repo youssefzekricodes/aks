@@ -5,6 +5,7 @@ import { Button, Drawer, Dropdown, Header, Label, Separator, toast } from "@hero
 import {
   Car,
   ChevronDown,
+  LayoutDashboard,
   ExternalLink,
   FileText,
   Inbox,
@@ -21,6 +22,7 @@ import { ContentEditor } from "@/features/content/ContentEditor";
 import { AdminsTab } from "./AdminsTab";
 import { BrandsTab } from "./BrandsTab";
 import { CarsTab } from "./CarsTab";
+import { DashboardTab } from "./DashboardTab";
 import { LeadsTab } from "./LeadsTab";
 import {
   ADMIN_SECTIONS,
@@ -35,6 +37,7 @@ import {
 import { IconButton } from "./ui";
 
 const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
+  dashboard: LayoutDashboard,
   cars: Car,
   brands: Tags,
   content: FileText,
@@ -55,7 +58,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
   const sections = ADMIN_SECTIONS.filter(
     (id) => isSuperAdmin || !SUPER_ADMIN_SECTIONS.includes(id),
   );
-  const section = sections.includes(requested) ? requested : "cars";
+  const section = sections.includes(requested) ? requested : "dashboard";
 
   // Signed out elsewhere, or 2FA no longer satisfied (password reset, factor removed).
   const lost = session.isSuccess && (!session.data || session.data.mfa !== "ok");
@@ -186,6 +189,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
           className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8"
         >
           {/* Cars and content stay mounted: they hold unsaved drafts and uploads. */}
+          {section === "dashboard" && <DashboardTab />}
           <div hidden={section !== "cars"}>
             <CarsTab />
           </div>

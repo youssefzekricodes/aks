@@ -4,8 +4,9 @@ import { buttonVariants } from "@heroui/styles";
 import { Clock, Mail, MapPin, MessageCircle, Phone, X } from "lucide-react";
 import { resolveContent } from "@/features/content/definition";
 import { publicCarQuery, publicConfigQuery, siteContentQuery } from "@/lib/queries";
-import { useSiteCollection, useSiteText } from "@/lib/site-content";
-import { carImage, carTitle, formatKm, formatPrice, type Car } from "@/lib/cars";
+import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
+import { telHref, whatsappHref } from "@/features/content/definition";
+import { carImage, carTitle, formatKm, formatPrice, salePrice, type Car } from "@/lib/cars";
 import { seo } from "@/lib/seo";
 import { Navbar } from "@/components/aks/Navbar";
 import { SiteFooter, SocialLinks } from "@/components/aks/SiteFooter";
@@ -72,24 +73,26 @@ function ContactPage() {
   const hours = useSiteCollection("showroom.items");
   const { car } = Route.useLoaderData();
   const { objet } = Route.useSearch();
+  const { phones } = usePhones();
+  const email = text("identity.email", "contact@autokontorsfax.tn");
 
   const details = [
-    {
+    ...phones.map((phone) => ({
       Icon: Phone,
-      label: text("identity.phone", "+216 52 144 869"),
-      href: text("identity.phone_link", "tel:+21652144869"),
-    },
-    {
-      Icon: MessageCircle,
-      label: "WhatsApp",
-      href: text("identity.whatsapp", "https://wa.me/21652144869"),
-      external: true,
-    },
-    {
-      Icon: Mail,
-      label: text("identity.email", "contact@autokontorsfax.tn"),
-      href: text("identity.email_link", "mailto:contact@autokontorsfax.tn"),
-    },
+      label: phone.label ? `${phone.number} · ${phone.label}` : phone.number,
+      href: telHref(phone.number),
+      external: false,
+    })),
+    ...phones
+      .filter((phone) => phone.whatsapp)
+      .map((phone) => ({
+        Icon: MessageCircle,
+        label:
+          phones.filter((p) => p.whatsapp).length > 1 ? `WhatsApp · ${phone.number}` : "WhatsApp",
+        href: whatsappHref(phone.number),
+        external: true,
+      })),
+    ...(email ? [{ Icon: Mail, label: email, href: `mailto:${email}`, external: false }] : []),
     {
       Icon: MapPin,
       label: text("showroom.text_3", "Route Sidi Mansour, km 5, Sfax 3000, Tunisie"),
@@ -165,7 +168,7 @@ function ContactPage() {
                 <p className="truncate text-sm font-semibold">{carTitle(car)}</p>
                 <p className="tabular truncate text-xs text-muted">
                   {car.year} · {formatKm(car.km_value)} ·{" "}
-                  {car.price_on_request ? "Prix sur demande" : formatPrice(car.price)}
+                  {car.price_on_request ? "Prix sur demande" : formatPrice(salePrice(car))}
                 </p>
               </div>
               <Link

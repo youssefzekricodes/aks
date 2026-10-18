@@ -23,10 +23,10 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { resolveContent } from "@/features/content/definition";
-import { sortCars } from "@/features/catalog/search";
+import { resolveContent, telHref, whatsappHref } from "@/features/content/definition";
+import { relatedCars } from "@/features/catalog/search";
 import { brandInfo } from "@/features/catalog/brands";
-import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import { usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import {
   carImage,
   carTitle,
@@ -35,6 +35,7 @@ import {
   formatPrice,
   GEARBOX_LABELS,
   label,
+  salePrice,
   type Car,
 } from "@/lib/cars";
 import {
@@ -51,6 +52,8 @@ import { CarCard, CarGrid } from "@/components/aks/CarCard";
 import { BrandLogo } from "@/components/aks/BrandLogo";
 import { BodyIcon } from "@/components/aks/BodyIcon";
 import { SellCarBanner } from "@/components/aks/SellCarBanner";
+import { Price } from "@/components/aks/Price";
+import { recordCarView } from "@/lib/data";
 
 export const Route = createFileRoute("/vehicule/$slug")({
   loader: async ({ params, context }) => {
@@ -70,7 +73,18 @@ export const Route = createFileRoute("/vehicule/$slug")({
     const car = loaderData?.car;
     if (!car) return { meta: [{ title: `Véhicule — ${siteName}` }] };
     const path = `/vehicule/${car.slug}`;
-    const price = car.price_on_request ? "Prix sur demande" : formatPrice(car.price);
+    // Sold: kept reachable for old links, but out of search engines.
+    if (car.sold)
+      return seo({
+        title: `${carTitle(car)} ${car.year} — Vendu — ${siteName}`,
+        description: `Ce ${carTitle(car)} a été vendu. Découvrez les véhicules disponibles chez ${siteName} à Sfax.`,
+        siteName,
+        origin,
+        path,
+        image: carImage(car),
+        noindex: true,
+      });
+    const price = car.price_on_request ? "Prix sur demande" : formatPrice(salePrice(car));
     const brand = brandInfo(car.brand);
     return seo({
       title: `${carTitle(car)} ${car.year} — ${car.state} — ${siteName}`,
@@ -111,7 +125,7 @@ export const Route = createFileRoute("/vehicule/$slug")({
             : {
                 offers: {
                   "@type": "Offer",
-                  price: car.price,
+                  price: salePrice(car),
                   priceCurrency: "TND",
                   availability: "https://schema.org/InStock",
                   seller: { "@type": "AutoDealer", name: siteName },
@@ -353,20 +367,113 @@ function Gallery({ car }: { car: Car }) {
   );
 }
 
+/** Counts one view per vehicle and browser session (dashboard "most viewed"). */
+function useRecordView(slug: string | null) {
+  useEffect(() => {
+    if (!slug) return;
+    const key = `aks:vu:${slug}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Private mode without storage: count anyway.
+    }
+    void recordCarView({ data: { slug } }).catch(() => undefined);
+  }, [slug]);
+}
+
+/** Page of a sold vehicle, reached from an old or external link. */
+function SoldPage({ car, related }: { car: Car; related: Car[] }) {
+  const text = useSiteText();
+  const brand = brandInfo(car.brand);
+  return (
+    <div className="min-h-screen">
+      <Navbar />
+      <main className="container-page pb-16 pt-6">
+        <Breadcrumbs>
+          <Breadcrumbs.Item href="/">Accueil</Breadcrumbs.Item>
+          <Breadcrumbs.Item href={`/marques/${brand.slug}`}>{brand.name}</Breadcrumbs.Item>
+          <Breadcrumbs.Item>{car.name}</Breadcrumbs.Item>
+        </Breadcrumbs>
+
+        <section
+          aria-labelledby="sold-title"
+          className="mt-6 grid overflow-hidden rounded-xl border border-border bg-surface md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+        >
+          <div className="relative bg-surface-secondary">
+            <img
+              src={carImage(car)}
+              alt=""
+              width={1600}
+              height={1200}
+              className="aspect-[4/3] size-full object-cover grayscale-[60%]"
+            />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-6 rounded-md border-4 border-white bg-accent px-5 py-2 text-2xl font-extrabold uppercase tracking-[0.2em] text-accent-foreground shadow-xl sm:text-3xl">
+              {text("vehicle.sold_stamp", "Vendu")}
+            </span>
+          </div>
+          <div className="flex flex-col justify-center gap-4 p-6 sm:p-10">
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <BrandLogo brand={car.brand} wordmark={false} size={22} />
+              {brand.name} · {car.year}
+            </div>
+            <h1 id="sold-title" className="text-2xl font-semibold leading-tight sm:text-3xl">
+              {text("vehicle.sold_title", "Ce véhicule a trouvé preneur")}
+            </h1>
+            <p className="text-muted">
+              <span className="font-medium text-foreground">{carTitle(car)}</span>{" "}
+              {text(
+                "vehicle.sold_text",
+                "n’est plus disponible. Notre équipe peut vous trouver un modèle équivalent ou vous prévenir dès qu’un véhicule similaire arrive.",
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Link to="/recherche" className={buttonVariants({ size: "lg" })}>
+                {text("vehicle.sold_cta", "Voir les véhicules disponibles")}
+              </Link>
+              <Link
+                to="/contact"
+                search={{ vehicule: car.slug }}
+                className={buttonVariants({ size: "lg", variant: "secondary" })}
+              >
+                <MessageCircle className="size-4" />
+                {text("vehicle.sold_contact", "Chercher un modèle similaire")}
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {related.length > 0 && (
+          <section className="mt-16">
+            <h2 className="mb-5 text-lg font-semibold">
+              {text("vehicle.related", "Ces véhicules pourraient vous intéresser")}
+            </h2>
+            <CarGrid>
+              {related.map((c) => (
+                <CarCard key={c.id} car={c} />
+              ))}
+            </CarGrid>
+          </section>
+        )}
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
 function VehiculePage() {
   const text = useSiteText();
   const benefits = useSiteCollection("vehicle.items");
+  const { primary, whatsapp } = usePhones();
   const { slug } = Route.useParams();
   const { data: car } = useSuspenseQuery(publicCarQuery(slug));
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
+  useRecordView(car && !car.sold ? car.slug : null);
   if (!car) return null;
 
   const brand = brandInfo(car.brand);
-  const similar = sortCars(
-    cars.filter(
-      (c) => c.id !== car.id && (brandInfo(c.brand).slug === brand.slug || c.body === car.body),
-    ),
-  ).slice(0, 3);
+  const similar = relatedCars(car, cars, 3);
+  if (car.sold) return <SoldPage car={car} related={similar} />;
 
   // Body type uses its silhouette instead of a generic icon.
   const specs: [string, string | number | null | undefined, LucideIcon | "body"][] = [
@@ -433,9 +540,12 @@ function VehiculePage() {
                   </Link>
                 </div>
               ) : (
-                <p className="tabular mt-4 text-3xl font-semibold">
-                  {formatPrice(car.price, text("vehicle.text_9", "DT"))}
-                </p>
+                <Price
+                  car={car}
+                  size="lg"
+                  currency={text("vehicle.text_9", "DT")}
+                  className="mt-4"
+                />
               )}
               <p className="mt-1 text-sm text-muted">
                 {text("vehicle.text_8", "Disponible dans notre showroom à Sfax")}
@@ -469,14 +579,14 @@ function VehiculePage() {
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <a
-                    href={text("identity.phone_link", "tel:+21652144869")}
+                    href={telHref(primary?.number ?? "")}
                     className={buttonVariants({ variant: "tertiary", fullWidth: true })}
                   >
                     <Phone className="size-4" />
                     Appeler
                   </a>
                   <a
-                    href={text("identity.whatsapp", "https://wa.me/21652144869")}
+                    href={whatsappHref((whatsapp ?? primary)?.number ?? "")}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={buttonVariants({ variant: "tertiary", fullWidth: true })}
@@ -558,7 +668,9 @@ function VehiculePage() {
 
         {similar.length > 0 && (
           <section className="mt-16">
-            <h2 className="mb-5 text-lg font-semibold">Véhicules similaires</h2>
+            <h2 className="mb-5 text-lg font-semibold">
+              {text("vehicle.related", "Ces véhicules pourraient vous intéresser")}
+            </h2>
             <CarGrid>
               {similar.map((c) => (
                 <CarCard key={c.id} car={c} />

@@ -196,14 +196,12 @@ export async function emailCodeSend() {
     options: { shouldCreateUser: false },
   });
   if (error) {
-    if (error.status === 429)
-      throw new Error(
-        "Un code vient d’être envoyé. Patientez une minute avant d’en demander un autre.",
-      );
+    // Supabase allows one code per minute: the previous code is still the valid one.
+    if (error.status === 429) return { ok: true, alreadySent: true };
     console.error(error);
     throw new Error("Envoi de l’e-mail impossible. Vérifiez la configuration e-mail de Supabase.");
   }
-  return { ok: true };
+  return { ok: true, alreadySent: false };
 }
 
 /**
@@ -221,8 +219,12 @@ export async function emailCodeVerify(code: string) {
   });
   const session = data.session;
   if (error || !session) {
+    console.error("Code e-mail refusé :", error?.status, error?.code, error?.message);
     if (error?.status === 429) throw new Error("Trop de tentatives. Patientez puis réessayez.");
-    throw new Error("Code incorrect ou expiré.");
+    // Supabase answers "otp_expired" for a wrong code too ("expired or invalid").
+    throw new Error(
+      "Code refusé : vérifiez les chiffres et utilisez le code du dernier e-mail reçu (chaque nouvel envoi remplace le précédent).",
+    );
   }
   const sessionId = jwtClaims(session.access_token)["session_id"];
   const { error: confirmError } = await supabase.rpc("confirm_email_second_factor", {
@@ -231,6 +233,10 @@ export async function emailCodeVerify(code: string) {
   if (confirmError) {
     await otp.auth.signOut({ scope: "local" });
     console.error(confirmError);
+    if (confirmError.code === "PGRST202")
+      throw new Error(
+        "Double authentification non installée : exécutez la migration 20261018190000_email_2fa.sql dans Supabase.",
+      );
     throw new Error("Vérification impossible. Reconnectez-vous puis réessayez.");
   }
   // Swap the cookies to the confirmed session and end the password-only one.

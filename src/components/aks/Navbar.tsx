@@ -3,12 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { Button, Drawer } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import { Menu, Phone } from "lucide-react";
-import { contactHref, useSiteCollection, useSiteText } from "@/lib/site-content";
+import { contactHref, usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
+import { telHref } from "@/features/content/definition";
 
 export function Navbar() {
   const text = useSiteText();
   const logo = text("identity.logo", "/images/aks-logo.png");
   const links = useSiteCollection("navbar.items");
+  const { primary } = usePhones();
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,11 +42,11 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-1.5">
           <a
-            href={text("identity.phone_link", "tel:+21652144869")}
+            href={telHref(primary?.number ?? "")}
             className="hidden items-center gap-2 px-2 text-sm font-medium text-muted hover:text-foreground xl:flex"
           >
             <Phone className="size-4" />
-            {text("identity.phone", "+216 52 144 869")}
+            {primary?.number}
           </a>
           <a
             href={contactHref(text("navbar.link_2", "/contact"))}
@@ -92,11 +94,11 @@ export function Navbar() {
                       {text("navbar.text_3", "Nous contacter")}
                     </a>
                     <a
-                      href={text("identity.phone_link", "tel:+21652144869")}
+                      href={telHref(primary?.number ?? "")}
                       className={buttonVariants({ variant: "secondary", fullWidth: true })}
                     >
                       <Phone className="size-4" />
-                      {text("identity.phone", "+216 52 144 869")}
+                      {primary?.number}
                     </a>
                   </Drawer.Footer>
                 </Drawer.Dialog>

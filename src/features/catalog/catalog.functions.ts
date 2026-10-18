@@ -59,6 +59,19 @@ export const deleteCar = createServerFn({ method: "POST" })
 export const setCarPublished = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, published: z.boolean() }))
   .handler(async ({ data }) => (await repository()).publishCar(data.id, data.published));
+export const setCarSold = createServerFn({ method: "POST" })
+  .validator(z.object({ id: idSchema, sold: z.boolean() }))
+  .handler(async ({ data }) => (await repository()).setCarSold(data.id, data.sold));
+export const reorderCars = createServerFn({ method: "POST" })
+  .validator(z.object({ ids: z.array(idSchema).min(1).max(2000) }))
+  .handler(async ({ data }) => (await repository()).reorderCars(data.ids));
+export const getDashboardStats = createServerFn({ method: "GET" }).handler(async () =>
+  (await repository()).dashboardStats(),
+);
+/** Public: one page view of a vehicle (called once per browser session). */
+export const recordCarView = createServerFn({ method: "POST" })
+  .validator(z.object({ slug: z.string().min(1).max(200) }))
+  .handler(async ({ data }) => (await repository()).recordCarView(data.slug));
 export const setLeadHandled = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, handled: z.boolean() }))
   .handler(async ({ data }) => (await repository()).handleLead(data.id, data.handled));

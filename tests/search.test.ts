@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { Car } from "../src/lib/cars.ts";
 import {
   arrangeBrands,
+  relatedCars,
   bodyOptions,
   carouselBrands,
   brandOptions,
@@ -239,4 +240,35 @@ test("brand settings: hidden brands drop out, favourites lead the carousel", () 
   assert.equal(carouselBrands(arranged, settings, 10).length, 10);
   const many = options.map((o, i) => ({ slug: o.value, hidden: false, favoriteRank: i + 1 }));
   assert.equal(carouselBrands(arrangeBrands(options, many), many, 10).length, options.length);
+});
+
+test("discounts: price filters and sorting use the discounted price", () => {
+  const cars = [
+    car({ slug: "plain", price: 90_000 }),
+    car({ slug: "promo", price: 120_000, discount_price: 85_000 }),
+  ];
+  assert.deepEqual(
+    filterCars(cars, { prix_max: 88_000 }).map((c) => c.slug),
+    ["promo"],
+  );
+  assert.deepEqual(
+    sortCars(cars, "prix-asc").map((c) => c.slug),
+    ["promo", "plain"],
+  );
+});
+
+test("related cars favour the same brand, body and price range, never the car itself", () => {
+  const base = car({ slug: "base", brand: "BMW", model: "X5", body: "SUV", price: 200_000 });
+  const cars = [
+    base,
+    car({ slug: "same-model", brand: "BMW", model: "X5", body: "SUV", price: 210_000 }),
+    car({ slug: "other-suv", brand: "Audi", body: "SUV", price: 190_000 }),
+    car({ slug: "far", brand: "Kia", body: "Citadine", price: 40_000, fuel: "Diesel", year: 2010 }),
+    car({ slug: "bmw-sedan", brand: "BMW", body: "Berline", price: 400_000 }),
+  ];
+  const related = relatedCars(base, cars, 3).map((c) => c.slug);
+  assert.equal(related[0], "same-model");
+  assert.ok(!related.includes("base"));
+  assert.ok(!related.includes("far"), "the least related car is left out");
+  assert.equal(relatedCars(base, [base, cars[3]!], 3).length, 1, "fills in with other stock");
 });

@@ -2,7 +2,10 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { siteContentQuery } from "./queries";
 import {
   COLLECTION_DEFAULTS,
+  primaryPhone,
   resolveContent,
+  resolvePhones,
+  whatsappPhone,
   type CollectionKey,
 } from "@/features/content/definition";
 
@@ -33,4 +36,11 @@ export function useSiteCollection<K extends CollectionKey>(
   } catch {
     return COLLECTION_DEFAULTS[key];
   }
+}
+
+/** All phone numbers, the primary one and the WhatsApp one (see resolvePhones). */
+export function usePhones() {
+  const { data } = useSuspenseQuery(siteContentQuery);
+  const phones = resolvePhones(data);
+  return { phones, primary: primaryPhone(phones), whatsapp: whatsappPhone(phones) };
 }

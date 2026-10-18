@@ -56,7 +56,8 @@ export const emailCodeSend = createServerFn({ method: "POST" }).handler(async ()
   (await auth()).emailCodeSend(),
 );
 export const emailCodeVerify = createServerFn({ method: "POST" })
-  .validator(z.object({ code: z.string().regex(/^\d{6}$/) }))
+  // Supabase e-mail codes have 6 to 10 digits (project setting).
+  .validator(z.object({ code: z.string().regex(/^\d{6,10}$/) }))
   .handler(async ({ data }) => (await auth()).emailCodeVerify(data.code));
 
 /* Administrator management (super admin, via the admin-users Edge Function). */

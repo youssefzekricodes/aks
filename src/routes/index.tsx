@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSiteText } from "@/lib/site-content";
-import { resolveContent } from "@/features/content/definition";
+import { primaryPhone, resolveContent, resolvePhones } from "@/features/content/definition";
 import { Navbar } from "@/components/aks/Navbar";
 import { SellCarBanner } from "@/components/aks/SellCarBanner";
 import { Hero } from "@/components/aks/Hero";
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/")({
           url: absoluteUrl(origin, "/"),
           logo: absoluteUrl(origin, get("identity.logo")),
           image: absoluteUrl(origin, get("hero.image_1")),
-          telephone: get("identity.phone"),
+          telephone: primaryPhone(resolvePhones(content))?.number,
           openingHoursSpecification: {
             "@type": "OpeningHoursSpecification",
             dayOfWeek: [
