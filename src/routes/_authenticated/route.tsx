@@ -4,7 +4,10 @@ import { getSession } from "@/features/auth/auth.functions";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    if (!(await getSession())) throw redirect({ to: "/auth" });
+    const session = await getSession();
+    // Super admins must finish two-factor authentication on /auth first.
+    if (!session || session.mfa !== "ok") throw redirect({ to: "/auth" });
+    return { session };
   },
   component: () => <Outlet />,
 });

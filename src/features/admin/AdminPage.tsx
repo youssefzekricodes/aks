@@ -1,601 +1,301 @@
-import { ContentEditor } from "@/features/content/ContentEditor";
-import { useRef, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ArrowLeft, LogOut, Plus, Trash2, UploadCloud, LoaderCircle } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Drawer, Dropdown, Header, Label, Separator, toast } from "@heroui/react";
+import {
+  Car,
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Inbox,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  Tags,
+  UserCog,
+  type LucideIcon,
+} from "lucide-react";
 import { signOut as clearSession } from "@/features/auth/auth.functions";
+import { useSiteText } from "@/lib/site-content";
+import { ContentEditor } from "@/features/content/ContentEditor";
+import { AdminsTab } from "./AdminsTab";
+import { BrandsTab } from "./BrandsTab";
+import { CarsTab } from "./CarsTab";
+import { LeadsTab } from "./LeadsTab";
 import {
-  CAR_BODIES,
-  CAR_COUNTRIES,
-  CAR_FUELS,
-  CAR_GEARBOXES,
-  CAR_STATES,
-  carImage,
-  type Car,
-} from "@/lib/cars";
-import {
-  deleteCar,
-  listAllCars,
-  listLeads,
-  saveCar,
-  setCarPublished,
-  setLeadHandled,
-  readVehicleImageAsDataUrl,
-  type CarInput,
-} from "@/lib/data";
+  ADMIN_SECTIONS,
+  ROLE_LABELS,
+  SECTION_LABELS,
+  SUPER_ADMIN_SECTIONS,
+  adminCarsQuery,
+  leadsQueryOptions,
+  sessionQuery,
+  type AdminSection,
+} from "./model";
+import { IconButton } from "./ui";
 
-const emptyCar: CarInput = {
-  slug: "",
-  name: "",
-  brand: "",
-  country: "Germany",
-  year: new Date().getFullYear(),
-  price: 0,
-  price_on_request: false,
-  km: "0 km",
-  km_value: 0,
-  fuel: "Essence",
-  gearbox: "Auto",
-  body: "Berline",
-  state: "Occasion",
-  images: [],
-  description: "",
-  published: false,
-  sort_order: 0,
+const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
+  cars: Car,
+  brands: Tags,
+  content: FileText,
+  leads: Inbox,
+  admins: UserCog,
 };
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+const authenticatedRoute = getRouteApi("/_authenticated");
 
-const tabs = [
-  { id: "cars", label: "Véhicules" },
-  { id: "content", label: "Contenu du site" },
-  { id: "leads", label: "Demandes" },
-] as const;
-
-export function AdminPage() {
+export function AdminPage({ section: requested }: { section: AdminSection }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("cars");
+  const [menuOpen, setMenuOpen] = useState(false);
+  // The route guard already loaded the session; the query keeps it fresh after 2FA changes.
+  const context = authenticatedRoute.useRouteContext();
+  const session = useQuery({ ...sessionQuery, initialData: context.session });
+  const isSuperAdmin = session.data?.role === "super_admin";
+  const sections = ADMIN_SECTIONS.filter(
+    (id) => isSuperAdmin || !SUPER_ADMIN_SECTIONS.includes(id),
+  );
+  const section = sections.includes(requested) ? requested : "cars";
+
+  // Signed out elsewhere, or 2FA no longer satisfied (password reset, factor removed).
+  const lost = session.isSuccess && (!session.data || session.data.mfa !== "ok");
+  useEffect(() => {
+    if (lost) void navigate({ to: "/auth", replace: true });
+  }, [lost, navigate]);
+  const cars = useQuery(adminCarsQuery);
+  const leads = useQuery(leadsQueryOptions);
+  const counts: Partial<
+    Record<AdminSection, { value: number; label: string; highlight?: boolean }>
+  > = {};
+  if (cars.data) counts.cars = { value: cars.data.length, label: "véhicules" };
+  const openLeads = (leads.data ?? []).filter((lead) => !lead.handled).length;
+  if (openLeads > 0) counts.leads = { value: openLeads, label: "à traiter", highlight: true };
 
   async function signOut() {
     try {
       await clearSession();
     } catch {
-      toast.error("Déconnexion impossible. Veuillez réessayer.");
+      toast.danger("Déconnexion impossible. Veuillez réessayer.");
       return;
     }
     await queryClient.cancelQueries();
     queryClient.clear();
-    navigate({ to: "/auth", replace: true });
+    void navigate({ to: "/auth", replace: true });
   }
 
+  const email = session.data?.email ?? "";
+  const nav = (onNavigate?: () => void) => (
+    <SectionNav section={section} sections={sections} counts={counts} onNavigate={onNavigate} />
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary"
+    <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+      <a
+        href="#admin-main"
+        className="sr-only z-50 rounded-lg bg-surface px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Aller au contenu
+      </a>
+
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
+        <Brand />
+        <div className="flex-1 overflow-y-auto px-4 py-4">{nav()}</div>
+        <div className="border-t border-separator p-4">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ExternalLink className="size-4" aria-hidden />
             Voir le site
-          </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary"
-          >
-            <LogOut className="h-4 w-4" />
-            Déconnexion
-          </button>
+            <span className="sr-only">(nouvel onglet)</span>
+          </a>
         </div>
-      </header>
+      </aside>
 
-      <main className="mx-auto max-w-6xl px-5 py-10 lg:px-8">
-        <h1 className="text-3xl font-bold sm:text-4xl">Tableau de bord</h1>
+      <div className="flex min-w-0 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-separator bg-surface px-4 sm:px-6 lg:px-8">
+          <div className="lg:hidden">
+            <IconButton label="Ouvrir le menu" icon={Menu} onPress={() => setMenuOpen(true)} />
+          </div>
+          <p className="min-w-0 flex-1 truncate text-sm">
+            <span className="hidden text-muted sm:inline">Administration / </span>
+            <span className="font-semibold text-foreground">{SECTION_LABELS[section]}</span>
+          </p>
+          <Dropdown>
+            <Button variant="ghost" size="sm" aria-label={`Compte ${email}`.trim()}>
+              <span
+                aria-hidden
+                className="flex size-6 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold uppercase text-accent"
+              >
+                {email.charAt(0) || "A"}
+              </span>
+              <span className="hidden max-w-56 truncate sm:inline">{email || "Compte"}</span>
+              <ChevronDown className="size-4 text-muted" aria-hidden />
+            </Button>
+            <Dropdown.Popover placement="bottom end" className="min-w-60">
+              <Dropdown.Menu
+                aria-label="Compte"
+                onAction={(key) => {
+                  if (key === "logout") void signOut();
+                  if (key === "security")
+                    void navigate({
+                      to: "/admin",
+                      search: { section: "admins" },
+                      hash: "ma-securite",
+                    });
+                }}
+              >
+                <Dropdown.Section>
+                  <Header>
+                    <span className="block text-xs text-muted">Connecté en tant que</span>
+                    <span className="block truncate text-sm text-foreground">
+                      {email || "Administrateur"}
+                    </span>
+                    {session.data && (
+                      <span className="mt-0.5 block text-xs text-muted">
+                        {ROLE_LABELS[session.data.role]}
+                      </span>
+                    )}
+                  </Header>
+                  {isSuperAdmin ? (
+                    <Dropdown.Item id="security" textValue="Ma sécurité">
+                      <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
+                      <Label>Ma sécurité</Label>
+                    </Dropdown.Item>
+                  ) : null}
+                  <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
+                    <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
+                    <Label>Voir le site</Label>
+                  </Dropdown.Item>
+                </Dropdown.Section>
+                <Separator />
+                <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
+                  <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
+                  <Label>Déconnexion</Label>
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+        </header>
 
-        <div className="mt-8 flex flex-wrap gap-2 border-b border-border">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                tab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-8">
-          {tab === "cars" && <CarsTab />}
-          <div hidden={tab !== "content"}>
+        <main
+          id="admin-main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8"
+        >
+          {/* Cars and content stay mounted: they hold unsaved drafts and uploads. */}
+          <div hidden={section !== "cars"}>
+            <CarsTab />
+          </div>
+          {section === "brands" && <BrandsTab />}
+          <div hidden={section !== "content"}>
             <ContentEditor />
           </div>
-          {tab === "leads" && <LeadsTab />}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function CarsTab() {
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<CarInput | null>(null);
-
-  const cars = useQuery({ queryKey: ["admin-cars"], queryFn: () => listAllCars() });
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["admin-cars"] });
-    queryClient.invalidateQueries({ queryKey: ["public-cars"] });
-  };
-
-  const save = useMutation({
-    mutationFn: (data: CarInput) => saveCar({ data }),
-    onSuccess: () => {
-      toast.success("Véhicule enregistré.");
-      setEditing(null);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const publish = useMutation({
-    mutationFn: (data: { id: string; published: boolean }) => setCarPublished({ data }),
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteCar({ data: { id } }),
-    onSuccess: () => {
-      toast.success("Véhicule supprimé.");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (editing) {
-    return (
-      <CarForm
-        value={editing}
-        onChange={setEditing}
-        onCancel={() => setEditing(null)}
-        onSave={() => save.mutate(editing)}
-        saving={save.isPending}
-      />
-    );
-  }
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setEditing({ ...emptyCar })}
-        className="btn-3d btn-3d-primary inline-flex items-center gap-2 px-6 py-3 text-sm"
-      >
-        <Plus className="h-4 w-4" />
-        Ajouter un véhicule
-      </button>
-
-      <div className="mt-8 grid gap-4">
-        {(cars.data ?? []).map((car) => (
-          <div
-            key={car.id}
-            className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card p-4"
-          >
-            <img src={carImage(car)} alt={car.name} className="h-16 w-24 rounded object-cover" />
-            <div className="min-w-40 flex-1">
-              <p className="font-semibold">
-                {car.brand} {car.name}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {car.year} · {car.km} ·{" "}
-                {car.price_on_request
-                  ? "Prix à discuter"
-                  : `${car.price.toLocaleString("fr-FR")} DT`}
-              </p>
-            </div>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${car.published ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
-            >
-              {car.published ? "Publié" : "Brouillon"}
-            </span>
-            <button
-              type="button"
-              onClick={() => publish.mutate({ id: car.id, published: !car.published })}
-              className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:border-primary"
-            >
-              {car.published ? "Dépublier" : "Publier"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing({ ...(car as Car) })}
-              className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:border-primary"
-            >
-              Modifier
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`Supprimer ${car.brand} ${car.name} ?`)) remove.mutate(car.id);
-              }}
-              className="rounded-md border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive"
-              aria-label="Supprimer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-        {cars.data?.length === 0 && (
-          <p className="text-muted-foreground">Aucun véhicule pour le moment.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CarForm({
-  value,
-  onChange,
-  onCancel,
-  onSave,
-  saving,
-}: {
-  value: CarInput;
-  onChange: (v: CarInput) => void;
-  onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const photoInput = useRef<HTMLInputElement>(null);
-
-  const set = <K extends keyof CarInput>(key: K, v: CarInput[K]) =>
-    onChange({ ...value, [key]: v });
-
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    if (value.images.length + files.length > 12) {
-      toast.error("Maximum 12 photos par véhicule.");
-      return;
-    }
-    setUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        urls.push(await readVehicleImageAsDataUrl(file));
-      }
-      onChange({ ...value, images: [...value.images, ...urls] });
-      toast.success("Photos ajoutées.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Envoi impossible.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  const inputClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave();
-      }}
-      className="grid gap-5 rounded-lg border border-border bg-card p-6"
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-semibold">
-          Marque
-          <input
-            className={inputClass}
-            value={value.brand}
-            onChange={(e) => set("brand", e.target.value)}
-            required
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Modèle
-          <input
-            className={inputClass}
-            value={value.name}
-            onChange={(e) => {
-              const name = e.target.value;
-              onChange({ ...value, name, slug: value.slug || slugify(`${value.brand} ${name}`) });
-            }}
-            required
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Identifiant d'URL
-          <input
-            className={inputClass}
-            value={value.slug}
-            onChange={(e) => set("slug", slugify(e.target.value))}
-            required
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Prix (DT)
-          <input
-            type="number"
-            min={0}
-            className={inputClass}
-            value={value.price}
-            onChange={(e) => set("price", Number(e.target.value))}
-            required={!value.price_on_request}
-            disabled={value.price_on_request}
-          />
-        </label>
-        <label className="flex items-center gap-3 text-sm font-semibold sm:col-span-2">
-          <input
-            type="checkbox"
-            checked={value.price_on_request === true}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                price_on_request: e.target.checked,
-                price: e.target.checked ? 0 : value.price,
-              })
-            }
-          />
-          Prix à discuter (le prix n'est pas affiché sur le site)
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Année
-          <input
-            type="number"
-            className={inputClass}
-            value={value.year}
-            onChange={(e) => set("year", Number(e.target.value))}
-            required
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Kilométrage (km)
-          <input
-            type="number"
-            className={inputClass}
-            value={value.km_value}
-            onChange={(e) => {
-              const km_value = Number(e.target.value);
-              onChange({ ...value, km_value, km: `${km_value.toLocaleString("fr-FR")} km` });
-            }}
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Origine
-          <select
-            className={inputClass}
-            value={value.country}
-            onChange={(e) => set("country", e.target.value)}
-          >
-            {CAR_COUNTRIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Carrosserie
-          <select
-            className={inputClass}
-            value={value.body}
-            onChange={(e) => set("body", e.target.value)}
-          >
-            {CAR_BODIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Carburant
-          <select
-            className={inputClass}
-            value={value.fuel}
-            onChange={(e) => set("fuel", e.target.value)}
-          >
-            {CAR_FUELS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Boîte
-          <select
-            className={inputClass}
-            value={value.gearbox}
-            onChange={(e) => set("gearbox", e.target.value)}
-          >
-            {CAR_GEARBOXES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          État
-          <select
-            className={inputClass}
-            value={value.state}
-            onChange={(e) => set("state", e.target.value)}
-          >
-            {CAR_STATES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Ordre d'affichage
-          <input
-            type="number"
-            className={inputClass}
-            value={value.sort_order}
-            onChange={(e) => set("sort_order", Number(e.target.value))}
-          />
-        </label>
+          {section === "leads" && <LeadsTab />}
+          {section === "admins" && session.data && <AdminsTab session={session.data} />}
+        </main>
       </div>
 
-      <label className="grid gap-2 text-sm font-semibold">
-        Description
-        <textarea
-          rows={5}
-          className={inputClass}
-          value={value.description}
-          onChange={(e) => set("description", e.target.value)}
-        />
-      </label>
-
-      <div className="grid gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">Photos du véhicule</p>
-          <span className="text-xs text-muted-foreground" aria-live="polite">
-            {value.images.length} / 12 photos
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {value.images.map((img, i) => (
-            <div key={img} className="relative">
-              <img src={img} alt={`Photo ${i + 1}`} className="h-20 w-28 rounded object-cover" />
-              <button
-                type="button"
-                aria-label="Retirer la photo"
-                onClick={() =>
-                  set(
-                    "images",
-                    value.images.filter((x) => x !== img),
-                  )
-                }
-                className="absolute -right-2 -top-2 rounded-full border border-border bg-background p-1"
+      <Drawer.Backdrop isOpen={menuOpen} onOpenChange={setMenuOpen}>
+        <Drawer.Content placement="left">
+          <Drawer.Dialog className="w-72 max-w-[85vw]">
+            <Brand inDrawer>
+              <Drawer.CloseTrigger aria-label="Fermer le menu" />
+            </Brand>
+            <Drawer.Body className="grid content-start gap-4">
+              {nav(() => setMenuOpen(false))}
+              <Separator />
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <input
-          ref={photoInput}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onChange={async (e) => {
-            const input = e.currentTarget;
-            await handleFiles(input.files);
-            input.value = "";
-          }}
-          disabled={uploading || saving || value.images.length >= 12}
-          className="hidden"
-          aria-label="Choisir les photos du véhicule"
-        />
-        <button
-          type="button"
-          onClick={() => photoInput.current?.click()}
-          disabled={uploading || saving || value.images.length >= 12}
-          aria-busy={uploading}
-          className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-6 py-8 text-center transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {uploading ? (
-            <LoaderCircle className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-          ) : (
-            <UploadCloud className="h-8 w-8 text-primary" aria-hidden="true" />
-          )}
-          <span className="text-sm font-semibold">
-            {uploading
-              ? "Ajout des photos…"
-              : value.images.length >= 12
-                ? "Limite de 12 photos atteinte"
-                : "Cliquez ici pour ajouter des photos"}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            JPG, PNG ou WebP · 2 Mo maximum par photo · Recadrage automatique au format 4:3
-          </span>
-        </button>
-      </div>
-
-      <label className="flex items-center gap-3 text-sm font-semibold">
-        <input
-          type="checkbox"
-          checked={value.published}
-          onChange={(e) => set("published", e.target.checked)}
-        />
-        Publier sur le site
-      </label>
-
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={saving || uploading}
-          className="btn-3d btn-3d-primary px-6 py-3 text-sm"
-        >
-          {saving ? "Enregistrement…" : "Enregistrer"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-border px-6 py-3 text-sm font-semibold"
-        >
-          Annuler
-        </button>
-      </div>
-    </form>
+                <ExternalLink className="size-4" aria-hidden />
+                Voir le site
+                <span className="sr-only">(nouvel onglet)</span>
+              </a>
+            </Drawer.Body>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
+    </div>
   );
 }
 
-function LeadsTab() {
-  const queryClient = useQueryClient();
-  const leads = useQuery({ queryKey: ["admin-leads"], queryFn: () => listLeads() });
-  const handled = useMutation({
-    mutationFn: (data: { id: string; handled: boolean }) => setLeadHandled({ data }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-leads"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (leads.data?.length === 0)
-    return <p className="text-muted-foreground">Aucune demande reçue pour l'instant.</p>;
-
+/**
+ * Site logo on a dark band, like the public header, so the white-and-red logo
+ * keeps its colours. In the drawer the name is the dialog's heading.
+ */
+function Brand({ inDrawer = false, children }: { inDrawer?: boolean; children?: ReactNode }) {
+  const text = useSiteText();
+  const logo = text("identity.logo", "/images/aks-logo.png");
+  const Title = inDrawer ? Drawer.Heading : "p";
   return (
-    <div className="grid gap-4">
-      {(leads.data ?? []).map((lead) => (
-        <div key={lead.id} className="rounded-lg border border-border bg-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold">{lead.name}</p>
-            <button
-              type="button"
-              onClick={() => handled.mutate({ id: lead.id, handled: !lead.handled })}
-              className="rounded-md border border-border px-3 py-2 text-xs font-semibold hover:border-primary"
-            >
-              {lead.handled ? "Marquer à traiter" : "Marquer traitée"}
-            </button>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {lead.phone} {lead.email && `· ${lead.email}`} ·{" "}
-            {new Date(lead.created_at).toLocaleString("fr-FR")}
-          </p>
-          {lead.car_slug && <p className="mt-1 text-sm text-primary">Véhicule : {lead.car_slug}</p>}
-          {lead.message && <p className="mt-3 whitespace-pre-line text-sm">{lead.message}</p>}
-        </div>
-      ))}
+    <div className="dark relative flex h-16 shrink-0 items-center gap-3 bg-[oklch(0.17_0.004_286)] px-5 text-foreground">
+      <img src={logo} alt="" width={96} height={32} className="h-8 w-auto shrink-0" />
+      <div className="min-w-0">
+        <Title className="truncate text-sm font-semibold">
+          {text("identity.brand", "Auto Kontor")}{" "}
+          <span className="text-accent">{text("identity.brand_suffix", "Sfax")}</span>
+        </Title>
+        <p className="text-xs text-muted">Administration</p>
+      </div>
+      {children}
     </div>
+  );
+}
+
+function SectionNav({
+  section,
+  sections,
+  counts,
+  onNavigate,
+}: {
+  section: AdminSection;
+  sections: readonly AdminSection[];
+  counts: Partial<Record<AdminSection, { value: number; label: string; highlight?: boolean }>>;
+  onNavigate?: (() => void) | undefined;
+}) {
+  return (
+    <nav aria-label="Sections de l’administration">
+      <ul className="grid gap-1">
+        {sections.map((id) => {
+          const Icon = SECTION_ICONS[id];
+          const active = id === section;
+          const count = counts[id];
+          return (
+            <li key={id}>
+              <Link
+                to="/admin"
+                search={{ section: id }}
+                {...(onNavigate ? { onClick: onNavigate } : {})}
+                aria-current={active ? "page" : undefined}
+                className={`flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+                  active
+                    ? "bg-surface-secondary text-foreground"
+                    : "text-muted hover:bg-surface-secondary hover:text-foreground"
+                }`}
+              >
+                <Icon className={`size-4 ${active ? "text-accent" : ""}`} aria-hidden />
+                <span className="flex-1 truncate">{SECTION_LABELS[id]}</span>
+                {count && (
+                  <span
+                    className={`min-w-6 rounded-full px-2 text-center text-xs font-medium tabular-nums leading-5 ${
+                      count.highlight ? "bg-accent text-accent-foreground" : "text-muted"
+                    }`}
+                  >
+                    {count.value}
+                    <span className="sr-only"> {count.label}</span>
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

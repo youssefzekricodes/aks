@@ -5,13 +5,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Stateless runtime: data lives in Supabase, files in Cloudflare R2.
+# Configure SUPABASE_URL, SUPABASE_ANON_KEY, R2_*, APP_ORIGIN (and optional
+# TURNSTILE_*) on the host. Do not set SUPABASE_SERVICE_ROLE_KEY here.
 FROM node:24-bookworm-slim
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_PATH=/app/data/aks.sqlite
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY --from=build /app/.output ./.output
-COPY --from=build /app/scripts ./scripts
-COPY --from=build /app/src/server/db/database.ts ./src/server/db/database.ts
-COPY --from=build /app/src/server/auth/password.ts ./src/server/auth/password.ts
-RUN mkdir -p /app/data
+USER node
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]

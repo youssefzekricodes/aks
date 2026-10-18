@@ -1,0 +1,29 @@
+# Netlify: TanStack Start built by Nitro with its "netlify" preset.
+#   dist/                              static files (served from the CDN)
+#   .netlify/functions-internal/server SSR + server functions (one Netlify Function)
+# Set the runtime variables in Site configuration → Environment variables:
+#   APP_ORIGIN (e.g. https://autokontorsfax.tn), SUPABASE_URL, SUPABASE_ANON_KEY,
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_URL,
+#   TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY.
+# Never add SUPABASE_SERVICE_ROLE_KEY here.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+  NITRO_PRESET = "netlify"
+
+# /assets/* (hashed build files) is cached for a year by Nitro's generated dist/_headers.
+
+# Brand logos, body icons and images bundled with the site.
+[[headers]]
+  for = "/brands/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/bodies/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

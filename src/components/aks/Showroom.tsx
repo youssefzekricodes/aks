@@ -1,95 +1,87 @@
-import { useSiteCollection } from "@/lib/site-content";
-import { useSiteText } from "@/lib/site-content";
+import { buttonVariants } from "@heroui/styles";
 import { Clock, MapPin, Navigation, Phone, MessageCircle } from "lucide-react";
-import { BtnLink } from "./Btn";
-import { Reveal } from "./Reveal";
+import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import { Section } from "./Section";
 
 export function Showroom() {
   const text = useSiteText();
-
   const hours = useSiteCollection("showroom.items");
 
   return (
-    <section id="showroom" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-stretch">
-        <Reveal>
-          <div className="glass-panel h-full rounded-2xl p-8 sm:p-10">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              {text("showroom.text_1", "Showroom")}
-            </p>
-            <h2 className="mt-4 text-4xl font-bold">
-              {text("showroom.text_2", "Venez nous voir à Sfax")}
-            </h2>
+    <Section id="showroom" className="grid gap-6 lg:grid-cols-2">
+      <div className="rounded-lg border border-border bg-surface p-6 sm:p-8">
+        <p className="text-sm font-medium text-accent">{text("showroom.text_1", "Showroom")}</p>
+        <h2 className="mt-2 text-xl font-semibold sm:text-2xl">
+          {text("showroom.text_2", "Venez nous voir à Sfax")}
+        </h2>
 
-            <div className="mt-8 space-y-5 text-sm">
-              <div className="flex gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <p className="text-muted-foreground">
-                  {text("showroom.text_3", "Route de Tunis km 4, Sfax 3000, Tunisie")}
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <a
-                  href={text("identity.phone_link", "tel:+21674000000")}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  {text("identity.phone", "+216 74 000 000")}
-                </a>
-              </div>
-              <div className="flex gap-3">
-                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <ul className="w-full space-y-1.5">
-                  {hours.map(({ day: d, time: h }, index) => (
-                    <li key={index} className="flex justify-between gap-4 text-muted-foreground">
-                      <span>{d}</span>
-                      <span className="text-foreground">{h}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-9 flex flex-wrap gap-3">
-              <BtnLink
-                href={text(
-                  "showroom.link_1",
-                  "https://www.google.com/maps/search/?api=1&query=Sfax+Tunisie",
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Navigation className="h-4 w-4" /> {text("showroom.text_4", "Itinéraire")}
-              </BtnLink>
-              <BtnLink
-                href={text("identity.whatsapp", "https://wa.me/21674000000")}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="steel"
-              >
-                <MessageCircle className="h-4 w-4" /> {text("showroom.text_5", "WhatsApp")}
-              </BtnLink>
-              <BtnLink href={text("identity.phone_link", "tel:+21674000000")} variant="steel">
-                <Phone className="h-4 w-4" /> {text("showroom.text_6", "Appeler")}
-              </BtnLink>
-            </div>
+        <dl className="mt-6 space-y-4 text-sm">
+          <div className="flex gap-3">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+            <dd>{text("showroom.text_3", "Route Sidi Mansour, km 5, Sfax 3000, Tunisie")}</dd>
           </div>
-        </Reveal>
-
-        <Reveal delay={120}>
-          <div className="glass-panel h-full min-h-[380px] overflow-hidden rounded-2xl p-2">
-            <iframe
-              title={text("showroom.text_7", "Carte du showroom Auto Kontor Sfax")}
-              src={text(
-                "showroom.map_1",
-                "https://www.openstreetmap.org/export/embed.html?bbox=10.68%2C34.70%2C10.82%2C34.79&layer=mapnik",
-              )}
-              loading="lazy"
-              className="h-full min-h-[364px] w-full rounded-xl grayscale-[0.6] contrast-125"
-            />
+          <div className="flex gap-3">
+            <Phone className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+            <dd>
+              <a href={text("identity.phone_link", "tel:+21652144869")} className="hover:underline">
+                {text("identity.phone", "+216 52 144 869")}
+              </a>
+            </dd>
           </div>
-        </Reveal>
+          <div className="flex gap-3">
+            <Clock className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+            <dd className="w-full">
+              <ul className="divide-y divide-separator">
+                {hours.map(({ day, time }, index) => (
+                  <li key={index} className="flex justify-between gap-4 py-1.5 first:pt-0">
+                    <span className="text-muted">{day}</span>
+                    <span className="tabular">{time}</span>
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          <a
+            href={text("showroom.link_1", "https://maps.google.com/?cid=1401009504837379981")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants()}
+          >
+            <Navigation className="size-4" /> {text("showroom.text_4", "Itinéraire")}
+          </a>
+          <a
+            href={text("identity.whatsapp", "https://wa.me/21652144869")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            <MessageCircle className="size-4" /> {text("showroom.text_5", "WhatsApp")}
+          </a>
+          <a
+            href={text("identity.phone_link", "tel:+21652144869")}
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            <Phone className="size-4" /> {text("showroom.text_6", "Appeler")}
+          </a>
+        </div>
       </div>
-    </section>
+
+      <div className="min-h-80 overflow-hidden rounded-lg border border-border bg-surface-secondary">
+        <iframe
+          title={text("showroom.text_7", "Carte du showroom Auto Kontor Sfax")}
+          src={text(
+            "showroom.map_1",
+            "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4233.124664045077!2d10.801239876594309!3d34.774284672893685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1301cd00203db7e3%3A0x137162b8c6c7278d!2sAKS%20%7C%20AUTO%20KONTOR%20SFAX!5e1!3m2!1sen!2stn!4v1792320644358!5m2!1sen!2stn",
+          )}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="size-full min-h-80 border-0"
+        />
+      </div>
+    </Section>
   );
 }

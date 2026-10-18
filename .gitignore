@@ -41,3 +41,6 @@ dist-ssr
 
 # Independent project checked out inside this repository (own git repo and remote)
 page-hugger-delight/
+
+# Netlify build output
+.netlify

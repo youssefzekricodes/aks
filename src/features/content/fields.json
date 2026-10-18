@@ -4,7 +4,7 @@
     "group": "navbar",
     "label": "Liens du menu",
     "type": "collection",
-    "value": "[{\"href\":\"/#inventaire\",\"label\":\"Inventaire\"},{\"href\":\"/#apropos\",\"label\":\"À propos\"},{\"href\":\"/#services\",\"label\":\"Services\"},{\"href\":\"/#avis\",\"label\":\"Avis\"},{\"href\":\"/#showroom\",\"label\":\"Showroom\"}]"
+    "value": "[{\"href\":\"/recherche\",\"label\":\"Véhicules\"},{\"href\":\"/marques\",\"label\":\"Marques\"},{\"href\":\"/#services\",\"label\":\"Services\"},{\"href\":\"/#showroom\",\"label\":\"Showroom\"},{\"href\":\"/#avis\",\"label\":\"Avis\"}]"
   },
   {
     "key": "navbar.link_1",
@@ -37,9 +37,9 @@
   {
     "key": "navbar.link_2",
     "group": "navbar",
-    "label": "Lien — #contact",
+    "label": "Lien — page Contact (/contact)",
     "type": "link",
-    "value": "/#contact"
+    "value": "/contact"
   },
   {
     "key": "navbar.text_3",
@@ -56,165 +56,11 @@
     "value": "Menu"
   },
   {
-    "key": "hero.text_1",
-    "group": "hero",
-    "label": "Libellé — Prix",
-    "type": "text",
-    "value": "Prix"
-  },
-  {
-    "key": "hero.text_2",
-    "group": "hero",
-    "label": "Libellé — 0 - 30 000 DT",
-    "type": "text",
-    "value": "0 - 30 000 DT"
-  },
-  {
-    "key": "hero.text_3",
-    "group": "hero",
-    "label": "Libellé — 30 000 - 50 000 DT",
-    "type": "text",
-    "value": "30 000 - 50 000 DT"
-  },
-  {
-    "key": "hero.text_4",
-    "group": "hero",
-    "label": "Libellé — 50 000 - 100 000 DT",
-    "type": "text",
-    "value": "50 000 - 100 000 DT"
-  },
-  {
-    "key": "hero.text_5",
-    "group": "hero",
-    "label": "Libellé — 100 000 - 200 000 DT",
-    "type": "text",
-    "value": "100 000 - 200 000 DT"
-  },
-  {
-    "key": "hero.text_6",
-    "group": "hero",
-    "label": "Libellé — 200 000 DT +",
-    "type": "text",
-    "value": "200 000 DT +"
-  },
-  {
-    "key": "hero.text_7",
-    "group": "hero",
-    "label": "Libellé — Type",
-    "type": "text",
-    "value": "Type"
-  },
-  {
-    "key": "hero.text_8",
-    "group": "hero",
-    "label": "Libellé — SUV",
-    "type": "text",
-    "value": "SUV"
-  },
-  {
-    "key": "hero.text_9",
-    "group": "hero",
-    "label": "Libellé — Berline",
-    "type": "text",
-    "value": "Berline"
-  },
-  {
-    "key": "hero.text_10",
-    "group": "hero",
-    "label": "Libellé — Coupé",
-    "type": "text",
-    "value": "Coupé"
-  },
-  {
-    "key": "hero.text_11",
-    "group": "hero",
-    "label": "Libellé — Citadine",
-    "type": "text",
-    "value": "Citadine"
-  },
-  {
-    "key": "hero.text_12",
-    "group": "hero",
-    "label": "Libellé — Pick-up",
-    "type": "text",
-    "value": "Pick-up"
-  },
-  {
-    "key": "hero.text_13",
-    "group": "hero",
-    "label": "Libellé — Kilométrage",
-    "type": "text",
-    "value": "Kilométrage"
-  },
-  {
-    "key": "hero.text_14",
-    "group": "hero",
-    "label": "Libellé — 0 - 50 000 km",
-    "type": "text",
-    "value": "0 - 50 000 km"
-  },
-  {
-    "key": "hero.text_15",
-    "group": "hero",
-    "label": "Libellé — 50 000 - 100 000 km",
-    "type": "text",
-    "value": "50 000 - 100 000 km"
-  },
-  {
-    "key": "hero.text_16",
-    "group": "hero",
-    "label": "Libellé — 100 000 - 200 000 km",
-    "type": "text",
-    "value": "100 000 - 200 000 km"
-  },
-  {
-    "key": "hero.text_17",
-    "group": "hero",
-    "label": "Libellé — 200 000 km +",
-    "type": "text",
-    "value": "200 000 km +"
-  },
-  {
     "key": "hero.text_18",
     "group": "hero",
-    "label": "Libellé — Toutes marques",
+    "label": "Option — Toutes marques",
     "type": "text",
     "value": "Toutes marques"
-  },
-  {
-    "key": "hero.text_19",
-    "group": "hero",
-    "label": "Libellé — Japon",
-    "type": "text",
-    "value": "Japon"
-  },
-  {
-    "key": "hero.text_20",
-    "group": "hero",
-    "label": "Libellé — Chine",
-    "type": "text",
-    "value": "Chine"
-  },
-  {
-    "key": "hero.text_21",
-    "group": "hero",
-    "label": "Libellé — Allemagne",
-    "type": "text",
-    "value": "Allemagne"
-  },
-  {
-    "key": "hero.text_22",
-    "group": "hero",
-    "label": "Libellé — Italie",
-    "type": "text",
-    "value": "Italie"
-  },
-  {
-    "key": "hero.text_23",
-    "group": "hero",
-    "label": "Libellé — France",
-    "type": "text",
-    "value": "France"
   },
   {
     "key": "hero.image_1",
@@ -259,11 +105,67 @@
     "value": "Véhicules neufs et d'occasion sélectionnés avec exigence. Financement, reprise et garantie — accompagnés par une équipe qui connaît chaque voiture qu'elle vend."
   },
   {
+    "key": "hero.cta_stock",
+    "group": "hero",
+    "label": "Bouton — voir le stock",
+    "type": "text",
+    "value": "Voir le stock"
+  },
+  {
+    "key": "hero.trust_1",
+    "group": "hero",
+    "label": "Point fort 1",
+    "type": "text",
+    "value": "Véhicules inspectés et garantis"
+  },
+  {
+    "key": "hero.trust_2",
+    "group": "hero",
+    "label": "Point fort 2",
+    "type": "text",
+    "value": "Reprise de votre véhicule"
+  },
+  {
+    "key": "hero.trust_3",
+    "group": "hero",
+    "label": "Point fort 3",
+    "type": "text",
+    "value": "Financement sur mesure"
+  },
+  {
     "key": "hero.text_28",
     "group": "hero",
     "label": "Libellé — Marque",
     "type": "text",
     "value": "Marque"
+  },
+  {
+    "key": "hero.model_label",
+    "group": "hero",
+    "label": "Libellé — Modèle",
+    "type": "text",
+    "value": "Modèle"
+  },
+  {
+    "key": "hero.all_models",
+    "group": "hero",
+    "label": "Option — Tous modèles",
+    "type": "text",
+    "value": "Tous modèles"
+  },
+  {
+    "key": "hero.budget_label",
+    "group": "hero",
+    "label": "Libellé — Budget",
+    "type": "text",
+    "value": "Budget maximum"
+  },
+  {
+    "key": "hero.any_budget",
+    "group": "hero",
+    "label": "Option — Tous budgets",
+    "type": "text",
+    "value": "Tous budgets"
   },
   {
     "key": "hero.text_29",
@@ -294,6 +196,69 @@
     "value": "Chaque véhicule est inspecté sur 120 points avant d'entrer dans notre showroom."
   },
   {
+    "key": "inventory.see_all",
+    "group": "inventory",
+    "label": "Bouton — voir tout le stock",
+    "type": "text",
+    "value": "Voir tout le stock"
+  },
+  {
+    "key": "brands.title",
+    "group": "brands",
+    "label": "Titre — marques",
+    "type": "text",
+    "value": "Nos marques"
+  },
+  {
+    "key": "brands.subtitle",
+    "group": "brands",
+    "label": "Sous-titre — marques",
+    "type": "textarea",
+    "value": "Choisissez une marque pour voir les véhicules disponibles."
+  },
+  {
+    "key": "brands.see_all",
+    "group": "brands",
+    "label": "Lien — toutes les marques",
+    "type": "text",
+    "value": "Toutes les marques"
+  },
+  {
+    "key": "bodies.title",
+    "group": "brands",
+    "label": "Titre — carrosseries",
+    "type": "text",
+    "value": "Par carrosserie"
+  },
+  {
+    "key": "brands.none",
+    "group": "brands",
+    "label": "Mention — marque sans véhicule",
+    "type": "text",
+    "value": "Aucun véhicule"
+  },
+  {
+    "key": "bodies.none",
+    "group": "brands",
+    "label": "Mention — carrosserie sans véhicule",
+    "type": "text",
+    "value": "Aucun véhicule"
+  },
+  {
+    "key": "brands.no_stock",
+    "group": "brands",
+    "label": "Fenêtre — marque indisponible",
+    "type": "textarea",
+    "value": "Aucun véhicule de cette marque n’est actuellement disponible."
+  },
+  {
+    "key": "bodies.no_stock",
+    "group": "brands",
+    "label": "Fenêtre — carrosserie indisponible",
+    "type": "textarea",
+    "value": "Aucun véhicule n’est actuellement disponible dans cette catégorie."
+  },
+  {
     "key": "inventory.text_2",
     "group": "inventory",
     "label": "Texte — Aucun véhicule ne correspond à ces filtres.",
@@ -313,6 +278,13 @@
     "label": "Texte — À propos",
     "type": "text",
     "value": "À propos"
+  },
+  {
+    "key": "about.badge",
+    "group": "about",
+    "label": "Badge — années d’expérience (vide = masqué)",
+    "type": "text",
+    "value": "18 ans d’expérience"
   },
   {
     "key": "about.text_2",
@@ -403,7 +375,7 @@
     "group": "showroom",
     "label": "Horaires",
     "type": "collection",
-    "value": "[{\"day\":\"Lundi – Vendredi\",\"time\":\"08:30 – 18:30\"},{\"day\":\"Samedi\",\"time\":\"09:00 – 16:00\"},{\"day\":\"Dimanche\",\"time\":\"Sur rendez-vous\"}]"
+    "value": "[{\"day\":\"Tous les jours (7j/7)\",\"time\":\"09:00 – 21:00\"}]"
   },
   {
     "key": "showroom.text_1",
@@ -422,30 +394,30 @@
   {
     "key": "showroom.text_3",
     "group": "showroom",
-    "label": "Texte — Route de Tunis km 4, Sfax 3000, Tunisie",
+    "label": "Texte — Route Sidi Mansour, km 5, Sfax 3000, Tunisie",
     "type": "text",
-    "value": "Route de Tunis km 4, Sfax 3000, Tunisie"
+    "value": "Route Sidi Mansour, km 5, Sfax 3000, Tunisie"
   },
   {
     "key": "identity.phone_link",
     "group": "identity",
     "label": "Lien téléphone",
     "type": "link",
-    "value": "tel:+21674000000"
+    "value": "tel:+21652144869"
   },
   {
     "key": "identity.phone",
     "group": "identity",
     "label": "Téléphone affiché",
     "type": "text",
-    "value": "+216 74 000 000"
+    "value": "+216 52 144 869"
   },
   {
     "key": "showroom.link_1",
     "group": "showroom",
     "label": "Lien — https://www.google.com/maps/search/?api=1&query=Sfax+Tunisie",
     "type": "link",
-    "value": "https://www.google.com/maps/search/?api=1&query=Sfax+Tunisie"
+    "value": "https://maps.google.com/?cid=1401009504837379981"
   },
   {
     "key": "showroom.text_4",
@@ -459,7 +431,7 @@
     "group": "identity",
     "label": "Lien WhatsApp",
     "type": "link",
-    "value": "https://wa.me/21674000000"
+    "value": "https://wa.me/21652144869"
   },
   {
     "key": "showroom.text_5",
@@ -487,7 +459,7 @@
     "group": "showroom",
     "label": "Image ou carte — https://www.openstreetmap.org/export/embed.html?bbox=10.68%2",
     "type": "map",
-    "value": "https://www.openstreetmap.org/export/embed.html?bbox=10.68%2C34.70%2C10.82%2C34.79&layer=mapnik"
+    "value": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4233.124664045077!2d10.801239876594309!3d34.774284672893685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1301cd00203db7e3%3A0x137162b8c6c7278d!2sAKS%20%7C%20AUTO%20KONTOR%20SFAX!5e1!3m2!1sen!2stn!4v1792320644358!5m2!1sen!2stn"
   },
   {
     "key": "contact.items",
@@ -581,6 +553,13 @@
     "value": "https://www.facebook.com/profile.php?id=61560475294948"
   },
   {
+    "key": "contact.link_instagram",
+    "group": "contact",
+    "label": "Lien — Instagram",
+    "type": "link",
+    "value": "https://www.instagram.com/auto_kontor.sfax/"
+  },
+  {
     "key": "contact.text_13",
     "group": "contact",
     "label": "Libellé accessible — Facebook",
@@ -618,9 +597,9 @@
   {
     "key": "contact.text_17",
     "group": "contact",
-    "label": "Texte — Route de Tunis km 4, Sfax 3000",
+    "label": "Texte — Route Sidi Mansour, km 5, Sfax 3000",
     "type": "text",
-    "value": "Route de Tunis km 4, Sfax 3000"
+    "value": "Route Sidi Mansour, km 5, Sfax 3000"
   },
   {
     "key": "identity.email_link",
@@ -686,6 +665,13 @@
     "value": "Voir les détails"
   },
   {
+    "key": "card.price_hidden_cta",
+    "group": "card",
+    "label": "Bouton — prix masqué (cartes)",
+    "type": "text",
+    "value": "Contactez-nous"
+  },
+  {
     "key": "vehicle.text_1",
     "group": "vehicle",
     "label": "Libellé — Année",
@@ -749,6 +735,20 @@
     "value": "DT"
   },
   {
+    "key": "vehicle.price_hidden",
+    "group": "vehicle",
+    "label": "Mention — prix masqué (fiche)",
+    "type": "text",
+    "value": "Prix sur demande"
+  },
+  {
+    "key": "vehicle.price_hidden_cta",
+    "group": "vehicle",
+    "label": "Bouton — prix masqué (fiche)",
+    "type": "text",
+    "value": "Contactez-nous pour le prix"
+  },
+  {
     "key": "vehicle.text_10",
     "group": "vehicle",
     "label": "Texte — Présentation",
@@ -800,9 +800,9 @@
   {
     "key": "vehicle.link_1",
     "group": "vehicle",
-    "label": "Lien — #contact",
+    "label": "Lien — page Contact (/contact)",
     "type": "link",
-    "value": "#contact"
+    "value": "/contact"
   },
   {
     "key": "vehicle.text_16",
@@ -854,6 +854,20 @@
     "value": "true"
   },
   {
+    "key": "sections.brands",
+    "group": "sections",
+    "label": "Afficher — marques",
+    "type": "boolean",
+    "value": "true"
+  },
+  {
+    "key": "sections.bodies",
+    "group": "sections",
+    "label": "Afficher — carrosseries",
+    "type": "boolean",
+    "value": "true"
+  },
+  {
     "key": "sections.inventory",
     "group": "sections",
     "label": "Afficher : Inventaire",
@@ -889,13 +903,6 @@
     "value": "true"
   },
   {
-    "key": "sections.contact",
-    "group": "sections",
-    "label": "Afficher : Contact et pied de page",
-    "type": "boolean",
-    "value": "true"
-  },
-  {
     "key": "sections.sell",
     "group": "sections",
     "label": "Afficher : Bannière de reprise",
@@ -919,16 +926,44 @@
   {
     "key": "seo.search_title",
     "group": "seo",
-    "label": "Titre de la recherche",
+    "label": "Titre — page Véhicules",
     "type": "text",
-    "value": "Résultats de recherche — Auto Kontor Sfax"
+    "value": "Voitures neuves et d'occasion à Sfax — Auto Kontor Sfax"
   },
   {
     "key": "seo.search_description",
     "group": "seo",
-    "label": "Description de la recherche",
+    "label": "Description — page Véhicules",
     "type": "textarea",
     "value": "Trouvez votre véhicule neuf ou d'occasion premium chez Auto Kontor Sfax, showroom automobile à Sfax."
+  },
+  {
+    "key": "seo.brands_title",
+    "group": "seo",
+    "label": "Titre — page Marques",
+    "type": "text",
+    "value": "Marques automobiles disponibles — Auto Kontor Sfax"
+  },
+  {
+    "key": "seo.brands_description",
+    "group": "seo",
+    "label": "Description — page Marques",
+    "type": "textarea",
+    "value": "Toutes les marques de véhicules neufs et d'occasion disponibles chez Auto Kontor Sfax."
+  },
+  {
+    "key": "seo.brand_title",
+    "group": "seo",
+    "label": "Titre — page d'une marque ({brand} = nom de la marque)",
+    "type": "text",
+    "value": "{brand} neuve et d'occasion à Sfax — Auto Kontor Sfax"
+  },
+  {
+    "key": "seo.brand_description",
+    "group": "seo",
+    "label": "Description — page d'une marque ({brand}, {count})",
+    "type": "textarea",
+    "value": "{count} {brand} disponibles chez Auto Kontor Sfax : prix, kilométrage, photos. Essai et reprise sur rendez-vous."
   },
   {
     "key": "seo.site_name",
@@ -1012,7 +1047,7 @@
     "group": "sell",
     "label": "Destination du bouton de reprise",
     "type": "link",
-    "value": "/#contact"
+    "value": "/contact"
   },
   {
     "key": "search.results_one",
@@ -1032,7 +1067,7 @@
     "key": "inventory.budgets",
     "group": "inventory",
     "label": "Filtres par budget",
-    "value": "[{\"label\":\"< 120 000 DT\",\"max\":120000},{\"label\":\"< 250 000 DT\",\"max\":250000},{\"label\":\"< 500 000 DT\",\"max\":500000}]",
+    "value": "[{\"label\":\"< 40 000 DT\",\"max\":40000},{\"label\":\"< 80 000 DT\",\"max\":80000},{\"label\":\"< 120 000 DT\",\"max\":120000},{\"label\":\"< 250 000 DT\",\"max\":250000},{\"label\":\"< 500 000 DT\",\"max\":500000}]",
     "type": "collection"
   }
 ]

@@ -29,7 +29,7 @@ export const COLLECTION_LABELS: Record<string, string> = {
   suffix: "Suffixe",
   name: "Nom",
   city: "Ville",
-  stars: "Note sur 5",
+  stars: "Note",
   day: "Jour(s)",
   time: "Horaires",
   max: "Prix maximum (DT)",
@@ -59,8 +59,7 @@ export function isSafeImage(value: string) {
   return (
     !value ||
     (/^https?:\/\//i.test(value) && isSafeLink(value)) ||
-    (/^\/(?!\/)/.test(value) && isSafeLink(value)) ||
-    /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)
+    (/^\/(?!\/)/.test(value) && isSafeLink(value))
   );
 }
 export function isSafeMap(value: string) {
@@ -82,8 +81,7 @@ export function isSafeMap(value: string) {
 export function validateContentValue(field: ContentField, value: string): string | null {
   const invalid = (message: string) => `${field.label} : ${message}`;
   if (
-    value.length >
-    (field.type === "image" ? 3_000_000 : field.type === "collection" ? 150_000 : 20_000)
+    value.length > (field.type === "image" ? 500 : field.type === "collection" ? 150_000 : 20_000)
   )
     return invalid("contenu trop long.");
   if (field.type === "link" && !isSafeLink(value))

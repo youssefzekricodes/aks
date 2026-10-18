@@ -15,27 +15,29 @@ introduce a second lockfile (a stray `bun.lock` exists in history — ignore it)
 
 ### `.env` rules
 
-`.env` holds `DATABASE_PATH` and `APP_ORIGIN` only. Do **not** put `NODE_ENV`, `HOST` or
+`.env` holds `APP_ORIGIN`, the Supabase and R2 settings and optional Turnstile/test values (see `.env.example`). Do **not** put `NODE_ENV`, `HOST` or
 `PORT` there: Vite loads `.env` during `npm run build`, and a non-production `NODE_ENV`
-makes the build emit React's *development* JSX runtime, so server rendering then fails with
+makes the build emit React's _development_ JSX runtime, so server rendering then fails with
 `(0, import_jsx_dev_runtime.jsxDEV) is not a function`. Set those three in the host
 environment instead (`NODE_ENV=production HOST=127.0.0.1 PORT=3000 npm start`, Railway
 variables, or the Dockerfile's `ENV`).
 
 ## Commands
 
-| Command | Purpose |
-| ------- | ------- |
-| `npm run dev` | Vite dev server with hot reload on port 3000 |
-| `npm run build` | Production build into `.output/` |
-| `npm start` | Run the built server (loads `.env`) |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint + Prettier as errors |
-| `npm run format` | Prettier write |
-| `npm test` | Build, then `node:test` over `tests/*.test.ts` |
-| `npm run admin:create` | Create or reset an administrator (hidden password prompt) |
-| `npm run db:init` | Create the database file and schema |
-| `npm run db:backup` | Consistent snapshot into `data/backups` |
+| Command                | Purpose                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `npm run dev`          | Vite dev server with hot reload on port 3000                                 |
+| `npm run build`        | Production build into `.output/`                                             |
+| `npm start`            | Run the built server (loads `.env`)                                          |
+| `npm run typecheck`    | `tsc --noEmit`                                                               |
+| `npm run lint`         | ESLint + Prettier as errors                                                  |
+| `npm run format`       | Prettier write                                                               |
+| `npm test`             | Build, then `node:test` over `tests/*.test.ts`                               |
+| `npm run admin:create` | Create an administrator or set a new password (Supabase Auth, hidden prompt) |
+| `npm run seed:demo`    | Six demo cars with photos (empty database only)                              |
+| `npm run r2:setup`     | Bucket CORS + upload/read/delete check                                       |
+| `npm run r2:cleanup`   | List (or `-- --apply` delete) orphaned R2 objects                            |
+| `npm run test:rls`     | Row Level Security tests (needs `PG_TEST_URL`, see README)                   |
 
 ## Before you push
 
@@ -72,19 +74,20 @@ green result — fix the cause. The full suite takes well under a minute.
 2. Call `createServerFn` with the method, attach `.validator(schema)`, implement the handler,
    and import server modules lazily inside the handler.
 3. Put the data logic in `src/server/db/repository.ts` and gate it: `authorize()` for admin
-   reads, `authorize(true)` for admin writes, `checkOrigin()` plus `rateLimit()` for public writes.
+   reads, `adminClient({ write: true })` for admin writes (origin check + session), RLS policies in the migration, `checkOrigin()` for public writes.
 4. Add or extend a case in `tests/integration.test.ts` so the authorization and validation
    behavior is covered end to end.
 
 ## Database changes
 
-Migrations are inline and versioned in `openDatabase()` (`src/server/db/database.ts`).
-Add a new `if (!db.prepare("SELECT 1 FROM migrations WHERE version = N").get())` block and
-insert the new version inside a transaction. Never edit an already-released version, and keep
-every statement idempotent. Data-seeding steps belong in `repository.db()` (see the version 2 seed).
+Schema changes are SQL migrations in `supabase/migrations/` (timestamped file names). Add a new
+file rather than editing a released one; enable RLS and write policies for every new table;
+extend `tests/rls.test.ts`. Apply with `supabase db push` or the SQL editor. Privileged logic
+that must be atomic belongs in a SQL function (`security invoker` unless it must bypass RLS,
+like `submit_lead`).
 
 ## Commits
 
 - Keep commits small and describe the reason for the change, not the mechanics.
-- Never commit `data/`, `*.sqlite*`, `.env`, `node_modules`, `.output` or `.vercel`.
+- Never commit `.env`, `node_modules`, `.output` or `.vercel`.
 - Do not rewrite published history (no force-push, rebase, amend or squash on `main`).

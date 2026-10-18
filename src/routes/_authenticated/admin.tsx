@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminPage } from "@/features/admin/AdminPage";
+import { isAdminSection, type AdminSection } from "@/features/admin/model";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  validateSearch: (search: Record<string, unknown>): { section?: AdminSection } =>
+    isAdminSection(search["section"]) ? { section: search["section"] } : {},
   head: () => ({
     meta: [
       { title: "Tableau de bord — Auto Kontor Sfax" },
@@ -9,5 +12,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: AdminPage,
+  component: AdminRoute,
 });
+
+function AdminRoute() {
+  const { section = "cars" } = Route.useSearch();
+  return <AdminPage section={section} />;
+}

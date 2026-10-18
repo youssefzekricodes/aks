@@ -12,8 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as RechercheRouteImport } from './routes/recherche'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as MarquesIndexRouteImport } from './routes/marques.index'
+import { Route as MarquesBrandRouteImport } from './routes/marques.$brand'
 import { Route as VehiculeSlugRouteImport } from './routes/vehicule.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,15 +35,40 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RechercheRoute = RechercheRouteImport.update({
   id: '/recherche',
   path: '/recherche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const MarquesIndexRoute = MarquesIndexRouteImport.update({
+  id: '/marques/',
+  path: '/marques/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarquesBrandRoute = MarquesBrandRouteImport.update({
+  id: '/marques/$brand',
+  path: '/marques/$brand',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const VehiculeSlugRoute = VehiculeSlugRouteImport.update({
   id: '/vehicule/$slug',
@@ -49,47 +79,92 @@ const VehiculeSlugRoute = VehiculeSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/recherche': typeof RechercheRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
+  '/marques/': typeof MarquesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/recherche': typeof RechercheRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
+  '/marques': typeof MarquesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/recherche': typeof RechercheRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
+  '/marques/': typeof MarquesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/recherche' | '/admin' | '/vehicule/$slug'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/contact'
+    | '/recherche'
+    | '/robots.txt'
+    | '/sitemap.xml'
+    | '/admin'
+    | '/marques/$brand'
+    | '/vehicule/$slug'
+    | '/marques/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/recherche' | '/admin' | '/vehicule/$slug'
+  to:
+    | '/'
+    | '/auth'
+    | '/contact'
+    | '/recherche'
+    | '/robots.txt'
+    | '/sitemap.xml'
+    | '/admin'
+    | '/marques/$brand'
+    | '/vehicule/$slug'
+    | '/marques'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/contact'
     | '/recherche'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/_authenticated/admin'
+    | '/marques/$brand'
     | '/vehicule/$slug'
+    | '/marques/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ContactRoute: typeof ContactRoute
   RechercheRoute: typeof RechercheRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  MarquesBrandRoute: typeof MarquesBrandRoute
   VehiculeSlugRoute: typeof VehiculeSlugRoute
+  MarquesIndexRoute: typeof MarquesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,11 +190,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recherche': {
       id: '/recherche'
       path: '/recherche'
       fullPath: '/recherche'
       preLoaderRoute: typeof RechercheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -128,6 +224,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/marques/': {
+      id: '/marques/'
+      path: '/marques'
+      fullPath: '/marques/'
+      preLoaderRoute: typeof MarquesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marques/$brand': {
+      id: '/marques/$brand'
+      path: '/marques/$brand'
+      fullPath: '/marques/$brand'
+      preLoaderRoute: typeof MarquesBrandRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/vehicule/$slug': {
       id: '/vehicule/$slug'
@@ -154,8 +264,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ContactRoute: ContactRoute,
   RechercheRoute: RechercheRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  MarquesBrandRoute: MarquesBrandRoute,
   VehiculeSlugRoute: VehiculeSlugRoute,
+  MarquesIndexRoute: MarquesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

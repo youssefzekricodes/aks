@@ -1,24 +1,62 @@
 # Auto Kontor Sfax
 
-Standalone React + TanStack Start application with a Node server and a local SQLite database. No Supabase or hosted database is required. The public site and admin panel share persistent server data.
+React + TanStack Start application (Node server) backed by **Supabase** (PostgreSQL, Auth, Row Level Security) and **Cloudflare R2** (photos and images). The public site and the admin panel share the same data.
 
 ## Run locally
 
-Use Node.js 22.17+ (Node 24 recommended) and npm. In PowerShell:
+Use Node.js 22.17+ (Node 24 recommended). You need a Supabase project and an R2 bucket (see the two sections below), then:
 
-```powershell
+```bash
 npm ci
-Copy-Item .env.example .env
-npm run db:init
-npm run admin:create
+cp .env.example .env      # fill in the Supabase and R2 values
+npm run r2:setup          # CORS for browser uploads + upload/read/delete check
+npm run admin:create      # creates the first administrator (Supabase Auth)
+npm run seed:demo         # optional: six demo cars with photos (empty database only)
 npm run dev
 ```
 
-Open http://localhost:3000 and sign in at http://localhost:3000/auth. The admin command prompts for an e-mail and a hidden password (12–256 characters). No default password or public registration exists. Run the same command with an existing e-mail to reset its password and revoke its sessions. Never put passwords in source files or command-line arguments.
+Open http://localhost:3000 and sign in at http://localhost:3000/auth. If port 3000 is busy, Vite picks another port: set `APP_ORIGIN` in `.env` to the exact address shown and add it to `R2_EXTRA_ORIGINS` (then re-run `npm run r2:setup`), otherwise logins, forms and uploads are refused. `admin:create` prompts for an e-mail and a hidden password (12–256 characters); run it again with the same e-mail to set a new password. There is no public registration.
 
-SQLite lives at `data/aks.sqlite` by default. It is created automatically; the existing showroom catalog is seeded on first application use, only once. Database files and .env are excluded from Git. Contact forms now save inquiries that appear under **Demandes** in the admin panel. This does not send e-mail notifications.
+Contact forms save inquiries that appear under **Demandes** in the admin panel (no e-mail notification).
 
-The previous browser-local demo data and fake sessions are no longer used. Edits previously saved only in localStorage are not imported automatically: preserve/export that browser data before clearing it if you need those edits.
+## Supabase
+
+1. Create a project (Project Settings → API gives `SUPABASE_URL`, the **anon/publishable** key and the **service_role** key).
+2. Apply the schema: run each file of `supabase/migrations/` **in name order** in the SQL editor (`…_init.sql`, `…_roles_mfa.sql`, `…_brand_settings.sql`, then `…_email_2fa.sql`), or with the Supabase CLI `supabase link` then `supabase db push`.
+3. **Authentication → Sign In / Providers → Email**: keep e-mail/password enabled and **disable “Allow new users to sign up”** (admins are created by `npm run admin:create` or by a super admin in the dashboard). Under **URL Configuration** set the Site URL to your `APP_ORIGIN`.
+4. **Two-factor authentication** (required for super administrators): after the password, a 6-digit code is e-mailed to the super admin. In **Authentication → Emails → Templates → Magic Link**, make the e-mail show the code, e.g. `<p>Votre code de connexion : <strong>{{ .Token }}</strong></p>` (without `{{ .Token }}` only a link is sent and the code cannot be typed). Supabase’s built-in mailer only delivers to members of your Supabase organisation and a few e-mails per hour: for other addresses, set a custom SMTP server under **Authentication → Emails → SMTP Settings** (Resend, Brevo, Gmail SMTP…). Authenticator-app and SMS factors are implemented too but hidden for now (`APP_FACTORS_ENABLED` in `src/features/admin/model.ts`).
+5. **Deploy the `admin-users` Edge Function** (used by super admins to manage administrators; it holds the service-role key inside Supabase so the web server never does):
+
+   ```sh
+   npx supabase login                                   # once, opens the browser
+   npx supabase functions deploy admin-users --project-ref <project-ref>
+   ```
+
+   `<project-ref>` is the `xxxx` in `https://xxxx.supabase.co`. Alternatively: **Edge Functions → Deploy a new function → Via Editor**, name it `admin-users`, and paste `supabase/functions/admin-users/index.ts` and `handler.ts`.
+
+6. Create the first account with `npm run admin:create` and answer **o** to “Super administrateur”. At each sign-in a code is sent to that address.
+7. Optional hardening: Authentication → Sessions (time-box / inactivity timeout, plan dependent), Auth rate limits, and Database → Backups.
+
+Roles: **Administrateur** manages vehicles, brands, content and inquiries (password). **Super administrateur** can also create administrators, reset any administrator’s password (which signs them out everywhere), change roles and remove accounts; a second factor is mandatory and enforced in the database (RLS requires `aal2` for super admins), in the web server and in the Edge Function.
+
+How it is used:
+
+- The web server uses only the **anon key**; admin requests also carry the signed-in user's JWT (HttpOnly, `SameSite=Strict` cookies set by `@supabase/ssr`). **Row Level Security** in the database decides what each request may read or change. Admins are users with `app_metadata.role = "admin"`, which only the service-role key can set.
+- The **service-role key** is used only by the maintenance scripts (`admin:create`, `seed:demo`, `r2:cleanup`) from a trusted terminal and by the `admin-users` Edge Function inside Supabase (provided automatically). Never configure it on the hosting provider and never expose it to the browser.
+- Public inquiries go through the `submit_lead` database function (input validation and rate limits: 5 per phone number and 100 overall per hour). The TanStack server functions are the API layer; the one Edge Function (`admin-users`) exists because managing other accounts needs the service-role key.
+
+## Cloudflare R2
+
+1. **R2 → Create bucket** (e.g. `aks-media`).
+2. Public read access for images: **Settings → Custom Domains** (recommended, e.g. `media.example.com`) or enable the `r2.dev` URL for testing. Put that base URL in `R2_PUBLIC_URL`.
+3. **R2 → Manage API tokens → Create API token** with _Object Read & Write_ limited to this bucket. Copy the access key ID and secret into `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`, and your account ID into `R2_ACCOUNT_ID`.
+4. Run `npm run r2:setup` (sets CORS so browsers on `APP_ORIGIN` can upload, then checks upload → public read → delete).
+
+How uploads work: the admin asks the server for a **presigned PUT URL** valid 5 minutes for one exact key, content type and size; the browser uploads the file directly to R2; when the car, logo or content is saved the server checks every referenced object (exists, allowed type and size) before writing to the database, and deletes the objects that were removed or replaced. R2 credentials never leave the server.
+
+Object keys: `vehicles/{yyyy}/{mm}/{uuid}.jpg|webp` (car photos, 4:3, ≤ 1600 px, ≤ 4 MB), `brands/{brand-slug}/{uuid}.png|webp` (≤ 400 KB), `site/{content-field}/{uuid}.jpg|png|webp` (≤ 3 MB). Keys are immutable, so a custom-domain cache rule with a long TTL is safe.
+
+Uploads that are never saved, or deletions that failed, leave **orphans**: `npm run r2:cleanup` lists objects no row references (dry run); `npm run r2:cleanup -- --apply` deletes those older than 24 hours. Schedule it weekly (e.g. a Railway cron job) if you like.
 
 ## Gérer le contenu depuis l’administration
 
@@ -26,12 +64,13 @@ Ouvrez `/admin`, puis **Contenu du site**. Les rubriques permettent de modifier 
 
 - Les listes de navigation, chiffres clés, services, témoignages, horaires, services inclus et budgets permettent d’ajouter, supprimer et réordonner les éléments.
 - La rubrique **Sections de la page d’accueil** permet d’afficher ou masquer chaque section.
+- Les logos de marques se gèrent dans **Marques** : 59 logos couleur (`public/brands/<marque>.webp`, repris de la liste des marques d’automobile.tn) et 5 logos monochromes simple-icons (`scripts/generate-brand-logos.ts`) sont intégrés ; un PNG/WebP importé les remplace ; sans logo, le nom est affiché. Les images de carrosserie (`public/bodies/*.svg`) viennent du même site.
 - Les images peuvent être importées depuis votre ordinateur (JPG/PNG/WebP, 2 Mo maximum) ou remplacées par une URL.
-- **Publier les modifications** enregistre les changements dans SQLite et les rend publics. Les changements non publiés restent en mémoire pendant les changements d’onglet de l’administration. Ils sont perdus si vous vous déconnectez ou fermez la page après l’avertissement.
+- **Publier les modifications** enregistre les changements dans la base Supabase et les rend publics. Les changements non publiés restent en mémoire pendant les changements d’onglet de l’administration. Ils sont perdus si vous vous déconnectez ou fermez la page après l’avertissement.
 - **Annuler les modifications** abandonne le brouillon. **Rétablir les valeurs initiales** prépare une réinitialisation de la rubrique ; elle ne devient publique qu’après publication.
 - Les modèles de résultat de recherche acceptent la variable `{count}`. Les libellés des filtres sont personnalisables ; les marques, carrosseries et états de l’inventaire proviennent des véhicules publiés.
 
-Les véhicules, caractéristiques, tarifs et photos se gèrent dans **Véhicules**. L’éditeur de contenu conserve la mise en page du site : il ne s’agit pas d’un éditeur de code ou de CSS. Les nouvelles rubriques utilisent leurs valeurs initiales si aucune valeur n’est enregistrée, sans écraser les contenus existants. Les autorisations et la validation sont appliquées côté serveur.
+Les véhicules, caractéristiques (marque, modèle, version, portes, places, puissance fiscale, transmission…), tarifs et photos se gèrent dans **Véhicules**. La recherche publique (`/recherche`, `/marques/<marque>`) filtre par marque, modèle, carrosserie, budget, état, kilométrage, année, énergie, boîte et transmission ; l’état des filtres est dans l’URL. L’éditeur de contenu conserve la mise en page du site : il ne s’agit pas d’un éditeur de code ou de CSS. Les nouvelles rubriques utilisent leurs valeurs initiales si aucune valeur n’est enregistrée, sans écraser les contenus existants. Les autorisations et la validation sont appliquées côté serveur.
 
 Le catalogue des champs se trouve dans `src/features/content/fields.json`, les modèles des listes dans `collections.json` et la validation partagée dans `definition.ts`. Les composants publics utilisent `useSiteText` et `useSiteCollection`.
 
@@ -42,101 +81,64 @@ src/routes/                 Route definitions and public pages
 src/features/admin/         Admin dashboard and editing forms
 src/features/auth/          Authentication server functions
 src/features/catalog/       Catalog server functions, validation, shared types
-src/server/auth/            Password hashing and session authorization
-src/server/db/              SQLite connection, migrations, repository, initial seed
-src/components/aks/         Public showroom components
-src/components/ui/          Reusable UI primitives
+src/server/                 Supabase clients, auth/session checks, R2 storage, repository
+supabase/migrations/        Database schema, RLS policies and SQL functions
+src/components/aks/         Public showroom components (HeroUI v3 + Tailwind v4)
+src/components/aks/search/  Listing page, filter panel, active filters
+src/features/catalog/search.ts  Shared filter model (URL schema, filtering, facets, sorting)
 src/lib/                    Shared helpers and compatibility facade
 public/images/              Locally hosted original project images
-scripts/                    Database, backup, and administrator commands
-tests/                      Database/password and production HTTP tests
+public/brands/              Generated monochrome brand logos (simple-icons, CC0)
+scripts/                    Admin creation, demo seed, R2 setup and orphan cleanup
+tests/                      Search unit tests, RLS tests, production HTTP tests
 docs/                       Architecture, security, contribution and audit notes
 ```
 
-Route guards improve navigation; server authorization protects every admin read and mutation. Passwords use salted scrypt hashes. Sessions use random tokens stored as SHA-256 hashes in SQLite and an HttpOnly, SameSite=Strict cookie, with an eight-hour absolute expiry. Production cookies require HTTPS. Login attempts and public lead submissions have persistent rate limits. Mutations validate the exact Origin and inputs. There is no public account creation. Admin recovery requires access to the server terminal.
+Route guards improve navigation; server authorization protects every admin read and mutation, and Row Level Security enforces it again in the database. Admin accounts are Supabase Auth users with the `admin` role; sessions are HttpOnly, SameSite=Strict cookies (Secure in production). Supabase Auth rate-limits sign-ins; public inquiries are rate-limited in the database. Mutations validate the exact Origin and inputs. There is no public account creation.
 
-Only source, assets and configuration are tracked in Git. The database (`data/`), `.env`, build output (`.output`, `.vercel`) and the nested `page-hugger-delight/` project are ignored. `.gitattributes` normalizes line endings to LF so checkouts behave the same on Windows, macOS and Linux. Before sharing the repository or inviting a collaborator, work through the pre-share checklist in [docs/SECURITY.md](docs/SECURITY.md#6-pre-share-checklist-before-making-the-repository-public-or-inviting-a-collaborator).
+Only source, assets and configuration are tracked in Git. `.env`, build output (`.output`, `.vercel`) and the nested `page-hugger-delight/` project are ignored. `.gitattributes` normalizes line endings to LF so checkouts behave the same on Windows, macOS and Linux. Before sharing the repository or inviting a collaborator, work through the pre-share checklist in [docs/SECURITY.md](docs/SECURITY.md#6-pre-share-checklist-before-making-the-repository-public-or-inviting-a-collaborator).
 
 Existing images were copied from Lovable into public/images. The build no longer uses Lovable's Vite wrapper or asset proxy. Lovable project metadata remains for history continuity; no git history has been rewritten. The old PostgreSQL/Drizzle scaffold has been removed. Use npm/package-lock.json for this standalone setup.
 
 ## Documentation
 
-| Document | Contents |
-| -------- | -------- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, module map, data model, request flows, content system, extension recipes |
-| [docs/SECURITY.md](docs/SECURITY.md) | Security controls, secrets policy, credential/rotation and restore runbooks, accepted limitations, pre-share checklist |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Setup, commands, conventions, how to add a server function or a migration |
-| [docs/AUDIT.md](docs/AUDIT.md) | Dated repository audit, ratings per dimension, open items |
+| Document                                     | Contents                                                                                                               |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, module map, data model, request flows, content system, extension recipes                                        |
+| [docs/SECURITY.md](docs/SECURITY.md)         | Security controls, secrets policy, credential/rotation and restore runbooks, accepted limitations, pre-share checklist |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Setup, commands, conventions, how to add a server function or a migration                                              |
+| [docs/AUDIT.md](docs/AUDIT.md)               | Dated repository audit, ratings per dimension, open items                                                              |
 
 ## Verify
 
 ```sh
 npm run typecheck
 npm run lint
-npm test
+npm test          # builds, then unit tests + HTTP tests (Supabase tests skip without credentials)
 ```
 
-All three gates must pass. Lint reports zero errors (six cosmetic `react-refresh` warnings in the shadcn/ui primitives are expected).
+- `tests/search.test.ts`: search/filter logic.
+- `tests/admin-users.test.ts`: the admin-management Edge Function rules (2FA required, no self-demotion, last super admin kept, sign-out on password reset).
+- `tests/rls.test.ts`: Row Level Security against any Postgres that has `tests/supabase-stub.sql` and the migration applied, e.g. a throwaway local one:
 
-Tests build the application and launch a temporary production server on port 4319 with an isolated database. They cover login, cookies, anonymous access, CSRF, validation, database persistence, publication visibility, inquiries, session expiry, and logout. Node 22 may print experimental warnings for its built-in SQLite and TypeScript stripping APIs.
+  ```sh
+  initdb -D /tmp/aks-pg -U postgres --auth=trust && pg_ctl -D /tmp/aks-pg -o "-p 54329 -k /tmp" start
+  createdb -h /tmp -p 54329 -U postgres aks
+  psql -h /tmp -p 54329 -U postgres -d aks -f tests/supabase-stub.sql -f supabase/migrations/20261018120000_init.sql -f supabase/migrations/20261018150000_roles_mfa.sql -f supabase/migrations/20261018170000_brand_settings.sql -f supabase/migrations/20261018190000_email_2fa.sql
+  PG_TEST_URL="postgresql://postgres@/aks?host=/tmp&port=54329" npm run test:rls
+  ```
 
-## Host on a server
+- `tests/integration.test.ts`: runs the production build against the Supabase project in `.env` (public reads, refused anonymous admin calls, CSRF, validation). With `TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD` it also signs in and creates, publishes and deletes a temporary draft car.
 
-Use a Node server with persistent local disk; SQLite is not suitable for an ephemeral static/edge deployment. Run one application instance, keep the database outside the deployed build directory, and put an HTTPS reverse proxy in front of the app.
+## Deploy (Docker, Railway or any Node host)
 
-1. Install dependencies with `npm ci` and build with `npm run build`.
-2. Configure `DATABASE_PATH` to an absolute persistent path and `APP_ORIGIN` to your exact HTTPS origin (for example `https://cars.example.com`, without a trailing slash).
-3. Set `NODE_ENV=production`, `HOST=127.0.0.1`, and `PORT=3000`. Create the admin using the same `DATABASE_PATH`, then run `npm start` under your service manager.
-4. Proxy HTTPS traffic to the Node port. Preserve `Host`; allow request bodies up to 36 MB for image uploads. Do not expose the data directory over HTTP.
+The server is stateless — data lives in Supabase and files in R2 — so no volume is needed.
 
-## Deploy on Railway
+1. Build with the root `Dockerfile` (Railway detects it) or `npm ci && npm run build && npm start`.
+2. Environment variables on the host: `APP_ORIGIN` (exact public HTTPS origin, no trailing slash), `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`, optionally `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`. **Do not** set `SUPABASE_SERVICE_ROLE_KEY` there. `PORT` is usually provided by the platform.
+3. After changing `APP_ORIGIN` (e.g. a custom domain), add it to the bucket CORS: set it in your local `.env` and run `npm run r2:setup`, and update the Supabase Site URL.
+4. Put HTTPS in front (platform domain or Cloudflare proxy with SSL mode **Full (strict)**).
 
-Railway can host this application because it supports a long-running Docker service with persistent volumes. Do not deploy this SQLite-backed version to Vercel serverless functions.
+Create administrators from your computer with `npm run admin:create` (it talks to Supabase with the service-role key from your local `.env`).
 
-1. Push this repository to GitHub, then create a Railway project and choose **Deploy from GitHub repo**. Railway automatically detects the root `Dockerfile`.
-2. In the service **Settings**, generate a public domain.
-3. Add a **Volume** at mount path `/app/data`. This is required: it stores the SQLite database, administrator accounts, vehicles, content edits, and contact requests across deployments.
-4. In the service **Variables**, set:
-
-   ```text
-   APP_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
-   DATABASE_PATH=/app/data/aks.sqlite
-   ```
-
-   Railway supplies `PORT`; do not hard-code it.
-5. Optionally set the service health-check path to `/`, then deploy. Open the generated domain and create the first administrator from the Railway shell:
-
-   ```sh
-   node --experimental-strip-types scripts/create-admin.ts
-   ```
-
-   Run this command inside the deployed service so it uses the same persistent `DATABASE_PATH` as the website.
-
-## Connect a Cloudflare domain
-
-First deploy the app on Railway using the steps above. You need a domain added to Cloudflare; a Railway deployment alone also provides a public `*.railway.app` URL.
-
-1. In Railway, open the app service **Settings** and add a **Custom Domain** such as `www.example.com`. Railway displays the DNS records for that domain.
-2. In Cloudflare, open the domain's **DNS** page and add the `CNAME` and `TXT` records exactly as Railway displays them. Both records are required for verification; do not guess their names or values.
-3. Wait until Railway shows the custom domain as verified and its HTTPS certificate is active. Keep the CNAME DNS-only (gray cloud) while Railway verifies it. Afterward, you can enable Cloudflare proxying (orange cloud); if enabled, set Cloudflare **SSL/TLS** encryption mode to **Full (strict)**.
-4. In Railway service **Variables**, update `APP_ORIGIN` to the exact public HTTPS origin, for example `https://www.example.com` (no trailing slash), then redeploy. This allows authenticated admin and contact form requests from the custom domain.
-5. Open the HTTPS custom domain and confirm the site loads. Keep the Railway volume mounted at `/app/data` so the database and admin account persist.
-
-The database includes uploaded car images as validated data URLs (JPG/PNG/WebP, 2 MB per image, maximum 12 images per car). This keeps backup and relocation simple for a small showroom. For a large catalog, move uploaded images to a dedicated persistent file store later.
-
-A Dockerfile is also provided (not executed as part of local verification):
-
-```sh
-docker build -t aks-showroom .
-docker volume create aks-data
-docker run -d --name aks -p 127.0.0.1:3000:3000 -e APP_ORIGIN=https://cars.example.com -v aks-data:/app/data aks-showroom
-docker exec -it aks node --experimental-strip-types scripts/create-admin.ts
-```
-
-Terminate HTTPS at your reverse proxy. Keep the named volume when replacing the container.
-
-## Back up and move the database
-
-Run npm run db:backup to create a consistent snapshot in data/backups, including while the app is running. Copy backups off the PC/server and protect access: they contain customer inquiries and password hashes. To migrate, stop the destination app, copy a backup to the destination DATABASE_PATH, and restart. Do not copy only aks.sqlite while a running database may have uncheckpointed WAL data. Keep the old database until the restored site is verified.
-
-Reference: [Node SQLite](https://nodejs.org/download/release/latest-v24.x/docs/api/sqlite.html) and [TanStack server functions](https://tanstack.com/start/latest/docs/framework/react/guide/server-functions).
+Reference: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Supabase SSR auth](https://supabase.com/docs/guides/auth/server-side), [R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/) and [TanStack server functions](https://tanstack.com/start/latest/docs/framework/react/guide/server-functions).

@@ -1,327 +1,574 @@
-import { resolveContent } from "@/features/content/definition";
-import { useSiteCollection } from "@/lib/site-content";
-import { useSiteText } from "@/lib/site-content";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Breadcrumbs, Button, Chip, Modal } from "@heroui/react";
+import { buttonVariants } from "@heroui/styles";
 import {
-  ArrowLeft,
+  BadgeCheck,
   Calendar,
+  Check,
   ChevronLeft,
   ChevronRight,
-  Check,
+  Cog,
+  DoorOpen,
+  Expand,
   Fuel,
   Gauge,
-  Globe2,
-  Images,
+  Globe,
   MessageCircle,
+  Phone,
   Settings2,
-  Tag,
+  Users,
   X,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
-import { carImage, type Car } from "@/lib/cars";
-import { publicCarsQuery, siteContentQuery } from "@/lib/queries";
+import { resolveContent } from "@/features/content/definition";
+import { sortCars } from "@/features/catalog/search";
+import { brandInfo } from "@/features/catalog/brands";
+import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import {
+  carImage,
+  carTitle,
+  COUNTRY_LABELS,
+  formatKm,
+  formatPrice,
+  GEARBOX_LABELS,
+  label,
+  type Car,
+} from "@/lib/cars";
+import {
+  publicCarQuery,
+  publicCarsQuery,
+  publicConfigQuery,
+  siteContentQuery,
+} from "@/lib/queries";
+import { absoluteUrl, seo } from "@/lib/seo";
+import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/aks/Navbar";
+import { SiteFooter } from "@/components/aks/SiteFooter";
+import { CarCard, CarGrid } from "@/components/aks/CarCard";
+import { BrandLogo } from "@/components/aks/BrandLogo";
+import { BodyIcon } from "@/components/aks/BodyIcon";
 import { SellCarBanner } from "@/components/aks/SellCarBanner";
-import { ContactFooter } from "@/components/aks/ContactFooter";
 
 export const Route = createFileRoute("/vehicule/$slug")({
   loader: async ({ params, context }) => {
-    const [allCars, content] = await Promise.all([
-      context.queryClient.ensureQueryData(publicCarsQuery),
+    const [car, content, config] = await Promise.all([
+      context.queryClient.ensureQueryData(publicCarQuery(params.slug)),
       context.queryClient.ensureQueryData(siteContentQuery),
+      context.queryClient.ensureQueryData(publicConfigQuery),
+      context.queryClient.ensureQueryData(publicCarsQuery),
     ]);
-    const car = (allCars as Car[]).find((c) => c.slug === params.slug);
     if (!car) throw notFound();
-    return { car, content };
+    return { car, content, origin: config.origin };
   },
   head: ({ loaderData }) => {
-    const siteName = resolveContent(loaderData?.content ?? {}, "seo.site_name");
-    const title = loaderData
-      ? `${loaderData.car.brand} ${loaderData.car.name} — ${siteName}`
-      : `Véhicule — ${siteName}`;
-    const description = loaderData
-      ? `${loaderData.car.brand} ${loaderData.car.name} ${loaderData.car.year}, ${loaderData.car.km}, ${loaderData.car.fuel} — ${
-          loaderData.car.price_on_request
-            ? "Prix à discuter"
-            : `${loaderData.car.price.toLocaleString("fr-FR")} DT`
-        } chez ${siteName}.`
-      : `Détails du véhicule chez ${siteName}.`;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
+    const content = loaderData?.content ?? {};
+    const siteName = resolveContent(content, "seo.site_name");
+    const origin = loaderData?.origin;
+    const car = loaderData?.car;
+    if (!car) return { meta: [{ title: `Véhicule — ${siteName}` }] };
+    const path = `/vehicule/${car.slug}`;
+    const price = car.price_on_request ? "Prix sur demande" : formatPrice(car.price);
+    const brand = brandInfo(car.brand);
+    return seo({
+      title: `${carTitle(car)} ${car.year} — ${car.state} — ${siteName}`,
+      description: `${carTitle(car)} ${car.year}, ${formatKm(car.km_value)}, ${car.fuel}, ${label(GEARBOX_LABELS, car.gearbox)} — ${price} chez ${siteName} à Sfax.`,
+      siteName,
+      origin,
+      path,
+      image: carImage(car),
+      jsonLd: [
+        {
+          "@context": "https://schema.org",
+          "@type": "Car",
+          name: carTitle(car),
+          brand: { "@type": "Brand", name: brand.name },
+          model: car.model || car.name,
+          vehicleModelDate: String(car.year),
+          bodyType: car.body,
+          fuelType: car.fuel,
+          vehicleTransmission: label(GEARBOX_LABELS, car.gearbox),
+          ...(car.doors ? { numberOfDoors: car.doors } : {}),
+          ...(car.seats ? { seatingCapacity: car.seats } : {}),
+          itemCondition:
+            car.state === "Neuf"
+              ? "https://schema.org/NewCondition"
+              : "https://schema.org/UsedCondition",
+          mileageFromOdometer: {
+            "@type": "QuantitativeValue",
+            value: car.km_value,
+            unitCode: "KMT",
+          },
+          image: car.images
+            .filter((src) => !src.startsWith("data:"))
+            .map((src) => absoluteUrl(origin, src)),
+          description: car.description,
+          url: absoluteUrl(origin, path),
+          ...(car.price_on_request
+            ? {}
+            : {
+                offers: {
+                  "@type": "Offer",
+                  price: car.price,
+                  priceCurrency: "TND",
+                  availability: "https://schema.org/InStock",
+                  seller: { "@type": "AutoDealer", name: siteName },
+                },
+              }),
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Accueil", item: absoluteUrl(origin, "/") },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: brand.name,
+              item: absoluteUrl(origin, `/marques/${brand.slug}`),
+            },
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: carTitle(car),
+              item: absoluteUrl(origin, path),
+            },
+          ],
+        },
       ],
-    };
+    });
   },
   component: VehiculePage,
 });
 
-function VehiculePage() {
-  const benefits = useSiteCollection("vehicle.items");
-  const text = useSiteText();
-
-  const { car } = Route.useLoaderData();
-  const [activeImage, setActiveImage] = useState(0);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const sideImages = car.images.slice(1, 4);
-  const hasMoreImages = car.images.length > 4;
-
-  const specs = [
-    { icon: Calendar, label: text("vehicle.text_1", "Année"), value: String(car.year) },
-    { icon: Gauge, label: text("vehicle.text_2", "Kilométrage"), value: car.km },
-    { icon: Fuel, label: text("vehicle.text_3", "Carburant"), value: car.fuel },
-    { icon: Settings2, label: text("vehicle.text_4", "Boîte"), value: car.gearbox },
-    { icon: Tag, label: text("vehicle.text_5", "Carrosserie"), value: car.body },
-    { icon: Globe2, label: text("vehicle.text_6", "Origine"), value: car.country },
-  ];
-  const prefillContactMessage = (message: string) => {
-    window.dispatchEvent(new CustomEvent("prefill-contact-message", { detail: { message } }));
+/** Horizontal swipe (touch) → previous/next photo. */
+function useSwipe(onSwipe: (direction: 1 | -1) => void) {
+  const start = useRef<number | null>(null);
+  return {
+    onTouchStart: (event: React.TouchEvent) => {
+      start.current = event.touches[0]?.clientX ?? null;
+    },
+    onTouchEnd: (event: React.TouchEvent) => {
+      const end = event.changedTouches[0]?.clientX;
+      if (start.current !== null && end !== undefined && Math.abs(end - start.current) > 40)
+        onSwipe(end < start.current ? 1 : -1);
+      start.current = null;
+    },
   };
+}
+
+const roundControl =
+  "grid place-items-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/65 focus-visible:outline-2 focus-visible:outline-white";
+
+function Gallery({ car }: { car: Car }) {
+  const [active, setActive] = useState(0);
+  const [open, setOpen] = useState(false);
+  const count = Math.max(1, car.images.length);
+  const step = (by: number) => setActive((i) => (i + by + count) % count);
+  const swipe = useSwipe(step);
+  const title = carTitle(car);
+
+  // Arrow keys in the full-screen viewer.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") step(1);
+      if (event.key === "ArrowLeft") step(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, count]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-5 pb-24 pt-28 lg:px-8">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-primary"
+    <div>
+      <div className="relative overflow-hidden rounded-lg bg-surface-secondary" {...swipe}>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Afficher les photos en plein écran"
+          className="block w-full cursor-zoom-in"
         >
-          <ArrowLeft className="h-4 w-4" />
-          {text("vehicle.text_7", "Retour à l'inventaire")}
-        </Link>
-
-        <section className="mt-8 grid gap-3 lg:grid-cols-[minmax(0,2.15fr)_minmax(260px,1fr)]">
-          <div className="relative min-h-[320px] overflow-hidden rounded-lg border border-border bg-card sm:min-h-[520px] lg:min-h-[640px]">
-            <img
-              src={carImage(car, activeImage)}
-              alt={`${car.brand} ${car.name} — vue ${activeImage + 1}`}
-              width={1536}
-              height={1024}
-              className="h-full w-full object-cover"
-            />
-            <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-md border border-border bg-background/80 px-3 py-2 text-xs font-semibold text-foreground backdrop-blur-lg">
-              <Images className="h-4 w-4 text-primary" />
-              {activeImage + 1} / {car.images.length}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:grid-rows-3">
-            {sideImages.map((image: string, index: number) => {
-              const imageIndex = index + 1;
-              const isMoreTile = hasMoreImages && index === sideImages.length - 1;
-              return (
-                <button
-                  key={image}
-                  type="button"
-                  aria-label={
-                    isMoreTile
-                      ? `Afficher les ${car.images.length - 3} photos supplémentaires`
-                      : `Afficher la vue ${imageIndex + 1}`
-                  }
-                  aria-pressed={activeImage === imageIndex}
-                  onClick={() => {
-                    if (isMoreTile) {
-                      setActiveImage(imageIndex);
-                      setIsGalleryOpen(true);
-                    } else {
-                      setActiveImage(imageIndex);
-                    }
-                  }}
-                  className={`relative min-h-28 overflow-hidden rounded-lg border bg-card transition-colors sm:min-h-40 lg:min-h-0 ${
-                    activeImage === imageIndex
-                      ? "border-primary"
-                      : "border-border hover:border-primary/60"
-                  }`}
-                >
-                  <img
-                    src={image}
-                    alt={`${car.brand} ${car.name} — miniature ${imageIndex + 1}`}
-                    width={512}
-                    height={1024}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                  {isMoreTile && (
-                    <span className="absolute inset-0 flex items-center justify-center gap-2 bg-primary/75 text-xl font-bold text-primary-foreground backdrop-blur-[1px]">
-                      <Images className="h-6 w-6" />+{car.images.length - 3}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {isGalleryOpen && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Galerie photos de ${car.brand} ${car.name}`}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
-            onClick={() => setIsGalleryOpen(false)}
-          >
-            <div
-              className="relative flex h-full w-full max-w-6xl flex-col justify-center"
-              onClick={(event) => event.stopPropagation()}
+          <img
+            src={carImage(car, active)}
+            alt={`${title} — photo ${active + 1} sur ${count}`}
+            width={1600}
+            height={1200}
+            fetchPriority="high"
+            className="aspect-[4/3] w-full object-cover"
+          />
+        </button>
+        {count > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Photo précédente"
+              onClick={() => step(-1)}
+              className={cn(
+                roundControl,
+                "absolute left-2 top-1/2 size-9 -translate-y-1/2 sm:left-3 sm:size-11",
+              )}
             >
+              <ChevronLeft className="size-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Photo suivante"
+              onClick={() => step(1)}
+              className={cn(
+                roundControl,
+                "absolute right-2 top-1/2 size-9 -translate-y-1/2 sm:right-3 sm:size-11",
+              )}
+            >
+              <ChevronRight className="size-5" />
+            </button>
+          </>
+        )}
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-center justify-between sm:inset-x-3 sm:bottom-3">
+          <span className="tabular rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white">
+            {active + 1} / {count}
+          </span>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className={cn(
+              roundControl,
+              "pointer-events-auto size-9 sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 sm:text-sm sm:font-medium sm:grid-flow-col",
+            )}
+          >
+            <Expand className="size-4" />
+            <span className="sr-only sm:not-sr-only">Plein écran</span>
+          </button>
+        </div>
+      </div>
+
+      {car.images.length > 1 && (
+        <ul className="mt-2 grid grid-cols-5 gap-1.5 sm:mt-3 sm:grid-cols-6 sm:gap-2">
+          {car.images.map((src, i) => (
+            <li key={`${i}-${src.slice(-24)}`}>
               <button
                 type="button"
-                onClick={() => setIsGalleryOpen(false)}
-                className="absolute right-0 top-0 z-10 rounded-full bg-background/90 p-3 text-foreground transition-colors hover:bg-background"
-                aria-label="Fermer la galerie"
+                aria-label={`Afficher la photo ${i + 1}`}
+                aria-current={i === active}
+                onClick={() => setActive(i)}
+                className={cn(
+                  "block w-full overflow-hidden rounded-md border-2 focus-visible:outline-2 focus-visible:outline-focus",
+                  i === active
+                    ? "border-accent"
+                    : "border-transparent opacity-75 hover:opacity-100",
+                )}
               >
-                <X className="h-5 w-5" />
+                <img src={src} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
               </button>
-              <img
-                src={carImage(car, activeImage)}
-                alt={`${car.brand} ${car.name} — vue ${activeImage + 1}`}
-                className="mx-auto max-h-[78vh] max-w-full rounded-lg object-contain"
-              />
-              <div className="mt-4 flex items-center justify-center gap-4 text-sm font-semibold text-white">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveImage(
-                      (current) => (current - 1 + car.images.length) % car.images.length,
-                    )
-                  }
-                  className="rounded-full bg-white/15 p-2 transition-colors hover:bg-white/25"
-                  aria-label="Photo précédente"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <span>
-                  {activeImage + 1} / {car.images.length}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Full-screen viewer: whole viewport, photo fitted, arrows, thumbnails, keys and swipe. */}
+      <Modal isOpen={open} onOpenChange={setOpen}>
+        <Modal.Backdrop className="bg-black">
+          <Modal.Container className="fixed inset-0 m-0 h-dvh w-screen max-w-none p-0">
+            <Modal.Dialog
+              aria-label={`Galerie photos — ${title}`}
+              className="flex h-dvh w-screen max-w-none flex-col rounded-none bg-black p-0 text-white shadow-none"
+            >
+              <div className="flex items-center gap-3 px-4 py-3">
+                <p className="min-w-0 flex-1 truncate text-sm font-medium">{title}</p>
+                <span className="tabular text-sm text-white/70">
+                  {active + 1} / {count}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setActiveImage((current) => (current + 1) % car.images.length)}
-                  className="rounded-full bg-white/15 p-2 transition-colors hover:bg-white/25"
-                  aria-label="Photo suivante"
+                  onClick={() => setOpen(false)}
+                  aria-label="Fermer"
+                  className={cn(roundControl, "size-10")}
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <X className="size-5" />
                 </button>
               </div>
-            </div>
-          </div>
-        )}
 
-        <section className="border-b border-border py-8 sm:flex sm:items-end sm:justify-between sm:gap-8">
-          <div>
-            <span className="inline-flex w-fit items-center rounded-full border border-border bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground">
-              {car.state}
-            </span>
-            <h1 className="mt-4 text-4xl font-bold sm:text-5xl">
-              {car.brand} <span className="text-primary">{car.name}</span>
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {text("vehicle.text_8", "Disponible dans notre showroom à Sfax")}
-            </p>
-          </div>
-          <p
-            className={`mt-5 shrink-0 font-display font-bold text-primary sm:mt-0 ${
-              car.price_on_request ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
-            }`}
-          >
-            {car.price_on_request
-              ? text("vehicle.text_18", "Prix à discuter")
-              : `${car.price.toLocaleString("fr-FR")} ${text("vehicle.text_9", "DT")}`}
-          </p>
-        </section>
+              <div className="relative min-h-0 flex-1" {...swipe}>
+                <img
+                  src={carImage(car, active)}
+                  alt={`${title} — photo ${active + 1} sur ${count}`}
+                  className="absolute inset-0 size-full object-contain"
+                />
+                {count > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Photo précédente"
+                      onClick={() => step(-1)}
+                      className={cn(
+                        roundControl,
+                        "absolute left-3 top-1/2 size-11 -translate-y-1/2 sm:left-6 sm:size-12",
+                      )}
+                    >
+                      <ChevronLeft className="size-6" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Photo suivante"
+                      onClick={() => step(1)}
+                      className={cn(
+                        roundControl,
+                        "absolute right-3 top-1/2 size-11 -translate-y-1/2 sm:right-6 sm:size-12",
+                      )}
+                    >
+                      <ChevronRight className="size-6" />
+                    </button>
+                  </>
+                )}
+              </div>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-14">
-          <div>
-            <section>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
-                {text("vehicle.text_10", "Présentation")}
+              {count > 1 && (
+                <ul className="flex justify-center gap-2 overflow-x-auto px-4 py-3">
+                  {car.images.map((src, i) => (
+                    <li key={`${i}-${src.slice(-24)}`} className="shrink-0">
+                      <button
+                        type="button"
+                        aria-label={`Afficher la photo ${i + 1}`}
+                        aria-current={i === active}
+                        onClick={() => setActive(i)}
+                        className={cn(
+                          "block overflow-hidden rounded border-2",
+                          i === active
+                            ? "border-white"
+                            : "border-transparent opacity-60 hover:opacity-100",
+                        )}
+                      >
+                        <img src={src} alt="" className="h-12 w-16 object-cover sm:h-14 sm:w-20" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+    </div>
+  );
+}
+
+function VehiculePage() {
+  const text = useSiteText();
+  const benefits = useSiteCollection("vehicle.items");
+  const { slug } = Route.useParams();
+  const { data: car } = useSuspenseQuery(publicCarQuery(slug));
+  const { data: cars } = useSuspenseQuery(publicCarsQuery);
+  if (!car) return null;
+
+  const brand = brandInfo(car.brand);
+  const similar = sortCars(
+    cars.filter(
+      (c) => c.id !== car.id && (brandInfo(c.brand).slug === brand.slug || c.body === car.body),
+    ),
+  ).slice(0, 3);
+
+  // Body type uses its silhouette instead of a generic icon.
+  const specs: [string, string | number | null | undefined, LucideIcon | "body"][] = [
+    [text("vehicle.text_1", "Année"), car.year, Calendar],
+    [text("vehicle.text_2", "Kilométrage"), formatKm(car.km_value), Gauge],
+    [text("vehicle.text_3", "Carburant"), car.fuel, Fuel],
+    [text("vehicle.text_4", "Boîte"), label(GEARBOX_LABELS, car.gearbox), Settings2],
+    [text("vehicle.text_5", "Carrosserie"), car.body, "body"],
+    ["Transmission", car.transmission, Cog],
+    ["Puissance fiscale", car.fiscal_power ? `${car.fiscal_power} CV` : null, Zap],
+    ["Portes", car.doors, DoorOpen],
+    ["Places", car.seats, Users],
+    [text("vehicle.text_6", "Origine"), label(COUNTRY_LABELS, car.country), Globe],
+    ["État", car.state, BadgeCheck],
+  ];
+
+  return (
+    <div className="min-h-screen">
+      <Navbar />
+      <main className="container-page pb-16 pt-6">
+        <Breadcrumbs>
+          <Breadcrumbs.Item href="/">Accueil</Breadcrumbs.Item>
+          <Breadcrumbs.Item href={`/marques/${brand.slug}`}>{brand.name}</Breadcrumbs.Item>
+          <Breadcrumbs.Item>{car.name}</Breadcrumbs.Item>
+        </Breadcrumbs>
+
+        {/* Mobile order: photos, price card, details. Desktop: card in a sticky right column. */}
+        <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-x-8 lg:gap-y-0">
+          <div className="min-w-0">
+            <Gallery car={car} />
+          </div>
+
+          <aside className="lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-fit">
+            <div className="rounded-lg border border-border bg-surface p-5">
+              <div className="flex items-center justify-between gap-3">
+                <Link
+                  to="/marques/$brand"
+                  params={{ brand: brand.slug }}
+                  className="flex items-center gap-2 text-sm text-muted hover:text-foreground"
+                >
+                  <BrandLogo brand={car.brand} wordmark={false} size={24} />
+                  {brand.name}
+                </Link>
+                <Chip size="sm" color={car.state === "Neuf" ? "accent" : "default"}>
+                  {car.state}
+                </Chip>
+              </div>
+              <h1 className="mt-3 text-2xl font-semibold leading-tight">{car.name}</h1>
+              <p className="tabular mt-1 text-sm text-muted">
+                {car.year} · {formatKm(car.km_value)} · {car.fuel}
               </p>
-              <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
-                {text("vehicle.text_11", "Description du véhicule")}
-              </h2>
-              <p className="mt-5 max-w-3xl text-base leading-8 text-muted-foreground">
-                {car.description}
+              {car.price_on_request ? (
+                <div className="mt-4">
+                  <p className="text-xl font-semibold">
+                    {text("vehicle.price_hidden", "Prix sur demande")}
+                  </p>
+                  <Link
+                    to="/contact"
+                    search={{ vehicule: car.slug, objet: "prix" }}
+                    className={buttonVariants({ size: "lg", fullWidth: true, className: "mt-3" })}
+                  >
+                    <MessageCircle className="size-4" />
+                    {text("vehicle.price_hidden_cta", "Contactez-nous pour le prix")}
+                  </Link>
+                </div>
+              ) : (
+                <p className="tabular mt-4 text-3xl font-semibold">
+                  {formatPrice(car.price, text("vehicle.text_9", "DT"))}
+                </p>
+              )}
+              <p className="mt-1 text-sm text-muted">
+                {text("vehicle.text_8", "Disponible dans notre showroom à Sfax")}
               </p>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-muted-foreground">
+
+              <div className="mt-5 grid gap-2">
+                <Link
+                  to="/contact"
+                  search={{ vehicule: car.slug, objet: "essai" }}
+                  className={buttonVariants({
+                    size: "lg",
+                    fullWidth: true,
+                    // With a hidden price, "Contactez-nous pour le prix" is the main action.
+                    variant: car.price_on_request ? "secondary" : "primary",
+                  })}
+                >
+                  {text("vehicle.text_16", "Réserver un essai")}
+                </Link>
+                {!car.price_on_request && (
+                  <Link
+                    to="/contact"
+                    search={{ vehicule: car.slug, objet: "offre" }}
+                    className={buttonVariants({
+                      variant: "secondary",
+                      size: "lg",
+                      fullWidth: true,
+                    })}
+                  >
+                    {text("vehicle.text_17", "Demander une offre")}
+                  </Link>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={text("identity.phone_link", "tel:+21652144869")}
+                    className={buttonVariants({ variant: "tertiary", fullWidth: true })}
+                  >
+                    <Phone className="size-4" />
+                    Appeler
+                  </a>
+                  <a
+                    href={text("identity.whatsapp", "https://wa.me/21652144869")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonVariants({ variant: "tertiary", fullWidth: true })}
+                  >
+                    <MessageCircle className="size-4" />
+                    WhatsApp
+                  </a>
+                </div>
+              </div>
+              <p className="mt-4 text-xs text-muted">
                 {text(
-                  "vehicle.textarea_1",
-                  "Le véhicule est visible sur rendez-vous chez Auto Kontor Sfax. Notre équipe peut vous accompagner pour l'essai, la reprise de votre ancien véhicule et les solutions de financement.",
+                  "vehicle.text_15",
+                  "Échangez avec notre équipe pour vérifier sa disponibilité ou organiser un essai.",
                 )}
               </p>
-            </section>
-
-            <section className="mt-12 border-t border-border pt-10">
-              <h2 className="text-2xl font-bold">{text("vehicle.text_12", "Caractéristiques")}</h2>
-              <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-                {specs.map((s) => (
-                  <div key={s.label} className="bg-card p-5">
-                    <s.icon className="h-5 w-5 text-primary" />
-                    <p className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      {s.label}
-                    </p>
-                    <p className="mt-1 font-semibold text-foreground">{s.value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="mt-12 border-t border-border pt-10">
-              <h2 className="text-2xl font-bold">{text("vehicle.text_13", "Services inclus")}</h2>
-              <div className="mt-5 grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
-                {benefits.map(({ text: item }) => (
-                  <p key={item} className="flex items-center gap-3">
-                    <Check className="h-4 w-4 shrink-0 text-primary" />
-                    {item}
-                  </p>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <aside className="h-fit rounded-lg border border-border bg-card p-6 lg:sticky lg:top-28">
-            <MessageCircle className="h-7 w-7 text-primary" />
-            <h2 className="mt-4 text-2xl font-bold">
-              {text("vehicle.text_14", "Ce véhicule vous intéresse ?")}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {text(
-                "vehicle.text_15",
-                "Échangez avec notre équipe pour vérifier sa disponibilité ou organiser un essai.",
-              )}
-            </p>
-            <div className="mt-7 grid gap-4">
-              <a
-                href={text("vehicle.link_1", "#contact")}
-                onClick={() =>
-                  prefillContactMessage(
-                    `Bonjour, je souhaite réserver un essai pour la ${car.brand} ${car.name} (${car.year}). Pouvez-vous me communiquer vos disponibilités ?`,
-                  )
-                }
-                className="btn-3d btn-3d-primary px-7 py-4 text-base"
-              >
-                {text("vehicle.text_16", "Réserver un essai")}
-              </a>
-              <a
-                href={text("vehicle.link_1", "#contact")}
-                onClick={() =>
-                  prefillContactMessage(
-                    `Bonjour, je souhaite recevoir une offre pour la ${car.brand} ${car.name} (${car.year}). Merci de me recontacter.`,
-                  )
-                }
-                className="btn-3d btn-3d-steel px-7 py-4 text-base"
-              >
-                {text("vehicle.text_17", "Demander une offre")}
-              </a>
             </div>
           </aside>
+
+          <div className="min-w-0">
+            <section className="lg:mt-10">
+              <h2 className="text-lg font-semibold">
+                {text("vehicle.text_12", "Caractéristiques")}
+              </h2>
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 rounded-lg border border-border bg-surface p-4 sm:grid-cols-3 sm:gap-x-6 sm:p-5">
+                {specs
+                  .filter(([, value]) => value !== null && value !== undefined && value !== "")
+                  .map(([name, value, Icon]) => (
+                    <div key={name} className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-secondary text-accent sm:size-9">
+                        {Icon === "body" ? (
+                          <BodyIcon body={car.body} active className="h-auto w-6" />
+                        ) : (
+                          <Icon className="size-4 sm:size-[18px]" aria-hidden />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted">{name}</dt>
+                        <dd className="tabular mt-0.5 break-words text-sm font-medium sm:text-base">
+                          {value}
+                        </dd>
+                      </div>
+                    </div>
+                  ))}
+              </dl>
+            </section>
+
+            {car.description && (
+              <section className="mt-10">
+                <h2 className="text-lg font-semibold">
+                  {text("vehicle.text_11", "Description du véhicule")}
+                </h2>
+                <p className="mt-3 whitespace-pre-line leading-7 text-muted">{car.description}</p>
+                <p className="mt-3 leading-7 text-muted">
+                  {text(
+                    "vehicle.textarea_1",
+                    "Le véhicule est visible sur rendez-vous chez Auto Kontor Sfax. Notre équipe peut vous accompagner pour l'essai, la reprise de votre ancien véhicule et les solutions de financement.",
+                  )}
+                </p>
+              </section>
+            )}
+
+            {benefits.length > 0 && (
+              <section className="mt-10">
+                <h2 className="text-lg font-semibold">
+                  {text("vehicle.text_13", "Services inclus")}
+                </h2>
+                <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  {benefits.map(({ text: item }) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <Check className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
         </div>
 
-        <SellCarBanner className="mt-16 px-0" />
+        {similar.length > 0 && (
+          <section className="mt-16">
+            <h2 className="mb-5 text-lg font-semibold">Véhicules similaires</h2>
+            <CarGrid>
+              {similar.map((c) => (
+                <CarCard key={c.id} car={c} />
+              ))}
+            </CarGrid>
+          </section>
+        )}
       </main>
-      <ContactFooter />
+      <SellCarBanner className="pb-16" />
+      <SiteFooter />
     </div>
   );
 }

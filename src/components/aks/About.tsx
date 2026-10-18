@@ -1,96 +1,63 @@
-import { useSiteCollection } from "@/lib/site-content";
-import { useSiteText } from "@/lib/site-content";
-import { useEffect, useRef, useState } from "react";
-import { Reveal } from "./Reveal";
-
-function Counter({ value, suffix }: { value: number; suffix: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [n, setN] = useState(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries[0]?.isIntersecting) return;
-      io.disconnect();
-      const start = performance.now();
-      const dur = 1600;
-      const tick = (t: number) => {
-        const p = Math.min((t - start) / dur, 1);
-        setN(Math.round(value * (1 - Math.pow(1 - p, 3))));
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [value]);
-
-  return (
-    <span ref={ref} className="font-display text-4xl font-bold text-foreground sm:text-5xl">
-      {n.toLocaleString("fr-FR")}
-      <span className="text-primary">{suffix}</span>
-    </span>
-  );
-}
+import { useSiteCollection, useSiteText } from "@/lib/site-content";
+import { Award } from "lucide-react";
+import { formatNumber } from "@/lib/cars";
+import { Section } from "./Section";
 
 export function About() {
   const text = useSiteText();
-
   const stats = useSiteCollection("about.items");
 
   return (
-    <section id="apropos" className="relative overflow-hidden border-y border-border bg-panel">
-      <div
-        aria-hidden
-        className="absolute right-0 top-0 h-72 w-72 rounded-full bg-primary/15 blur-[130px]"
-      />
-      <div className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
-        <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
-          <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              {text("about.text_1", "À propos")}
+    <div id="apropos" className="border-y border-separator bg-surface">
+      <Section className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p className="text-sm font-medium text-accent">{text("about.text_1", "À propos")}</p>
+          {text("about.badge", "18 ans d’expérience") && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--accent)_35%,transparent)] bg-accent-soft py-1.5 pl-2 pr-3.5 text-sm font-semibold text-accent">
+              <span className="grid size-6 place-items-center rounded-full bg-accent text-accent-foreground">
+                <Award className="size-3.5" aria-hidden />
+              </span>
+              {text("about.badge", "18 ans d’expérience")}
             </p>
-            <h2 className="mt-4 text-4xl font-bold sm:text-5xl">
-              {text("about.text_2", "Auto Kontor Sfax,")}
-              <br />
-              <span className="text-chrome">{text("about.text_3", "l'exigence automobile")}</span>
-            </h2>
-            <div className="mt-6 space-y-4 text-muted-foreground">
-              <p>
-                {text(
-                  "about.textarea_1",
-                  "Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la région dans l'achat, la reprise et l'importation de véhicules haut de gamme. Notre showroom réunit berlines, SUV et sportives sélectionnés un par un.",
-                )}
-              </p>
-              <p>
-                {text(
-                  "about.textarea_2",
-                  "Transparence sur l'historique, garantie écrite, financement négocié avec nos partenaires bancaires : nous construisons des relations durables, pas des ventes rapides.",
-                )}
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <div
-              className={`glass-panel grid gap-px overflow-hidden rounded-2xl ${
-                stats.length > 1 ? "grid-cols-2" : ""
-              }`}
-            >
-              {stats.map((s, index) => (
-                <div
-                  key={index}
-                  className={`bg-background/40 p-8 ${stats.length > 1 ? "" : "text-center"}`}
-                >
-                  <Counter value={s.value} suffix={s.suffix} />
-                  <p className="mt-2 text-sm text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
+          )}
+          <h2 className="mt-3 text-xl font-semibold sm:text-2xl">
+            {text("about.text_2", "Auto Kontor Sfax,")}{" "}
+            {text("about.text_3", "l'exigence automobile")}
+          </h2>
+          <div className="mt-4 space-y-3 text-muted">
+            <p>
+              {text(
+                "about.textarea_1",
+                "Depuis 2008, Auto Kontor Sfax accompagne les automobilistes de la région dans l'achat, la reprise et l'importation de véhicules haut de gamme. Notre showroom réunit berlines, SUV et sportives sélectionnés un par un.",
+              )}
+            </p>
+            <p>
+              {text(
+                "about.textarea_2",
+                "Transparence sur l'historique, garantie écrite, financement négocié avec nos partenaires bancaires : nous construisons des relations durables, pas des ventes rapides.",
+              )}
+            </p>
+          </div>
         </div>
-      </div>
-    </section>
+        {stats.length > 0 && (
+          <dl
+            className={`grid gap-px overflow-hidden rounded-lg border border-border bg-border ${stats.length > 1 ? "grid-cols-2" : ""}`}
+          >
+            {stats.map((s, index) => (
+              <div
+                key={index}
+                className={`bg-surface p-6 ${stats.length % 2 && index === stats.length - 1 ? "col-span-2" : ""}`}
+              >
+                <dt className="text-sm text-muted">{s.label}</dt>
+                <dd className="tabular mt-1 text-3xl font-semibold">
+                  {formatNumber(s.value)}
+                  <span className="text-accent">{s.suffix}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </Section>
+    </div>
   );
 }

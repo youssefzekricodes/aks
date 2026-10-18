@@ -17,6 +17,11 @@ export function useSiteText() {
   };
 }
 
+/** Links saved before /contact existed ("#contact", "/#contact") go to the contact page. */
+export function contactHref(href: string) {
+  return /^\/?#contact$/.test(href.trim()) ? "/contact" : href;
+}
+
 export function useSiteCollection<K extends CollectionKey>(
   key: K,
 ): (typeof COLLECTION_DEFAULTS)[K] {

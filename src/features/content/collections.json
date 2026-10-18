@@ -83,16 +83,8 @@
   ],
   "showroom.items": [
     {
-      "day": "Lundi – Vendredi",
-      "time": "08:30 – 18:30"
-    },
-    {
-      "day": "Samedi",
-      "time": "09:00 – 16:00"
-    },
-    {
-      "day": "Dimanche",
-      "time": "Sur rendez-vous"
+      "day": "Tous les jours (7j/7)",
+      "time": "09:00 – 21:00"
     }
   ],
   "contact.items": [
@@ -128,6 +120,14 @@
     }
   ],
   "inventory.budgets": [
+    {
+      "label": "< 40 000 DT",
+      "max": 40000
+    },
+    {
+      "label": "< 80 000 DT",
+      "max": 80000
+    },
     {
       "label": "< 120 000 DT",
       "max": 120000

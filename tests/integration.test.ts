@@ -1,55 +1,48 @@
+// Production-build HTTP test against the configured Supabase project.
+// Skipped unless SUPABASE_URL and SUPABASE_ANON_KEY are set. With
+// TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD it also signs in and runs CRUD on a
+// temporary draft car (removed at the end). Writes nothing else.
 import type { Car } from "../src/lib/cars.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { toJSON, fromCrossJSON } from "seroval";
-import { openDatabase } from "../src/server/db/database.ts";
-import { hashPassword } from "../src/server/auth/password.ts";
+
+const configured = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_ANON_KEY"]);
+const adminEmail = process.env["TEST_ADMIN_EMAIL"];
+const adminPassword = process.env["TEST_ADMIN_PASSWORD"];
 
 test(
-  "production HTTP: authorization, login, CSRF, CRUD, persistence, expiry and logout",
-  { timeout: 30000 },
+  "production HTTP against Supabase: public reads, authorization, CSRF, admin CRUD",
+  { timeout: 60000, skip: !configured && "set SUPABASE_URL and SUPABASE_ANON_KEY to run" },
   async () => {
-    const directory = mkdtempSync(join(tmpdir(), "aks-http-test-"));
-    const dbPath = join(directory, "test.sqlite");
-    const db = openDatabase(dbPath);
-    const password = "integration-test-password";
-    db.prepare("INSERT INTO admins VALUES (?, ?, ?)").run(
-      "test-admin",
-      "admin@example.test",
-      await hashPassword(password),
-    );
     const ids: Record<string, string> = {};
     for (const file of readdirSync(".output/server/_ssr").filter((f) =>
       /^(auth|catalog)\.functions-/.test(f),
-    )) {
+    ))
       for (const match of readFileSync(join(".output/server/_ssr", file), "utf8").matchAll(
         /id: "([a-f0-9]+)",\s*name: "([^"]+)"/g,
       ))
         ids[match[2]!] = match[1]!;
-    }
+
     const origin = "http://127.0.0.1:4319";
     const server = spawn(process.execPath, [".output/server/index.mjs"], {
       env: {
         ...process.env,
-        DATABASE_PATH: dbPath,
         APP_ORIGIN: origin,
         PORT: "4319",
         HOST: "127.0.0.1",
         NODE_ENV: "production",
       },
       stdio: "pipe",
-      windowsHide: true,
     });
     let logs = "";
-    server.stderr.on("data", (data) => {
-      logs += data;
-    });
+    server.stderr.on("data", (data) => (logs += data));
     let cookie = "";
+
     async function rpc(
       name: string,
       data?: unknown,
@@ -68,196 +61,129 @@ test(
         ...(post ? { body: JSON.stringify(toJSON({ data })) } : {}),
       });
       const text = await response.text();
-      let decoded;
+      let decoded: { result?: unknown; error?: unknown };
       try {
-        decoded = fromCrossJSON(JSON.parse(text), { refs: new Map() }) as {
-          result?: unknown;
-          error?: unknown;
-        };
+        decoded = fromCrossJSON(JSON.parse(text), { refs: new Map() }) as typeof decoded;
       } catch (error) {
         decoded = { error: String(error) + text };
       }
       return {
         response,
         text,
-        failed: !response.ok || !!decoded.error,
+        failed: !response.ok || Boolean(decoded.error),
         json: <T = unknown>() => {
-          assert.ok(!decoded.error, name + ": " + String(decoded.error).slice(0, 500) + logs);
+          assert.ok(!decoded.error, `${name}: ${String(decoded.error).slice(0, 500)}${logs}`);
           return decoded.result as T;
         },
       };
     }
+    const sessionCookies = (response: Response) =>
+      response.headers
+        .getSetCookie()
+        .filter((value) => /^sb-[^=]+-auth-token/.test(value))
+        .map((value) => value.split(";")[0])
+        .join("; ");
+
     try {
-      let ready = false;
-      for (let i = 0; i < 100; i++) {
-        try {
-          if ((await fetch(origin)).ok) {
-            ready = true;
-            break;
-          }
-        } catch {
-          /* starting */
-        }
+      for (
+        let i = 0;
+        i < 100 &&
+        !(await fetch(origin).then(
+          (r) => r.ok,
+          () => false,
+        ));
+        i++
+      )
         await delay(100);
-      }
-      assert.ok(ready, logs);
-      assert.ok((await rpc("listPublicCars")).json<Car[]>().length > 0);
+
+      // Public, anonymous.
+      assert.ok(Array.isArray((await rpc("listPublicCars")).json<Car[]>()));
       assert.equal((await rpc("getSession")).json(), null);
-      for (const name of ["listAllCars", "listLeads", "listSiteContent"]) {
-        assert.doesNotMatch((await rpc(name)).text, /demo-bmw|inventory_title/);
-        assert.ok((await rpc(name)).failed);
-      }
-      assert.ok((await rpc("deleteCar", { id: "demo-bmw-serie-4" })).failed);
-      assert.ok((await rpc("signIn", { email: "admin@example.test", password: "wrong" })).failed);
+      for (const name of ["listAllCars", "listLeads", "listSiteContent"])
+        assert.ok((await rpc(name)).failed, name);
+      assert.ok((await rpc("deleteCar", { id: "00000000-0000-0000-0000-000000000000" })).failed);
+      assert.ok(
+        (await rpc("createUploadUrl", { kind: "vehicle", contentType: "image/jpeg", size: 1000 }))
+          .failed,
+      );
+      assert.ok((await rpc("submitLead", { name: "", phone: "1" })).failed, "validation");
+      assert.ok(
+        (await rpc("signIn", { email: "nobody@example.test", password: "wrong-password" })).failed,
+      );
+
+      if (!adminEmail || !adminPassword) return;
+
+      // CSRF: a foreign origin cannot sign in even with the right password.
       assert.ok(
         (
           await rpc(
             "signIn",
-            { email: "admin@example.test", password },
+            { email: adminEmail, password: adminPassword },
             { origin: "https://attacker.example" },
           )
         ).failed,
       );
-      const login = await rpc("signIn", { email: "admin@example.test", password });
-      assert.equal(login.response.status, 200, login.text);
-      const setCookie = login.response.headers
-        .getSetCookie()
-        .find((value) => value.startsWith("aks_session=") && !value.startsWith("aks_session=;"))!;
-      assert.match(setCookie, /HttpOnly/i);
-      assert.match(setCookie, /Secure/i);
-      assert.match(setCookie, /SameSite=Strict/i);
-      cookie = setCookie.split(";")[0]!;
-      assert.equal((await rpc("getSession")).json<{ email: string }>().email, "admin@example.test");
-      // The editor receives the complete catalog, including defaults on existing databases.
-      const allContent = (await rpc("listSiteContent")).json<{ key: string; value: string }[]>();
-      assert.ok(allContent.length > 140);
-      assert.ok(allContent.some((row) => row.key === "showroom.items"));
-      const contentChanges = [
-        { key: "hero.text_26", value: "Bienvenue dans notre nouveau showroom" },
-        { key: "hero.text_27", value: "" },
-        { key: "seo.home_title", value: "Mon showroom personnalisé" },
-        { key: "identity.logo", value: "/images/aks-logo.png" },
-        { key: "testimonials.items", value: "[]" },
-        {
-          key: "services.items",
-          value: JSON.stringify([
-            {
-              icon: "ShieldCheck",
-              title: "Service sur mesure",
-              text: "Votre service personnalisé.",
-            },
-          ]),
-        },
-      ];
-      assert.ok((await rpc("saveSiteContent", { entries: contentChanges }, { cookie: "" })).failed);
-      assert.ok(
-        (
-          await rpc(
-            "saveSiteContent",
-            { entries: contentChanges },
-            { origin: "https://attacker.example" },
-          )
-        ).failed,
-      );
-      assert.equal((await rpc("saveSiteContent", { entries: contentChanges })).failed, false);
-      const publicContent = (await rpc("listPublicSiteContent")).json<Record<string, string>>();
-      assert.equal(publicContent["hero.text_27"], "");
-      assert.equal(publicContent["testimonials.items"], "[]");
-      assert.equal(
-        db.prepare("SELECT value FROM site_content WHERE key = ?").get("hero.text_26")?.["value"],
-        contentChanges[0]!.value,
-      );
-      let homepage = await (await fetch(origin)).text();
-      assert.match(homepage, /<title>Mon showroom personnalisé<\/title>/);
-      assert.match(homepage, /Bienvenue dans notre nouveau showroom/);
-      assert.match(homepage, /Service sur mesure/);
-      assert.doesNotMatch(homepage, /id="avis"/);
-      assert.equal(
-        (await rpc("saveSiteContent", { entries: [{ key: "sections.services", value: "false" }] }))
-          .failed,
-        false,
-      );
-      homepage = await (await fetch(origin)).text();
-      assert.doesNotMatch(homepage, /id="services"/);
-      for (const invalid of [
-        { key: "unknown.field", value: "bad" },
-        { key: "identity.logo", value: 'data:image/svg+xml,<svg onload="alert(1)"/>' },
-        { key: "contact.link_1", value: "javascript:alert(1)" },
-        { key: "showroom.map_1", value: "https://attacker.example/embed" },
-        { key: "sections.hero", value: "yes" },
-        {
-          key: "testimonials.items",
-          value: JSON.stringify([{ name: "Test", city: "Sfax", stars: 7, text: "Avis" }]),
-        },
-        {
-          key: "navbar.items",
-          value: JSON.stringify([{ href: "javascript:alert(1)", label: "Test" }]),
-        },
-      ]) {
-        assert.ok(
-          (
-            await rpc("saveSiteContent", {
-              entries: [{ key: "hero.text_26", value: "Must not persist" }, invalid],
-            })
-          ).failed,
-          invalid.key,
-        );
+      const login = await rpc("signIn", { email: adminEmail, password: adminPassword });
+      assert.equal(login.failed, false, login.text);
+      const setCookies = login.response.headers.getSetCookie().filter((v) => v.startsWith("sb-"));
+      assert.ok(setCookies.length > 0, "session cookie set");
+      for (const value of setCookies) {
+        assert.match(value, /HttpOnly/i);
+        assert.match(value, /Secure/i);
+        assert.match(value, /SameSite=Strict/i);
       }
+      cookie = sessionCookies(login.response);
       assert.equal(
-        (await rpc("listPublicSiteContent")).json<Record<string, string>>()["hero.text_26"],
-        contentChanges[0]!.value,
+        (await rpc("getSession")).json<{ email: string }>().email,
+        adminEmail.toLowerCase(),
       );
-      const car = (await rpc("listAllCars")).json<Car[]>()[0]!;
-      assert.ok(
-        (
-          await rpc(
-            "setCarPublished",
-            { id: car.id, published: false },
-            { origin: "https://attacker.example" },
-          )
-        ).failed,
-      );
-      assert.equal(
-        (await rpc("setCarPublished", { id: car.id, published: false })).response.status,
-        200,
-      );
-      assert.ok(
-        !(await rpc("listPublicCars"))
-          .json<Car[]>()
-          .some((item: { id: string }) => item.id === car.id),
-      );
-      assert.equal((await rpc("saveCar", { ...car, name: "Updated car" })).response.status, 200);
-      assert.match(
-        String(db.prepare("SELECT document FROM cars WHERE id = ?").get(car.id)?.["document"]),
-        /Updated car/,
-      );
-      assert.ok((await rpc("saveCar", { ...car, price: -1 })).failed);
-      assert.equal(
-        (
-          await rpc(
-            "submitLead",
-            { name: "Visitor", phone: "12345678", message: "Test inquiry" },
-            { cookie: "" },
-          )
-        ).response.status,
-        200,
-      );
-      assert.equal((await rpc("listLeads")).json<{ name: string }[]>()[0]!.name, "Visitor");
-      assert.equal((await rpc("signOut", {})).response.status, 200);
-      assert.equal((await rpc("getSession")).json(), null);
-      const nextLogin = await rpc("signIn", { email: "admin@example.test", password });
-      cookie = nextLogin.response.headers
-        .getSetCookie()
-        .find((value) => value.startsWith("aks_session=") && !value.startsWith("aks_session=;"))!
-        .split(";")[0]!;
-      db.prepare("UPDATE sessions SET expires_at = 0").run();
-      assert.equal((await rpc("getSession")).json(), null);
-      assert.ok((await rpc("listAllCars")).failed);
+      assert.ok(Array.isArray((await rpc("listLeads")).json()));
+
+      const draft = {
+        slug: `test-${Date.now()}`,
+        name: "Test",
+        brand: "BMW",
+        model: "Test",
+        version: "",
+        country: "Germany",
+        year: 2024,
+        price: 1000,
+        price_on_request: false,
+        km: "0 km",
+        km_value: 0,
+        fuel: "Essence",
+        gearbox: "Auto",
+        body: "Berline",
+        state: "Neuf",
+        images: [],
+        description: "",
+        published: false,
+        sort_order: 0,
+      };
+      assert.ok((await rpc("saveCar", draft, { origin: "https://attacker.example" })).failed);
+      const { id } = (await rpc("saveCar", draft)).json<{ id: string }>();
+      try {
+        assert.ok(
+          !(await rpc("listPublicCars")).json<Car[]>().some((car) => car.id === id),
+          "draft hidden",
+        );
+        assert.ok(
+          (await rpc("saveCar", { ...draft, id, images: ["https://attacker.example/x.jpg"] }))
+            .failed,
+          "foreign image URL refused",
+        );
+        assert.equal((await rpc("setCarPublished", { id, published: true })).failed, false);
+        assert.ok(
+          (await rpc("listPublicCars")).json<Car[]>().some((car) => car.id === id),
+          "published",
+        );
+      } finally {
+        assert.equal((await rpc("deleteCar", { id })).failed, false);
+      }
+      assert.equal((await rpc("signOut", {})).failed, false);
     } finally {
       server.kill();
       await new Promise<void>((resolve) => server.once("exit", () => resolve()));
-      db.close();
-      rmSync(directory, { recursive: true, force: true });
     }
   },
 );

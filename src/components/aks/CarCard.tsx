@@ -1,66 +1,100 @@
-import { useSiteText } from "@/lib/site-content";
-import { Fuel, Gauge, Settings2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { carImage, type Car } from "@/lib/cars";
+import { Chip, Skeleton } from "@heroui/react";
+import { buttonVariants } from "@heroui/styles";
+import { MessageCircle } from "lucide-react";
 
-export function CarCard({ car }: { car: Car }) {
+import { useSiteText } from "@/lib/site-content";
+import { carImage, formatKm, formatPrice, GEARBOX_LABELS, label, type Car } from "@/lib/cars";
+import { BrandLogo } from "./BrandLogo";
+
+/**
+ * Listing card: photo, brand, model, one line of key specs, price.
+ * The whole card is the link (title link stretched over the card).
+ */
+export function CarCard({ car, priority = false }: { car: Car; priority?: boolean }) {
   const text = useSiteText();
+  const specs = [
+    String(car.year),
+    formatKm(car.km_value),
+    car.fuel,
+    label(GEARBOX_LABELS, car.gearbox),
+  ];
 
   return (
-    <article className="group glass-panel h-full overflow-hidden rounded-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_0_50px_-12px_var(--primary)]">
-      <div className="relative aspect-[4/3] overflow-hidden bg-black">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface transition-[border-color,box-shadow] hover:border-[color-mix(in_oklab,var(--border)_60%,var(--foreground)_25%)] hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-secondary">
         <img
           src={carImage(car)}
-          alt={`${car.brand} ${car.name}`}
-          width={1024}
-          height={768}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          alt=""
+          width={800}
+          height={600}
+          loading={priority ? "eager" : "lazy"}
+          className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
-        <span className="absolute left-3 top-3 rounded-full border border-border bg-background/80 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground backdrop-blur">
-          {car.state}
-        </span>
-      </div>
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold">
-              {car.brand} {car.name}
-            </h3>
-            <p className="text-sm text-muted-foreground">{car.year}</p>
-          </div>
-          <p
-            className={`shrink-0 text-right font-display font-bold text-primary ${
-              car.price_on_request ? "max-w-28 text-sm" : "text-lg"
-            }`}
-          >
-            {car.price_on_request
-              ? text("card.text_3", "Prix à discuter")
-              : `${car.price.toLocaleString("fr-FR")} ${text("card.text_1", "DT")}`}
-          </p>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 border-y border-border py-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Gauge className="h-3.5 w-3.5 shrink-0 text-steel" />
-            {car.km}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Fuel className="h-3.5 w-3.5 shrink-0 text-steel" />
-            {car.fuel}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Settings2 className="h-3.5 w-3.5 shrink-0 text-steel" />
-            {car.gearbox}
-          </span>
-        </div>
-        <Link
-          to="/vehicule/$slug"
-          params={{ slug: car.slug }}
-          className="btn-3d btn-3d-primary mt-4 flex w-full items-center justify-center px-4 py-2 text-xs uppercase tracking-wider"
+        <Chip
+          size="sm"
+          color={car.state === "Neuf" ? "accent" : "default"}
+          className="absolute left-3 top-3 shadow-sm"
         >
-          {text("card.text_2", "Voir les détails")}
-        </Link>
+          {car.state}
+        </Chip>
+      </div>
+
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center gap-2 text-xs font-medium text-muted">
+          <BrandLogo brand={car.brand} wordmark={false} size={18} />
+          <span>{car.brand}</span>
+        </div>
+        <h3 className="mt-1.5 line-clamp-1 text-base font-semibold">
+          <Link
+            to="/vehicule/$slug"
+            params={{ slug: car.slug }}
+            className="outline-none after:absolute after:inset-0"
+          >
+            {car.name}
+          </Link>
+        </h3>
+        <p className="tabular mt-1 text-sm text-muted">{specs.join(" · ")}</p>
+        {car.price_on_request ? (
+          // Price hidden by the admin: invite to ask instead. Above the stretched card link.
+          <div className="mt-auto pt-4">
+            <Link
+              to="/contact"
+              search={{ vehicule: car.slug, objet: "prix" }}
+              className={buttonVariants({
+                size: "sm",
+                variant: "secondary",
+                className: "relative z-10",
+              })}
+            >
+              <MessageCircle className="size-4" />
+              {text("card.price_hidden_cta", "Contactez-nous")}
+            </Link>
+          </div>
+        ) : (
+          <p className="tabular mt-auto pt-4 text-lg font-semibold">
+            {formatPrice(car.price, text("card.text_1", "DT"))}
+          </p>
+        )}
       </div>
     </article>
   );
+}
+
+export function CarCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <Skeleton className="aspect-[4/3] w-full rounded-none" />
+      <div className="space-y-2 p-4">
+        <Skeleton className="h-3 w-1/4 rounded" />
+        <Skeleton className="h-4 w-2/3 rounded" />
+        <Skeleton className="h-3 w-full rounded" />
+        <Skeleton className="mt-4 h-5 w-1/3 rounded" />
+      </div>
+    </div>
+  );
+}
+
+export function CarGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">{children}</div>;
 }
