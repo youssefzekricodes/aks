@@ -40,6 +40,7 @@
     "react-aria": "^3.53.1",
     "react-aria-components": "^1.22.1",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^5.5.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "vite-tsconfig-paths": "^6.0.2",

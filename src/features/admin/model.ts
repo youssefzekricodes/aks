@@ -1,6 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 import { formatKm, slugify, type Car } from "@/lib/cars";
-import { getDashboardStats, listAllCars, listLeads, type CarInput } from "@/lib/data";
+import {
+  getDashboardStats,
+  listAllCars,
+  listLeads,
+  type CarInput,
+  listSiteContent,
+} from "@/lib/data";
 import { getSession, listAdmins } from "@/features/auth/auth.functions";
 
 /** Non-component helpers shared by the admin sections. */
@@ -11,6 +17,7 @@ export const ADMIN_SECTIONS = [
   "brands",
   "content",
   "leads",
+  "connectors",
   "admins",
 ] as const;
 export type AdminSection = (typeof ADMIN_SECTIONS)[number];
@@ -23,8 +30,29 @@ export const SECTION_LABELS: Record<AdminSection, string> = {
   brands: "Marques",
   content: "Contenu du site",
   leads: "Demandes",
+  connectors: "Connecteurs",
   admins: "Administrateurs",
 };
+
+/** Each section is its own route (code loaded on demand). */
+export const SECTION_PATHS = {
+  dashboard: "/admin",
+  cars: "/admin/vehicules",
+  brands: "/admin/marques",
+  content: "/admin/contenu",
+  leads: "/admin/demandes",
+  connectors: "/admin/connecteurs",
+  admins: "/admin/administrateurs",
+} as const satisfies Record<AdminSection, string>;
+
+/** Section shown at a path (trailing slash tolerated). */
+export function sectionAt(pathname: string): AdminSection {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  const found = (Object.entries(SECTION_PATHS) as [AdminSection, string][]).find(
+    ([, value]) => value === path,
+  );
+  return found?.[0] ?? "dashboard";
+}
 
 /** Sections only a super administrator can open. */
 export const SUPER_ADMIN_SECTIONS: readonly AdminSection[] = ["admins"];
@@ -71,11 +99,17 @@ export const FACTOR_LABELS: Record<Factor["type"], string> = {
  */
 export const APP_FACTORS_ENABLED = false;
 
+export const adminContentQuery = queryOptions({
+  queryKey: ["admin-site-content"],
+  queryFn: () => listSiteContent(),
+});
+
 export const sessionQueryKey = ["admin-session"] as const;
 export const sessionQuery = queryOptions({
   queryKey: sessionQueryKey,
   queryFn: () => getSession(),
-  staleTime: Infinity,
+  // Reused across admin pages; checked again after a minute or when the tab regains focus.
+  staleTime: 60_000,
 });
 
 export const adminsQuery = queryOptions({
@@ -192,6 +226,8 @@ export const emptyCar: CarInput = {
   published: false,
   sold: false,
   discount_price: null,
+  social_caption: "",
+  social_targets: [],
 };
 
 /** Form state for a car; legacy records without `model` get it from `name`. */

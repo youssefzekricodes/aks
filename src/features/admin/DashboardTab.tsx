@@ -6,6 +6,7 @@ import { BadgeCheck, Car as CarIcon, Eye, FileClock, Inbox, type LucideIcon } fr
 import { CAR_BODIES, carImage } from "@/lib/cars";
 import { BodyIcon } from "@/components/aks/BodyIcon";
 import {
+  SECTION_PATHS,
   adminCarsQuery,
   dashboardStatsQuery,
   leadsQueryOptions,
@@ -151,8 +152,8 @@ function StatTile({
   const tile = `block h-full rounded-2xl border bg-surface p-4 ${highlight ? "border-accent" : "border-separator"}`;
   return to ? (
     <Link
-      to="/admin"
-      search={{ section: to }}
+      to={SECTION_PATHS[to]}
+      preload="intent"
       className={`${tile} outline-none transition-colors hover:border-[color-mix(in_oklab,var(--border)_50%,var(--foreground)_30%)] focus-visible:ring-2 focus-visible:ring-focus`}
     >
       <div>{body}</div>

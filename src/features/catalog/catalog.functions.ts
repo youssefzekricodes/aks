@@ -72,6 +72,34 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(async
 export const recordCarView = createServerFn({ method: "POST" })
   .validator(z.object({ slug: z.string().min(1).max(200) }))
   .handler(async ({ data }) => (await repository()).recordCarView(data.slug));
+/* Facebook / Instagram (social-publish Edge Function). */
+export const getSocialStatus = createServerFn({ method: "GET" }).handler(async () =>
+  (await repository()).socialStatus(),
+);
+export const connectSocial = createServerFn({ method: "POST" })
+  .validator(
+    z.object({ code: z.string().min(1).max(2000), redirectUri: z.string().url().max(300) }),
+  )
+  .handler(async ({ data }) => (await repository()).socialConnect(data.code, data.redirectUri));
+export const selectSocialPage = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      pageId: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .max(40),
+    }),
+  )
+  .handler(async ({ data }) => (await repository()).socialSelectPage(data.pageId));
+export const disconnectSocial = createServerFn({ method: "POST" }).handler(async () =>
+  (await repository()).socialDisconnect(),
+);
+export const listSocialPosts = createServerFn({ method: "GET" })
+  .validator(z.object({ carId: idSchema }))
+  .handler(async ({ data }) => (await repository()).socialPosts(data.carId));
+export const retrySocialShare = createServerFn({ method: "POST" })
+  .validator(z.object({ carId: idSchema }))
+  .handler(async ({ data }) => (await repository()).retryShare(data.carId));
 export const setLeadHandled = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, handled: z.boolean() }))
   .handler(async ({ data }) => (await repository()).handleLead(data.id, data.handled));

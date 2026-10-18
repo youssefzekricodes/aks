@@ -70,6 +70,13 @@
     "value": "/images/aks-storefront.jpg"
   },
   {
+    "key": "hero.image_mobile",
+    "group": "hero",
+    "label": "Photo de la bannière — mobile",
+    "type": "image",
+    "value": ""
+  },
+  {
     "key": "hero.text_24",
     "group": "hero",
     "label": "Description image — Façade du showroom Auto Kontor Sfax de nuit, enseigne AKS éc",
@@ -334,6 +341,20 @@
     "label": "Titre — Tout, sous le même toit",
     "type": "text",
     "value": "Tout, sous le même toit"
+  },
+  {
+    "key": "services.intro",
+    "group": "services",
+    "label": "Texte d’introduction — services",
+    "type": "textarea",
+    "value": "De l’achat à la garantie, une seule équipe vous accompagne à chaque étape — sans intermédiaire."
+  },
+  {
+    "key": "services.cta",
+    "group": "services",
+    "label": "Bouton — services",
+    "type": "text",
+    "value": "Parler à un conseiller"
   },
   {
     "key": "testimonials.items",

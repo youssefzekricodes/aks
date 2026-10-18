@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSiteText } from "@/lib/site-content";
 import { primaryPhone, resolveContent, resolvePhones } from "@/features/content/definition";
@@ -76,19 +77,26 @@ export const Route = createFileRoute("/")({
 function Index() {
   const text = useSiteText();
   const show = (key: string) => text(`sections.${key}`, "true") === "true";
+  const sections: [string, ReactNode][] = [
+    ["hero", <Hero />],
+    ["brands", <BrandsSection />],
+    ["bodies", <BodiesSection />],
+    ["inventory", <Inventory />],
+    ["sell", <SellCarBanner className="pb-14 lg:pb-20" />],
+    ["about", <About />],
+    ["services", <Services />],
+    ["testimonials", <Testimonials />],
+    ["showroom", <Showroom />],
+  ];
   return (
     <div className="min-h-screen">
       <Navbar />
       <main>
-        {show("hero") && <Hero />}
-        {show("brands") && <BrandsSection />}
-        {show("bodies") && <BodiesSection />}
-        {show("inventory") && <Inventory />}
-        {show("sell") && <SellCarBanner className="pb-14 lg:pb-20" />}
-        {show("about") && <About />}
-        {show("services") && <Services />}
-        {show("testimonials") && <Testimonials />}
-        {show("showroom") && <Showroom />}
+        {sections
+          .filter(([key]) => show(key))
+          .map(([key, section]) => (
+            <Fragment key={key}>{section}</Fragment>
+          ))}
       </main>
       <SiteFooter />
     </div>

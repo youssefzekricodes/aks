@@ -2,7 +2,8 @@ import { buttonVariants } from "@heroui/styles";
 import { Clock, MapPin, Navigation, Phone, MessageCircle } from "lucide-react";
 import { usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { telHref, whatsappHref } from "@/features/content/definition";
-import { Section } from "./Section";
+import { cn } from "@/lib/utils";
+import { Eyebrow, Section, sectionTitle } from "./Section";
 
 export function Showroom() {
   const text = useSiteText();
@@ -11,9 +12,9 @@ export function Showroom() {
 
   return (
     <Section id="showroom" className="grid gap-6 lg:grid-cols-2">
-      <div className="rounded-lg border border-border bg-surface p-6 sm:p-8">
-        <p className="text-sm font-medium text-accent">{text("showroom.text_1", "Showroom")}</p>
-        <h2 className="mt-2 text-xl font-semibold sm:text-2xl">
+      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm sm:p-8">
+        <Eyebrow>{text("showroom.text_1", "Showroom")}</Eyebrow>
+        <h2 className={cn("mt-4", sectionTitle)}>
           {text("showroom.text_2", "Venez nous voir à Sfax")}
         </h2>
 
@@ -80,7 +81,7 @@ export function Showroom() {
         </div>
       </div>
 
-      <div className="min-h-80 overflow-hidden rounded-lg border border-border bg-surface-secondary">
+      <div className="min-h-80 overflow-hidden rounded-2xl border border-border bg-surface-secondary shadow-sm">
         <iframe
           title={text("showroom.text_7", "Carte du showroom Auto Kontor Sfax")}
           src={text(

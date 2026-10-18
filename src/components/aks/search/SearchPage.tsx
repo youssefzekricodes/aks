@@ -5,7 +5,6 @@ import {
   Breadcrumbs,
   Button,
   Drawer,
-  EmptyState,
   Label,
   ListBox,
   Pagination,
@@ -13,7 +12,7 @@ import {
   Select,
 } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { SearchX, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { publicCarsQuery } from "@/lib/queries";
 import {
   activeFilterCount,
@@ -24,6 +23,7 @@ import {
   type Sort,
 } from "@/features/catalog/search";
 import { CarCard, CarGrid } from "../CarCard";
+import { NoResults } from "../NoResults";
 import { ActiveFilters, FilterPanel, type FilterChange } from "./FilterPanel";
 
 const SORT_LABELS: Record<Sort, string> = {
@@ -207,19 +207,14 @@ export function SearchPage({
               </CarGrid>
             </div>
           ) : (
-            <EmptyState className="mt-8 rounded-lg border border-dashed border-border px-6 py-16 text-center">
-              <SearchX className="mx-auto size-8 text-muted" aria-hidden />
-              <p className="mt-3 font-medium">Aucun véhicule ne correspond à ces critères.</p>
-              <p className="mt-1 text-sm text-muted">
-                Retirez un filtre ou contactez-nous : nous pouvons trouver le véhicule pour vous.
-              </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {active > 0 && <Button onPress={reset}>Réinitialiser les filtres</Button>}
-                <Link to="/contact" className={buttonVariants({ variant: "secondary" })}>
-                  Nous contacter
-                </Link>
-              </div>
-            </EmptyState>
+            <NoResults
+              className="mt-8"
+              // With no stock at all, say new arrivals are coming rather than "reset".
+              filtersActive={active > 0 && cars.length > 0}
+              onReset={reset}
+              // Other stock to look at instead (the matching list is empty).
+              suggestions={sortCars(cars).slice(0, 3)}
+            />
           )}
 
           {pages > 1 && (

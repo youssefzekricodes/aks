@@ -1,6 +1,17 @@
+import { useState } from "react";
 import { Button, ProgressCircle, toast } from "@heroui/react";
 import { DropZone, isFileDropItem } from "react-aria-components";
-import { AlertCircle, ArrowLeft, ArrowRight, ImagePlus, RotateCw, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Crop,
+  ImagePlus,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
+import { uploadImage } from "@/lib/data";
+import { CROP_PRESETS, ImageCropDialog } from "./ImageCropDialog";
 import type { PhotoUpload, usePhotoQueue } from "./hooks";
 import { IMAGE_TYPES, MAX_PHOTOS, plural } from "./model";
 import { FilePickButton, IconButton, StatusChip } from "./ui";
@@ -15,13 +26,26 @@ export function PhotoManager({
   images,
   onImagesChange,
   queue,
+  originals,
   isDisabled,
 }: {
   images: string[];
   onImagesChange: (update: (images: string[]) => string[]) => void;
   queue: Queue;
+  /** Original files by photo URL (this session), used as the re-cropping source. */
+  originals: Map<string, File>;
   isDisabled: boolean;
 }) {
+  const [cropping, setCropping] = useState<string | null>(null);
+
+  /** Uploads the re-cropped photo and puts it in place of the old one. */
+  async function replace(oldUrl: string, blob: Blob) {
+    const url = await uploadImage("vehicle", blob);
+    const original = originals.get(oldUrl);
+    if (original) originals.set(url, original);
+    onImagesChange((current) => current.map((u) => (u === oldUrl ? url : u)));
+    toast.success("Photo recadrée. Enregistrez le véhicule pour l’appliquer sur le site.");
+  }
   const used = images.length + queue.items.length;
   const remaining = Math.max(0, MAX_PHOTOS - used);
   const full = remaining === 0;
@@ -90,13 +114,21 @@ export function PhotoManager({
                     onPress={() => move(index, 1)}
                   />
                 </div>
-                <IconButton
-                  label={`Retirer la photo ${index + 1}`}
-                  icon={Trash2}
-                  variant="danger-soft"
-                  isDisabled={isDisabled}
-                  onPress={() => onImagesChange((current) => current.filter((u) => u !== url))}
-                />
+                <div className="flex gap-1">
+                  <IconButton
+                    label={`Recadrer la photo ${index + 1}`}
+                    icon={Crop}
+                    isDisabled={isDisabled}
+                    onPress={() => setCropping(url)}
+                  />
+                  <IconButton
+                    label={`Retirer la photo ${index + 1}`}
+                    icon={Trash2}
+                    variant="danger-soft"
+                    isDisabled={isDisabled}
+                    onPress={() => onImagesChange((current) => current.filter((u) => u !== url))}
+                  />
+                </div>
               </div>
             </li>
           ))}
@@ -148,6 +180,15 @@ export function PhotoManager({
           JPG, PNG ou WebP · 15 Mo maximum par fichier · recadrage automatique au format 4:3
         </p>
       </DropZone>
+      <ImageCropDialog
+        source={cropping ? (originals.get(cropping) ?? cropping) : null}
+        options={CROP_PRESETS.vehicle}
+        onCancel={() => setCropping(null)}
+        onConfirm={async (blob) => {
+          await replace(cropping!, blob);
+          setCropping(null);
+        }}
+      />
     </div>
   );
 }

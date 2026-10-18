@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Drawer, Dropdown, Header, Label, Separator, toast } from "@heroui/react";
 import {
@@ -10,6 +10,7 @@ import {
   FileText,
   Inbox,
   LogOut,
+  Plug,
   Menu,
   ShieldCheck,
   Tags,
@@ -18,19 +19,15 @@ import {
 } from "lucide-react";
 import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
-import { ContentEditor } from "@/features/content/ContentEditor";
-import { AdminsTab } from "./AdminsTab";
-import { BrandsTab } from "./BrandsTab";
-import { CarsTab } from "./CarsTab";
-import { DashboardTab } from "./DashboardTab";
-import { LeadsTab } from "./LeadsTab";
 import {
   ADMIN_SECTIONS,
   ROLE_LABELS,
   SECTION_LABELS,
+  SECTION_PATHS,
   SUPER_ADMIN_SECTIONS,
   adminCarsQuery,
   leadsQueryOptions,
+  sectionAt,
   sessionQuery,
   type AdminSection,
 } from "./model";
@@ -42,12 +39,17 @@ const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   brands: Tags,
   content: FileText,
   leads: Inbox,
+  connectors: Plug,
   admins: UserCog,
 };
 
 const authenticatedRoute = getRouteApi("/_authenticated");
 
-export function AdminPage({ section: requested }: { section: AdminSection }) {
+/**
+ * Admin shell: sidebar, top bar and the current section (child route). Each
+ * section's code loads when it is opened (or hovered in the menu).
+ */
+export function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,7 +60,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
   const sections = ADMIN_SECTIONS.filter(
     (id) => isSuperAdmin || !SUPER_ADMIN_SECTIONS.includes(id),
   );
-  const section = sections.includes(requested) ? requested : "dashboard";
+  const section = sectionAt(useLocation({ select: (location) => location.pathname }));
 
   // Signed out elsewhere, or 2FA no longer satisfied (password reset, factor removed).
   const lost = session.isSuccess && (!session.data || session.data.mfa !== "ok");
@@ -118,7 +120,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-separator bg-surface px-4 sm:px-6 lg:px-8">
+        <header className="dark sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-white/10 bg-[oklch(0.17_0.004_286)] px-4 text-foreground sm:px-6 lg:px-8">
           <div className="lg:hidden">
             <IconButton label="Ouvrir le menu" icon={Menu} onPress={() => setMenuOpen(true)} />
           </div>
@@ -143,11 +145,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
                 onAction={(key) => {
                   if (key === "logout") void signOut();
                   if (key === "security")
-                    void navigate({
-                      to: "/admin",
-                      search: { section: "admins" },
-                      hash: "ma-securite",
-                    });
+                    void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
                 }}
               >
                 <Dropdown.Section>
@@ -188,17 +186,7 @@ export function AdminPage({ section: requested }: { section: AdminSection }) {
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8"
         >
-          {/* Cars and content stay mounted: they hold unsaved drafts and uploads. */}
-          {section === "dashboard" && <DashboardTab />}
-          <div hidden={section !== "cars"}>
-            <CarsTab />
-          </div>
-          {section === "brands" && <BrandsTab />}
-          <div hidden={section !== "content"}>
-            <ContentEditor />
-          </div>
-          {section === "leads" && <LeadsTab />}
-          {section === "admins" && session.data && <AdminsTab session={session.data} />}
+          <Outlet />
         </main>
       </div>
 
@@ -273,8 +261,8 @@ function SectionNav({
           return (
             <li key={id}>
               <Link
-                to="/admin"
-                search={{ section: id }}
+                to={SECTION_PATHS[id]}
+                preload="intent"
                 {...(onNavigate ? { onClick: onNavigate } : {})}
                 aria-current={active ? "page" : undefined}
                 className={`flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${

@@ -26,6 +26,9 @@ import {
   type CarInput,
 } from "@/lib/data";
 import { CarForm } from "./CarForm";
+import { buildSocialCaption, SOCIAL_PLATFORMS } from "@/features/catalog/social";
+import { usePhones } from "@/lib/site-content";
+import { announceShare, socialStatusQuery } from "./SocialCard";
 import { useDialogTarget } from "./hooks";
 import {
   adminCarsQuery,
@@ -112,6 +115,7 @@ export function CarsTab() {
   const deletion = useDialogTarget<AdminCar>();
 
   const cars = useQuery(adminCarsQuery);
+  const { primary } = usePhones();
 
   const invalidate = () =>
     Promise.all([
@@ -120,9 +124,24 @@ export function CarsTab() {
     ]);
 
   const save = useMutation({
-    mutationFn: (data: CarInput) => saveCar({ data: toPayload(data) }),
-    onSuccess: () => {
+    mutationFn: (data: CarInput) =>
+      saveCar({
+        data: toPayload(
+          // Networks chosen but no text written: post the suggested one.
+          data.social_targets?.length && !data.social_caption?.trim()
+            ? {
+                ...data,
+                social_caption: buildSocialCaption(data, {
+                  url: `${window.location.origin}/vehicule/${data.slug}`,
+                  phone: primary?.number,
+                }),
+              }
+            : data,
+        ),
+      }),
+    onSuccess: (result) => {
       toast.success("Véhicule enregistré.");
+      announceShare(result.social);
       setEditing(null);
       return invalidate();
     },
@@ -144,8 +163,10 @@ export function CarsTab() {
       if (context?.previous) queryClient.setQueryData(adminCarsQueryKey, context.previous);
       toast.danger(e.message);
     },
-    onSuccess: (_, { published }) =>
-      toast.success(published ? "Véhicule publié sur le site." : "Véhicule retiré du site."),
+    onSuccess: (result, { published }) => {
+      toast.success(published ? "Véhicule publié sur le site." : "Véhicule retiré du site.");
+      announceShare(result.social);
+    },
     onSettled: (_data, _error, { id }) => {
       setPublishing((current) => {
         const next = new Set(current);
@@ -213,8 +234,11 @@ export function CarsTab() {
     reorder.mutate(ids);
   };
 
+  // Known early so a new vehicle is pre-set to post on the connected networks.
+  const social = useQuery(socialStatusQuery);
   const open = (car: CarInput) => {
-    const draft = toDraft(car);
+    const connected = SOCIAL_PLATFORMS.filter((p) => social.data?.[p]);
+    const draft = toDraft(car.id ? car : { ...car, social_targets: connected });
     setEditing({ draft, original: JSON.stringify(draft) });
   };
 

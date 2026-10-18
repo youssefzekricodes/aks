@@ -6,7 +6,10 @@ import {
   CONTENT_FIELDS,
   validateContentValue,
 } from "@/features/content/definition";
-import { adminClient, checkOrigin } from "./auth";
+import { getRequest } from "@tanstack/react-start/server";
+import type { SocialPlatform } from "@/features/catalog/social";
+import { adminClient, callEdgeFunction, checkOrigin } from "./auth";
+import { env } from "./env";
 import { failure, publicClient, type Db } from "./supabase";
 import {
   deleteObjects,
@@ -45,6 +48,8 @@ type CarRow = {
   published: boolean;
   sold: boolean;
   discount_price: number | string | null;
+  social_caption?: string;
+  social_targets?: ("facebook" | "instagram")[];
   sort_order: number;
   updated_at: string;
   car_images?: { object_key: string; position: number }[];
@@ -82,6 +87,8 @@ function toCar(row: CarRow): Car {
     published: row.published,
     sold: row.sold ?? false,
     discount_price: row.discount_price == null ? null : Number(row.discount_price),
+    social_caption: row.social_caption ?? "",
+    social_targets: row.social_targets ?? [],
     sort_order: row.sort_order,
     updated_at: row.updated_at,
   };
@@ -156,7 +163,17 @@ export async function saveCar(data: CarInput) {
     .single<{ car_id: string; removed_keys: string[] }>();
   if (error) failure(error, "Enregistrement impossible.");
   await deleteObjects(result.removed_keys ?? []);
-  return { id: result.car_id };
+  // Post text and networks (kept out of save_car so older databases still save).
+  const { error: socialError } = await supabase
+    .from("cars")
+    .update({
+      social_caption: data.social_caption ?? "",
+      social_targets: data.social_targets ?? [],
+    })
+    .eq("id", result.car_id);
+  if (socialError && !["42703", "PGRST204"].includes(socialError.code))
+    failure(socialError, "Enregistrement des réseaux sociaux impossible.");
+  return { id: result.car_id, social: await shareCar(supabase, result.car_id) };
 }
 
 /** Display order: these vehicles get 0, 1, 2… in this order. */
@@ -206,7 +223,132 @@ export async function publishCar(id: string, published: boolean) {
   const supabase = await adminClient({ write: true });
   const { error } = await supabase.from("cars").update({ published }).eq("id", id);
   if (error) failure(error, "Mise à jour impossible.");
-  return { ok: true };
+  return { ok: true, social: published ? await shareCar(supabase, id) : null };
+}
+
+/* ------------------------------------------------------------------ Facebook / Instagram */
+
+export type ShareResult = {
+  started: SocialPlatform[];
+  skipped: { platform: SocialPlatform; reason: string }[];
+  error?: string;
+};
+
+/**
+ * Asks the `social-publish` Edge Function to post a published, unsold vehicle on
+ * the networks chosen in its form. Never throws: the vehicle is saved either way.
+ */
+async function shareCar(supabase: Db, id: string): Promise<ShareResult | null> {
+  const { data: row } = await supabase
+    .from("cars")
+    .select(CAR_COLUMNS)
+    .eq("id", id)
+    .maybeSingle<CarRow>();
+  if (!row || !row.published || row.sold || !row.social_targets?.length) return null;
+  const car = toCar(row);
+  const url = `${env.appOrigin || new URL(getRequest().url).origin}/vehicule/${car.slug}`;
+  try {
+    return (await callEdgeFunction("social-publish", {
+      action: "publish",
+      carId: id,
+      caption: car.social_caption?.trim() || `${car.brand} ${car.name} — ${car.year}\n${url}`,
+      url,
+      images: car.images.filter((src) => src.startsWith("https://")),
+      targets: car.social_targets,
+    })) as ShareResult;
+  } catch (error) {
+    console.error(error);
+    return {
+      started: [],
+      skipped: [],
+      error: error instanceof Error ? error.message : "Publication sur les réseaux impossible.",
+    };
+  }
+}
+
+/** Retry: same as publishing again (failed posts are not "already published"). */
+export async function retryShare(id: string) {
+  const supabase = await adminClient({ write: true });
+  return shareCar(supabase, id);
+}
+
+export type SocialPost = {
+  platform: SocialPlatform;
+  status: "pending" | "published" | "failed";
+  permalink: string | null;
+  error: string | null;
+  createdAt: string;
+};
+
+/** Post history of a vehicle, newest first (empty before the "social" migration). */
+export async function socialPosts(carId: string): Promise<SocialPost[]> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("social_posts")
+    .select("platform, status, permalink, error, created_at")
+    .eq("car_id", carId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []).map((p) => ({
+    platform: p.platform as SocialPlatform,
+    status: p.status as SocialPost["status"],
+    permalink: p.permalink as string | null,
+    error: p.error as string | null,
+    createdAt: p.created_at as string,
+  }));
+}
+
+export type SocialStatus = {
+  /** Meta app credentials set on the Edge Function. */
+  app: boolean;
+  appId: string | null;
+  loginConfigId?: string | null;
+  facebook: { pageId: string; name: string; picture: string | null } | null;
+  instagram: { username: string | null; picture: string | null } | null;
+  /** The Edge Function could not be reached (not deployed, migration missing…). */
+  error?: string;
+};
+
+/** Connected Page / Instagram account (never any token). */
+export async function socialStatus(): Promise<SocialStatus> {
+  try {
+    return (await callEdgeFunction(
+      "social-publish",
+      { action: "status" },
+      { write: false },
+    )) as SocialStatus;
+  } catch (error) {
+    return {
+      app: false,
+      appId: null,
+      loginConfigId: null,
+      facebook: null,
+      instagram: null,
+      error: error instanceof Error ? error.message : "Service indisponible.",
+    };
+  }
+}
+
+export type MetaPage = {
+  id: string;
+  name: string;
+  picture: string | null;
+  instagram: { id: string; username: string | null; picture: string | null } | null;
+};
+
+/** End of "Se connecter avec Facebook": exchanges the code, returns the Pages to choose from. */
+export async function socialConnect(code: string, redirectUri: string) {
+  return (await callEdgeFunction("social-publish", { action: "connect", code, redirectUri })) as {
+    pages: MetaPage[];
+  };
+}
+
+export async function socialSelectPage(pageId: string) {
+  return callEdgeFunction("social-publish", { action: "select", pageId });
+}
+
+export async function socialDisconnect() {
+  return callEdgeFunction("social-publish", { action: "disconnect" });
 }
 
 export async function deleteCar(id: string) {

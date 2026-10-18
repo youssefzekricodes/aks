@@ -22,7 +22,7 @@ export function CarCard({ car, priority = false }: { car: Car; priority?: boolea
   ];
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface transition-[border-color,box-shadow] hover:border-[color-mix(in_oklab,var(--border)_60%,var(--foreground)_25%)] hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface transition duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-lg has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus">
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-secondary">
         <img
           src={carImage(car)}
@@ -93,7 +93,7 @@ export function CarCard({ car, priority = false }: { car: Car; priority?: boolea
 
 export function CarCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface">
       <Skeleton className="aspect-[4/3] w-full rounded-none" />
       <div className="space-y-2 p-4">
         <Skeleton className="h-3 w-1/4 rounded" />

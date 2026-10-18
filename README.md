@@ -22,7 +22,7 @@ Contact forms save inquiries that appear under **Demandes** in the admin panel (
 ## Supabase
 
 1. Create a project (Project Settings → API gives `SUPABASE_URL`, the **anon/publishable** key and the **service_role** key).
-2. Apply the schema: run each file of `supabase/migrations/` **in name order** in the SQL editor (`…_init.sql`, `…_roles_mfa.sql`, `…_brand_settings.sql`, `…_email_2fa.sql`, then `…_sales_views.sql`), or with the Supabase CLI `supabase link` then `supabase db push`.
+2. Apply the schema: run each file of `supabase/migrations/` **in name order** in the SQL editor (`…_init.sql`, `…_roles_mfa.sql`, `…_brand_settings.sql`, `…_email_2fa.sql`, `…_sales_views.sql`, `…_social.sql`, then `…_social_connection.sql`), or with the Supabase CLI `supabase link` then `supabase db push`.
 3. **Authentication → Sign In / Providers → Email**: keep e-mail/password enabled and **disable “Allow new users to sign up”** (admins are created by `npm run admin:create` or by a super admin in the dashboard). Under **URL Configuration** set the Site URL to your `APP_ORIGIN`.
 4. **Two-factor authentication** (required for super administrators): after the password, a 6-digit code is e-mailed to the super admin. In **Authentication → Emails → Templates → Magic Link**, make the e-mail show the code, e.g. `<p>Votre code de connexion : <strong>{{ .Token }}</strong></p>` (without `{{ .Token }}` only a link is sent and the code cannot be typed). Supabase’s built-in mailer only delivers to members of your Supabase organisation and a few e-mails per hour: for other addresses, set a custom SMTP server under **Authentication → Emails → SMTP Settings** (Resend, Brevo, Gmail SMTP…). Authenticator-app and SMS factors are implemented too but hidden for now (`APP_FACTORS_ENABLED` in `src/features/admin/model.ts`).
 5. **Deploy the `admin-users` Edge Function** (used by super admins to manage administrators; it holds the service-role key inside Supabase so the web server never does):
@@ -124,7 +124,7 @@ npm test          # builds, then unit tests + HTTP tests (Supabase tests skip wi
   ```sh
   initdb -D /tmp/aks-pg -U postgres --auth=trust && pg_ctl -D /tmp/aks-pg -o "-p 54329 -k /tmp" start
   createdb -h /tmp -p 54329 -U postgres aks
-  psql -h /tmp -p 54329 -U postgres -d aks -f tests/supabase-stub.sql -f supabase/migrations/20261018120000_init.sql -f supabase/migrations/20261018150000_roles_mfa.sql -f supabase/migrations/20261018170000_brand_settings.sql -f supabase/migrations/20261018190000_email_2fa.sql -f supabase/migrations/20261019120000_sales_views.sql
+  psql -h /tmp -p 54329 -U postgres -d aks -f tests/supabase-stub.sql -f supabase/migrations/20261018120000_init.sql -f supabase/migrations/20261018150000_roles_mfa.sql -f supabase/migrations/20261018170000_brand_settings.sql -f supabase/migrations/20261018190000_email_2fa.sql -f supabase/migrations/20261019120000_sales_views.sql -f supabase/migrations/20261019150000_social.sql -f supabase/migrations/20261019170000_social_connection.sql
   PG_TEST_URL="postgresql://postgres@/aks?host=/tmp&port=54329" npm run test:rls
   ```
 
@@ -142,3 +142,17 @@ The server is stateless — data lives in Supabase and files in R2 — so no vol
 Create administrators from your computer with `npm run admin:create` (it talks to Supabase with the service-role key from your local `.env`).
 
 Reference: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Supabase SSR auth](https://supabase.com/docs/guides/auth/server-side), [R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/) and [TanStack server functions](https://tanstack.com/start/latest/docs/framework/react/guide/server-functions).
+
+## Réseaux sociaux (Facebook et Instagram)
+
+When a vehicle is saved as published (and not sold), the admin can post it to the Facebook Page and the linked Instagram account, with its photos and an editable text (vehicle form → **Réseaux sociaux**). Each vehicle is posted once per network; failed posts can be retried from the form.
+
+The connection is made in the admin, **Connecteurs** section ("Se connecter avec Facebook"), which also shows the setup guide. In short:
+
+1. Create a Meta app at [developers.facebook.com/apps](https://developers.facebook.com/apps) (use case "Manage everything on your Page", type Business).
+2. In Facebook Login (or Facebook Login for Business) settings, add the redirect URI `https://<your-site>/meta-callback` (and `http://localhost:3000/meta-callback` for local use). With Facebook Login for Business, create a configuration with the permissions `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `business_management`, `instagram_basic`, `instagram_content_publish`.
+3. Supabase → Edge Functions → Secrets: `META_APP_ID`, `META_APP_SECRET` (and `META_LOGIN_CONFIG_ID` for Facebook Login for Business). Deploy: `npx supabase functions deploy social-publish --project-ref <project-ref>`. Run the `…_social.sql` and `…_social_connection.sql` migrations.
+4. Make the Instagram account professional and link it to the Page.
+5. In the admin → Connecteurs → "Se connecter avec Facebook", choose the Page. Switch the Meta app to Live mode so posts are public.
+
+The Page token is stored in `public.social_connection`, readable only by the Edge Function (service role); the browser and Netlify never see it. Never put `META_APP_SECRET` in `.env`, Netlify or the code.

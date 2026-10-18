@@ -35,6 +35,12 @@ export const carSchema = z.object({
   description: z.string().max(20000),
   published: z.boolean(),
   sold: z.boolean().optional().default(false),
+  social_caption: z.string().max(2200).optional().default(""),
+  social_targets: z
+    .array(z.enum(["facebook", "instagram"]))
+    .max(2)
+    .optional()
+    .default([]),
   discount_price: z.number().finite().min(0).max(1e9).nullable().optional().default(null),
   /** Omitted for a new vehicle: it is placed first. */
   sort_order: z.number().int().min(-100000).max(100000).optional(),

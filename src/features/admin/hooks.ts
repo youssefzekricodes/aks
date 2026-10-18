@@ -59,7 +59,8 @@ export type PhotoUpload = {
  * most UPLOAD_CONCURRENCY at a time. Finished URLs go to `onUploaded`; results
  * arriving after the form is closed are dropped (the orphan cleanup removes them).
  */
-export function usePhotoQueue(onUploaded: (url: string) => void) {
+/** `onUploaded` also gets the original file, kept so the photo can be re-cropped from it. */
+export function usePhotoQueue(onUploaded: (url: string, original: File) => void) {
   const [items, setItems] = useState<PhotoUpload[]>([]);
   const started = useRef(new Set<string>());
   const alive = useRef(true);
@@ -110,7 +111,7 @@ export function usePhotoQueue(onUploaded: (url: string) => void) {
             onProgress: (progress) => patch(item.id, { progress }),
           });
           if (!alive.current) return;
-          callback.current(url);
+          callback.current(url, item.file);
           remove(item.id);
         } catch (error) {
           patch(item.id, {

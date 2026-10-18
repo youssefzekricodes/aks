@@ -181,7 +181,7 @@ export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
     >
       <ul
         ref={track}
-        className={`-mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:gap-3 ${loop ? "" : "snap-x snap-mandatory"}`}
+        className={`-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 sm:gap-3 ${loop ? "" : "snap-x snap-mandatory"}`}
       >
         {copies.map((copy) =>
           brands.map((brand) => (
@@ -216,8 +216,9 @@ export function BrandsSection() {
   const all = useMemo(() => arrangeBrands(brandOptions(cars, {}), settings), [cars, settings]);
   const top = useMemo(() => carouselBrands(all, settings, HOME_BRANDS), [all, settings]);
   return (
-    <Section id="marques" className="pb-0 lg:pb-0">
+    <Section id="marques">
       <SectionHeader
+        eyebrow={text("brands.eyebrow", "Marques")}
         title={text("brands.title", "Nos marques")}
         description={text(
           "brands.subtitle",
@@ -250,8 +251,15 @@ export function BodiesSection() {
   const bodies = useMemo(() => bodyOptions(cars, {}), [cars]);
   const [empty, setEmpty] = useState<NoStockItem | null>(null);
   return (
-    <Section id="carrosseries" className="pb-0 lg:pb-0">
-      <SectionHeader title={text("bodies.title", "Par carrosserie")} />
+    <Section id="carrosseries" className="pt-0 lg:pt-0">
+      <SectionHeader
+        eyebrow={text("bodies.eyebrow", "Carrosseries")}
+        title={text("bodies.title", "Par carrosserie")}
+        description={text(
+          "bodies.subtitle",
+          "SUV, berline, citadine… trouvez le type de véhicule qui vous ressemble.",
+        )}
+      />
       <ul className="grid grid-cols-3 gap-x-2 gap-y-1 min-[480px]:grid-cols-4 sm:grid-cols-5 lg:grid-cols-9">
         {bodies.map((body) => {
           const content = (

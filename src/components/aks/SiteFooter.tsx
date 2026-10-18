@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Facebook, Instagram, Mail } from "lucide-react";
+import { FacebookLogo, GmailLogo, InstagramLogo } from "./SocialLogos";
 import { contactHref, usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { telHref } from "@/features/content/definition";
 
@@ -11,17 +11,17 @@ export function SocialLinks({ className }: { className?: string }) {
     {
       href: text("contact.link_1", "https://www.facebook.com/profile.php?id=61560475294948"),
       label: text("contact.text_13", "Facebook"),
-      Icon: Facebook,
+      Icon: FacebookLogo,
     },
     {
       href: text("contact.link_instagram", "https://www.instagram.com/auto_kontor.sfax/"),
       label: "Instagram",
-      Icon: Instagram,
+      Icon: InstagramLogo,
     },
     {
       href: email ? `mailto:${email}` : "",
       label: "E-mail",
-      Icon: Mail,
+      Icon: GmailLogo,
     },
   ].filter((link) => link.href);
   return (
@@ -34,9 +34,9 @@ export function SocialLinks({ className }: { className?: string }) {
           rel="noopener noreferrer"
           aria-label={label}
           title={label}
-          className="grid size-9 place-items-center rounded-md border border-border text-muted transition-colors hover:text-foreground"
+          className="grid size-10 place-items-center rounded-full bg-white text-zinc-700 shadow-sm transition-transform hover:scale-105"
         >
-          <Icon className="size-4" />
+          <Icon className="size-5" />
         </a>
       ))}
     </div>
@@ -121,9 +121,19 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-separator py-5 text-center text-xs text-muted">
-        © {new Date().getFullYear()}{" "}
-        {text("contact.text_18", "Auto Kontor Sfax. Tous droits réservés.")}
+      <div className="container-page flex flex-col items-center justify-between gap-2 border-t border-separator py-5 text-xs text-muted sm:flex-row">
+        <p>
+          © {new Date().getFullYear()}{" "}
+          {text("contact.text_18", "Auto Kontor Sfax. Tous droits réservés.")}
+        </p>
+        <nav aria-label="Informations légales" className="flex gap-4">
+          <Link to="/confidentialite" className="hover:text-foreground">
+            Politique de confidentialité
+          </Link>
+          <Link to="/suppression-des-donnees" className="hover:text-foreground">
+            Suppression des données
+          </Link>
+        </nav>
       </div>
     </footer>
   );

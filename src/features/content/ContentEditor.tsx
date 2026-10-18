@@ -22,6 +22,7 @@ import {
   ArrowDown,
   ArrowUp,
   Clock,
+  Crop as CropIcon,
   ExternalLink,
   ImageOff,
   ImageUp,
@@ -35,8 +36,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listSiteContent, prepareImage, saveSiteContent, uploadImage } from "@/lib/data";
+import { CROP_PRESETS, ImageCropDialog, type CropOptions } from "@/features/admin/ImageCropDialog";
+import { prepareImage, saveSiteContent, uploadImage } from "@/lib/data";
 import { useUploads, type UploadState } from "@/features/admin/hooks";
+import { adminContentQuery } from "@/features/admin/model";
 import {
   FilePickButton,
   IconButton,
@@ -106,12 +109,19 @@ const RUBRICS: Rubric[] = [
     description: "Le grand bandeau en haut de la page d’accueil.",
     blocks: [
       {
-        title: "Photo",
+        title: "Photos",
+        description:
+          "Une photo pour les ordinateurs et tablettes, une autre (facultative) pour les téléphones. Sans photo mobile, la photo ordinateur est utilisée et ses bords sont coupés.",
         fields: [
           {
             key: "hero.image_1",
-            label: "Photo de fond",
-            help: "Format paysage, au moins 1 920 px de large. Le texte s’affiche en blanc par-dessus.",
+            label: "Ordinateur — format paysage",
+            help: "Au moins 1 920 px de large. Le texte s’affiche en blanc sur la partie gauche.",
+          },
+          {
+            key: "hero.image_mobile",
+            label: "Téléphone — format portrait (facultatif)",
+            help: "Au moins 1 080 px de large, au format 4:5 ou 9:16.",
           },
         ],
       },
@@ -247,13 +257,22 @@ const rubricFields = (rubric: Rubric): ContentField[] =>
       );
 const editorFields = RUBRICS.flatMap(rubricFields);
 
+/** Pictures opened in the crop editor before upload (others upload as picked). */
+const CROP_BY_FIELD: Record<string, CropOptions> = {
+  "identity.logo": CROP_PRESETS.logo,
+  "identity.favicon": CROP_PRESETS.favicon,
+  "hero.image_1": CROP_PRESETS.banner,
+  "hero.image_mobile": CROP_PRESETS.bannerMobile,
+};
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const cardClass = "rounded-2xl border border-separator bg-surface p-4 sm:p-6";
 const MAX_SITE_IMAGE_BYTES = 3_000_000;
 
 export function ContentEditor() {
   const client = useQueryClient();
   const router = useRouter();
-  const content = useQuery({ queryKey: ["admin-site-content"], queryFn: () => listSiteContent() });
+  const content = useQuery(adminContentQuery);
   const [rubricId, setRubricId] = useState(RUBRICS[0]!.id);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const uploads = useUploads();
@@ -302,16 +321,31 @@ export function ContentEditor() {
   }, [rubricId]);
   const busy = save.isPending;
 
-  async function upload(field: ContentField, file: File) {
+  // Picked or saved picture being cropped before upload.
+  const [cropping, setCropping] = useState<{ field: ContentField; source: File | string } | null>(
+    null,
+  );
+
+  /** A picked file: checked, then opened in the crop editor (fields with a preset). */
+  function pick(field: ContentField, file: File) {
+    if (!IMAGE_TYPES.includes(file.type)) {
+      toast.danger(`« ${file.name} » : JPG, PNG ou WebP uniquement.`);
+      return;
+    }
+    if (CROP_BY_FIELD[field.key]) setCropping({ field, source: file });
+    else void upload(field, file);
+  }
+
+  async function upload(field: ContentField, file: Blob) {
     const url = await uploads.run(field.key, async (report) => {
-      const blob = await prepareImage(file);
+      const blob = file instanceof File ? await prepareImage(file) : file;
       if (blob.size > MAX_SITE_IMAGE_BYTES)
         throw new Error("Image trop lourde : 3 Mo maximum après redimensionnement.");
       return uploadImage("site", blob, { scope: field.key, onProgress: report });
     });
     if (url) {
       change(field, url);
-      toast.success("Image importée. Publiez les modifications pour l’afficher sur le site.");
+      toast.success("Image enregistrée. Publiez les modifications pour l’afficher sur le site.");
     }
   }
 
@@ -337,7 +371,10 @@ export function ContentEditor() {
         value={valueOf(field)}
         onChange={(value) => change(field, value)}
         upload={uploads.states[field.key]}
-        onUpload={(file) => void upload(field, file)}
+        onUpload={(file) => pick(field, file)}
+        {...(CROP_BY_FIELD[field.key]
+          ? { onRecrop: () => setCropping({ field, source: valueOf(field) }) }
+          : {})}
         isDisabled={busy}
         bare
       />
@@ -482,6 +519,16 @@ export function ContentEditor() {
           </p>
         )}
       </div>
+      <ImageCropDialog
+        source={cropping?.source ?? null}
+        options={cropping ? CROP_BY_FIELD[cropping.field.key]! : CROP_PRESETS.banner}
+        onCancel={() => setCropping(null)}
+        onConfirm={async (blob) => {
+          const field = cropping!.field;
+          setCropping(null);
+          await upload(field, blob);
+        }}
+      />
       <UnsavedChangesDialog
         isOpen={blocker.status === "blocked"}
         onStay={() => blocker.reset?.()}
@@ -780,6 +827,7 @@ function ContentInput({
   onUpload,
   isDisabled,
   bare = false,
+  onRecrop,
 }: {
   field: ContentField;
   value: string;
@@ -787,6 +835,8 @@ function ContentInput({
   upload: UploadState | undefined;
   onUpload: (file: File) => void;
   isDisabled: boolean;
+  /** Opens the crop editor on the current picture. */
+  onRecrop?: (() => void) | undefined;
   /** Inside a section card: no card of its own and no generic help text. */
   bare?: boolean;
 }) {
@@ -826,6 +876,7 @@ function ContentInput({
           upload={upload}
           onUpload={onUpload}
           onClear={() => onChange("")}
+          onRecrop={onRecrop}
           isDisabled={isDisabled}
         />
       </div>
@@ -853,6 +904,7 @@ function ContentInput({
           upload={upload}
           onUpload={onUpload}
           onClear={() => onChange("")}
+          onRecrop={onRecrop}
           isDisabled={isDisabled}
         />
       )}
@@ -867,6 +919,7 @@ function ImageControls({
   upload,
   onUpload,
   onClear,
+  onRecrop,
   isDisabled,
 }: {
   field: ContentField;
@@ -875,6 +928,7 @@ function ImageControls({
   upload: UploadState | undefined;
   onUpload: (file: File) => void;
   onClear: () => void;
+  onRecrop?: (() => void) | undefined;
   isDisabled: boolean;
 }) {
   const working = upload?.status === "working";
@@ -908,6 +962,17 @@ function ImageControls({
             <ImageUp className="size-4" aria-hidden />
             {working ? "Envoi…" : value ? "Remplacer l’image" : "Importer une image"}
           </FilePickButton>
+          {value && !error && onRecrop && (
+            <Button
+              size="sm"
+              variant="secondary"
+              isDisabled={isDisabled || working}
+              onPress={onRecrop}
+            >
+              <CropIcon className="size-4" aria-hidden />
+              Recadrer
+            </Button>
+          )}
           {value && (
             <Button size="sm" variant="ghost" isDisabled={isDisabled || working} onPress={onClear}>
               Retirer l’image

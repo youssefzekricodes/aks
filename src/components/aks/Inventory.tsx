@@ -6,6 +6,7 @@ import { publicCarsQuery } from "@/lib/queries";
 import { useSiteText } from "@/lib/site-content";
 import { sortCars } from "@/features/catalog/search";
 import { CarCard, CarGrid } from "./CarCard";
+import { NoResults } from "./NoResults";
 import { Section, SectionHeader } from "./Section";
 
 /** Home page selection: the first vehicles in showroom order, with a link to the full stock. */
@@ -24,6 +25,7 @@ export function Inventory() {
   return (
     <Section id="inventaire">
       <SectionHeader
+        eyebrow={text("inventory.text_1", "Inventaire")}
         title={text("inventory_title", "Véhicules en vitrine")}
         description={text(
           "inventory_subtitle",
@@ -38,9 +40,7 @@ export function Inventory() {
           ))}
         </CarGrid>
       ) : (
-        <p className="text-muted">
-          {text("inventory.text_2", "Aucun véhicule ne correspond à ces filtres.")}
-        </p>
+        <NoResults filtersActive={false} />
       )}
     </Section>
   );

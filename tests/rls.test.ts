@@ -282,6 +282,36 @@ select string_agg(slug, ',' order by sort_order) from public.cars;`;
     assert.equal(asAdminSeeded(order, "authenticated", USER).ok, false);
   });
 
+  await t.test("social posts: admins read, nobody writes directly, once per network", () => {
+    const PUB = "11111111-1111-1111-1111-111111111111";
+    const insert = `insert into public.social_posts (car_id, platform) values ('${PUB}', 'facebook');`;
+    assert.equal(asAdminSeeded("select count(*) from public.social_posts;", "anon").ok, false);
+    assert.equal(
+      asAdminSeeded(insert, "authenticated", ADMIN).ok,
+      false,
+      "writes: service role only",
+    );
+    const owner = sql(
+      "postgres",
+      "{}",
+      `${seed}
+${insert}
+${insert}`,
+    );
+    assert.equal(owner.ok, false, "a second pending post on the same network is refused");
+    assert.equal(
+      asAdminSeeded(
+        `reset role; ${insert}
+set local role authenticated; select count(*) from public.social_posts;`,
+        "authenticated",
+        ADMIN,
+      )
+        .out.split("\n")
+        .pop(),
+      "1",
+    );
+  });
+
   await t.test("brand settings: seeded, public to read, admins only to change", () => {
     assert.equal(sql("anon", "{}", "select count(*) from public.brand_settings;").out, "67");
     const hide =

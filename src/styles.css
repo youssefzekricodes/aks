@@ -118,3 +118,15 @@
     scroll-behavior: auto;
   }
 }
+
+/* Nothing may widen the page sideways on phones (decorative glows, carousels).
+   "clip" rather than "hidden": no scroll container, so the sticky header keeps working. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* In-page links (#services, #avis…) land below the sticky header. */
+html {
+  scroll-padding-top: 4rem;
+}

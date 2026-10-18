@@ -32,6 +32,8 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/recherche", lastmod: latest },
           { path: "/marques", lastmod: latest },
           { path: "/contact" },
+          { path: "/confidentialite" },
+          { path: "/suppression-des-donnees" },
           ...facetOptions(cars, {}, "marque").map((brand) => ({
             path: `/marques/${brand.value}`,
             lastmod: newest(cars.filter((car) => facetMatches(car, brand.value))),

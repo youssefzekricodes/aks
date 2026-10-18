@@ -14,6 +14,7 @@ import {
   type FacetKey,
   type SearchFilters,
 } from "@/features/catalog/search";
+import { brandBySlug } from "@/features/catalog/brands";
 import { BrandLogo, useBrandLogoUrl } from "../BrandLogo";
 import { BodyIcon } from "../BodyIcon";
 import { FilterSelect } from "../FilterSelect";
@@ -392,7 +393,8 @@ export function ActiveFilters({
   if (filters.marque && !lockedBrand)
     chips.push({
       key: "marque",
-      label: labelOf("marque")!,
+      // Brands without stock are not in the facets: use the registry name.
+      label: brandBySlug(filters.marque)?.name ?? labelOf("marque")!,
       clear: { marque: undefined, modele: undefined },
     });
   for (const key of ["modele", "carrosserie", "etat", "energie", "boite", "transmission"] as const)

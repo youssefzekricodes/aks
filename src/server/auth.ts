@@ -48,36 +48,61 @@ async function factorsOf(supabase: Db): Promise<Factor[]> {
 }
 
 /**
- * Signed-in administrator (validated against Supabase Auth), or null. Pass the
- * request's client so a token refreshed here is the one used afterwards.
+ * Sessions confirmed by an e-mail code, remembered briefly so each admin request
+ * does not ask the database again (an ended session stops working within this delay).
  */
-export async function currentAdmin(supabase: Db = sessionClient()): Promise<Admin | null> {
+const CONFIRMED_TTL_MS = 5 * 60_000;
+const confirmedSessions = new Map<string, number>();
+async function emailConfirmed(supabase: Db, sessionId: string | undefined) {
+  const now = Date.now();
+  if (sessionId && (confirmedSessions.get(sessionId) ?? 0) > now) return true;
+  const { data } = await supabase.rpc("has_email_second_factor");
+  if (data === true && sessionId) {
+    if (confirmedSessions.size > 500) confirmedSessions.clear();
+    confirmedSessions.set(sessionId, now + CONFIRMED_TTL_MS);
+  }
+  return data === true;
+}
+
+/**
+ * Signed-in administrator, or null. The session token is verified locally
+ * (Supabase's asymmetric signing keys, cached), so no round trip to Supabase Auth
+ * per request. `withFactors` also lists the super admin's 2FA methods (one call
+ * to Supabase): needed by the login page and "Ma sécurité", not by data requests.
+ * Pass the request's client so a token refreshed here is the one used afterwards.
+ */
+export async function currentAdmin(
+  supabase: Db = sessionClient(),
+  { withFactors = true } = {},
+): Promise<Admin | null> {
   setResponseHeader("Cache-Control", "no-store");
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  const role = roleOf(user);
-  if (!user || !role) return null;
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims) return null;
+  const role = roleOf({ app_metadata: claims.app_metadata as Record<string, unknown> });
+  if (!role) return null;
+  const email = typeof claims.email === "string" ? claims.email : "";
   let mfa: MfaState = "ok";
   let factors: Factor[] = [];
   if (role === "super_admin") {
-    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    factors = [
-      { id: EMAIL_FACTOR_ID, type: "email", label: `E-mail ${maskEmail(user.email ?? "")}` },
-      ...(await factorsOf(supabase)),
-    ];
-    if (level?.currentLevel !== "aal2") {
-      const { data: confirmed } = await supabase.rpc("has_email_second_factor");
-      if (confirmed !== true) mfa = "verify";
-    }
+    const verified =
+      claims.aal === "aal2" ||
+      (await emailConfirmed(supabase, claims.session_id as string | undefined));
+    if (!verified) mfa = "verify";
+    if (withFactors || !verified)
+      factors = [
+        { id: EMAIL_FACTOR_ID, type: "email", label: `E-mail ${maskEmail(email)}` },
+        ...(await factorsOf(supabase)),
+      ];
   }
-  return { id: user.id, email: user.email ?? "", role, mfa, factors };
+  return { id: claims.sub, email, role, mfa, factors };
 }
 
 /** Session client for an admin request; throws unless fully signed in (incl. 2FA). */
 export async function adminClient({ write = false } = {}) {
   if (write) checkOrigin();
   const supabase = sessionClient();
-  const admin = await currentAdmin(supabase);
+  const admin = await currentAdmin(supabase, { withFactors: false });
   if (!admin) throw new Error("Connexion administrateur requise.");
   if (admin.mfa !== "ok") throw new Error("Validez la double authentification pour continuer.");
   return supabase;
@@ -273,19 +298,25 @@ export async function mfaRemove(factorId: string) {
 /* ------------------------------------------------------------------ administrator management */
 
 /**
- * Forwards to the `admin-users` Edge Function with the caller's access token. The
- * function (service role, inside Supabase) re-checks super_admin + aal2 itself.
+ * Calls a Supabase Edge Function with the signed-in administrator's access token;
+ * the function re-checks the role itself. Errors carry the function's message.
  */
-export async function manageAdmins(payload: Record<string, unknown>) {
-  if (payload["action"] !== "list") checkOrigin();
+export async function callEdgeFunction(
+  name: string,
+  payload: Record<string, unknown>,
+  { superAdmin = false, write = true } = {},
+) {
+  if (write) checkOrigin();
   const supabase = sessionClient();
-  const admin = await currentAdmin(supabase);
-  if (admin?.role !== "super_admin") throw new Error("Réservé au super administrateur.");
+  const admin = await currentAdmin(supabase, { withFactors: false });
+  if (!admin) throw new Error("Connexion administrateur requise.");
+  if (superAdmin && admin.role !== "super_admin")
+    throw new Error("Réservé au super administrateur.");
   if (admin.mfa !== "ok") throw new Error("Validez la double authentification pour continuer.");
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Session expirée. Reconnectez-vous.");
-  const response = await fetch(`${env.supabaseUrl}/functions/v1/admin-users`, {
+  const response = await fetch(`${env.supabaseUrl}/functions/v1/${name}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -294,10 +325,18 @@ export async function manageAdmins(payload: Record<string, unknown>) {
     },
     body: JSON.stringify(payload),
   }).catch(() => null);
-  if (!response) throw new Error("Service de gestion des administrateurs injoignable.");
+  if (!response) throw new Error("Service Supabase injoignable.");
   if (response.status === 404)
-    throw new Error("La fonction « admin-users » n’est pas déployée sur Supabase (voir README).");
+    throw new Error(`La fonction « ${name} » n’est pas déployée sur Supabase (voir README).`);
   const body = (await response.json().catch(() => ({}))) as { error?: string };
   if (!response.ok) throw new Error(body.error ?? "Opération impossible.");
   return body;
+}
+
+/** Administrator management: the `admin-users` Edge Function (service role inside Supabase). */
+export function manageAdmins(payload: Record<string, unknown>) {
+  return callEdgeFunction("admin-users", payload, {
+    superAdmin: true,
+    write: payload["action"] !== "list",
+  });
 }

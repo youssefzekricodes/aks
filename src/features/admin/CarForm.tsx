@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import {
   Button,
@@ -33,6 +33,7 @@ import type { CarInput } from "@/lib/data";
 import { usePhotoQueue } from "./hooks";
 import { autoSlug, plural, toOptions } from "./model";
 import { PhotoManager } from "./PhotoManager";
+import { SocialCard } from "./SocialCard";
 import {
   IntegerField,
   PageHeader,
@@ -63,9 +64,12 @@ export function CarForm({
   // The URL identifier follows brand/model/version until it is edited by hand.
   const [slugFollows, setSlugFollows] = useState(!value.slug);
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const photos = usePhotoQueue((url) =>
-    onChange((car) => ({ ...car, images: [...car.images, url] })),
-  );
+  // Original files of photos sent in this session: re-cropping starts from them.
+  const originals = useRef(new Map<string, File>());
+  const photos = usePhotoQueue((url, original) => {
+    originals.current.set(url, original);
+    onChange((car) => ({ ...car, images: [...car.images, url] }));
+  });
   const isNew = !value.id;
   const unsaved = isDirty || photos.items.length > 0;
 
@@ -352,6 +356,7 @@ export function CarForm({
           images={value.images}
           onImagesChange={(update) => onChange((car) => ({ ...car, images: update(car.images) }))}
           queue={photos}
+          originals={originals.current}
           isDisabled={saving}
         />
       </SectionCard>
@@ -370,6 +375,8 @@ export function CarForm({
           </p>
         </div>
       </SectionCard>
+
+      <SocialCard value={value} onChange={onChange} />
 
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-separator bg-surface p-4 shadow-lg">
         <p

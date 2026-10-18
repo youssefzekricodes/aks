@@ -12,14 +12,24 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as MetaCallbackRouteImport } from './routes/meta-callback'
 import { Route as RechercheRouteImport } from './routes/recherche'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as SuppressionDesDonneesRouteImport } from './routes/suppression-des-donnees'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as MarquesIndexRouteImport } from './routes/marques.index'
 import { Route as MarquesBrandRouteImport } from './routes/marques.$brand'
 import { Route as VehiculeSlugRouteImport } from './routes/vehicule.$slug'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminAdministrateursRouteImport } from './routes/_authenticated/admin/administrateurs'
+import { Route as AuthenticatedAdminConnecteursRouteImport } from './routes/_authenticated/admin/connecteurs'
+import { Route as AuthenticatedAdminContenuRouteImport } from './routes/_authenticated/admin/contenu'
+import { Route as AuthenticatedAdminDemandesRouteImport } from './routes/_authenticated/admin/demandes'
+import { Route as AuthenticatedAdminMarquesRouteImport } from './routes/_authenticated/admin/marques'
+import { Route as AuthenticatedAdminVehiculesRouteImport } from './routes/_authenticated/admin/vehicules'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,9 +45,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetaCallbackRoute = MetaCallbackRouteImport.update({
+  id: '/meta-callback',
+  path: '/meta-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RechercheRoute = RechercheRouteImport.update({
@@ -55,7 +75,12 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+const SuppressionDesDonneesRoute = SuppressionDesDonneesRouteImport.update({
+  id: '/suppression-des-donnees',
+  path: '/suppression-des-donnees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
@@ -75,93 +100,195 @@ const VehiculeSlugRoute = VehiculeSlugRouteImport.update({
   path: '/vehicule/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
+const AuthenticatedAdminAdministrateursRoute =
+  AuthenticatedAdminAdministrateursRouteImport.update({
+    id: '/administrateurs',
+    path: '/administrateurs',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminConnecteursRoute =
+  AuthenticatedAdminConnecteursRouteImport.update({
+    id: '/connecteurs',
+    path: '/connecteurs',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminContenuRoute =
+  AuthenticatedAdminContenuRouteImport.update({
+    id: '/contenu',
+    path: '/contenu',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminDemandesRoute =
+  AuthenticatedAdminDemandesRouteImport.update({
+    id: '/demandes',
+    path: '/demandes',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminMarquesRoute =
+  AuthenticatedAdminMarquesRouteImport.update({
+    id: '/marques',
+    path: '/marques',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminVehiculesRoute =
+  AuthenticatedAdminVehiculesRouteImport.update({
+    id: '/vehicules',
+    path: '/vehicules',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
   '/marques/': typeof MarquesIndexRoute
+  '/admin/administrateurs': typeof AuthenticatedAdminAdministrateursRoute
+  '/admin/connecteurs': typeof AuthenticatedAdminConnecteursRoute
+  '/admin/contenu': typeof AuthenticatedAdminContenuRoute
+  '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
+  '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
   '/marques': typeof MarquesIndexRoute
+  '/admin/administrateurs': typeof AuthenticatedAdminAdministrateursRoute
+  '/admin/connecteurs': typeof AuthenticatedAdminConnecteursRoute
+  '/admin/contenu': typeof AuthenticatedAdminContenuRoute
+  '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
+  '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
   '/marques/': typeof MarquesIndexRoute
+  '/_authenticated/admin/administrateurs': typeof AuthenticatedAdminAdministrateursRoute
+  '/_authenticated/admin/connecteurs': typeof AuthenticatedAdminConnecteursRoute
+  '/_authenticated/admin/contenu': typeof AuthenticatedAdminContenuRoute
+  '/_authenticated/admin/demandes': typeof AuthenticatedAdminDemandesRoute
+  '/_authenticated/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/_authenticated/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/confidentialite'
     | '/contact'
+    | '/meta-callback'
     | '/recherche'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/suppression-des-donnees'
     | '/admin'
     | '/marques/$brand'
     | '/vehicule/$slug'
     | '/marques/'
+    | '/admin/administrateurs'
+    | '/admin/connecteurs'
+    | '/admin/contenu'
+    | '/admin/demandes'
+    | '/admin/marques'
+    | '/admin/vehicules'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/confidentialite'
     | '/contact'
+    | '/meta-callback'
     | '/recherche'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/admin'
+    | '/suppression-des-donnees'
     | '/marques/$brand'
     | '/vehicule/$slug'
     | '/marques'
+    | '/admin/administrateurs'
+    | '/admin/connecteurs'
+    | '/admin/contenu'
+    | '/admin/demandes'
+    | '/admin/marques'
+    | '/admin/vehicules'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/confidentialite'
     | '/contact'
+    | '/meta-callback'
     | '/recherche'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/suppression-des-donnees'
     | '/_authenticated/admin'
     | '/marques/$brand'
     | '/vehicule/$slug'
     | '/marques/'
+    | '/_authenticated/admin/administrateurs'
+    | '/_authenticated/admin/connecteurs'
+    | '/_authenticated/admin/contenu'
+    | '/_authenticated/admin/demandes'
+    | '/_authenticated/admin/marques'
+    | '/_authenticated/admin/vehicules'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
   ContactRoute: typeof ContactRoute
+  MetaCallbackRoute: typeof MetaCallbackRoute
   RechercheRoute: typeof RechercheRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SuppressionDesDonneesRoute: typeof SuppressionDesDonneesRoute
   MarquesBrandRoute: typeof MarquesBrandRoute
   VehiculeSlugRoute: typeof VehiculeSlugRoute
   MarquesIndexRoute: typeof MarquesIndexRoute
@@ -190,11 +317,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meta-callback': {
+      id: '/meta-callback'
+      path: '/meta-callback'
+      fullPath: '/meta-callback'
+      preLoaderRoute: typeof MetaCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recherche': {
@@ -218,11 +359,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/suppression-des-donnees': {
+      id: '/suppression-des-donnees'
+      path: '/suppression-des-donnees'
+      fullPath: '/suppression-des-donnees'
+      preLoaderRoute: typeof SuppressionDesDonneesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/marques/': {
@@ -246,15 +394,91 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VehiculeSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/administrateurs': {
+      id: '/_authenticated/admin/administrateurs'
+      path: '/administrateurs'
+      fullPath: '/admin/administrateurs'
+      preLoaderRoute: typeof AuthenticatedAdminAdministrateursRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/connecteurs': {
+      id: '/_authenticated/admin/connecteurs'
+      path: '/connecteurs'
+      fullPath: '/admin/connecteurs'
+      preLoaderRoute: typeof AuthenticatedAdminConnecteursRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/contenu': {
+      id: '/_authenticated/admin/contenu'
+      path: '/contenu'
+      fullPath: '/admin/contenu'
+      preLoaderRoute: typeof AuthenticatedAdminContenuRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/demandes': {
+      id: '/_authenticated/admin/demandes'
+      path: '/demandes'
+      fullPath: '/admin/demandes'
+      preLoaderRoute: typeof AuthenticatedAdminDemandesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/marques': {
+      id: '/_authenticated/admin/marques'
+      path: '/marques'
+      fullPath: '/admin/marques'
+      preLoaderRoute: typeof AuthenticatedAdminMarquesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/vehicules': {
+      id: '/_authenticated/admin/vehicules'
+      path: '/vehicules'
+      fullPath: '/admin/vehicules'
+      preLoaderRoute: typeof AuthenticatedAdminVehiculesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminAdministrateursRoute: typeof AuthenticatedAdminAdministrateursRoute
+  AuthenticatedAdminConnecteursRoute: typeof AuthenticatedAdminConnecteursRoute
+  AuthenticatedAdminContenuRoute: typeof AuthenticatedAdminContenuRoute
+  AuthenticatedAdminDemandesRoute: typeof AuthenticatedAdminDemandesRoute
+  AuthenticatedAdminMarquesRoute: typeof AuthenticatedAdminMarquesRoute
+  AuthenticatedAdminVehiculesRoute: typeof AuthenticatedAdminVehiculesRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminAdministrateursRoute:
+      AuthenticatedAdminAdministrateursRoute,
+    AuthenticatedAdminConnecteursRoute: AuthenticatedAdminConnecteursRoute,
+    AuthenticatedAdminContenuRoute: AuthenticatedAdminContenuRoute,
+    AuthenticatedAdminDemandesRoute: AuthenticatedAdminDemandesRoute,
+    AuthenticatedAdminMarquesRoute: AuthenticatedAdminMarquesRoute,
+    AuthenticatedAdminVehiculesRoute: AuthenticatedAdminVehiculesRoute,
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -264,10 +488,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
   ContactRoute: ContactRoute,
+  MetaCallbackRoute: MetaCallbackRoute,
   RechercheRoute: RechercheRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SuppressionDesDonneesRoute: SuppressionDesDonneesRoute,
   MarquesBrandRoute: MarquesBrandRoute,
   VehiculeSlugRoute: VehiculeSlugRoute,
   MarquesIndexRoute: MarquesIndexRoute,

@@ -31,6 +31,9 @@ export type Car = {
   sold?: boolean | undefined;
   /** New price when discounted (below `price`), otherwise null. */
   discount_price?: number | null | undefined;
+  /** Text of the Facebook/Instagram post and networks to post on when published. */
+  social_caption?: string | undefined;
+  social_targets?: ("facebook" | "instagram")[] | undefined;
   sort_order: number;
   /** ISO timestamp of the last change (admin lists). */
   updated_at?: string | undefined;
