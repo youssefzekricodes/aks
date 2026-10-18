@@ -1,13 +1,26 @@
 import "@tanstack/react-start/server-only";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "./env";
+import { isAllowedOrigin } from "./origin";
 import { isolatedClient, sessionClient, type Db } from "./supabase";
 
 /** Mutations must come from the site itself (CSRF defence in addition to SameSite cookies). */
 export function checkOrigin() {
   const request = getRequest();
-  const expected = env.appOrigin || new URL(request.url).origin;
-  if (request.headers.get("origin") !== expected) throw new Error("Origine non autorisée.");
+  const origin = request.headers.get("origin");
+  const result = isAllowedOrigin(origin, {
+    url: request.url,
+    host: request.headers.get("host"),
+    forwardedHost: request.headers.get("x-forwarded-host"),
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    appOrigin: env.appOrigin,
+  });
+  if (!result.ok) {
+    console.error(
+      `Origine refusée : ${origin ?? "(aucune)"} — acceptées : ${result.allowed.join(", ")}`,
+    );
+    throw new Error("Origine non autorisée.");
+  }
 }
 
 export type Role = "admin" | "super_admin";

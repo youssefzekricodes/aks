@@ -33,8 +33,15 @@ export const env = {
       publicUrl: required("R2_PUBLIC_URL").replace(/\/+$/, ""),
     };
   },
+  /** Public address of the site, normalised ("https://site.tn/" → "https://site.tn"). */
   get appOrigin() {
-    return process.env["APP_ORIGIN"] || null;
+    const value = process.env["APP_ORIGIN"]?.trim();
+    if (!value) return null;
+    try {
+      return new URL(value).origin;
+    } catch {
+      return value.replace(/\/+$/, "");
+    }
   },
   get production() {
     return process.env["NODE_ENV"] === "production";
