@@ -233,3 +233,11 @@ html {
     font-size: 16px;
   }
 }
+
+/* Long choices in a narrow select (two filters side by side on a phone): one line, "…". */
+.select__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -11,6 +11,7 @@ import {
   Table,
   toast,
 } from "@heroui/react";
+import { buttonVariants } from "@heroui/styles";
 import { getLocalTimeZone, toCalendarDate, today, type DateValue } from "@internationalized/date";
 import {
   Car,
@@ -33,7 +34,9 @@ import {
   RowMenu,
   SelectField,
   StatusChip,
+  CardListSkeleton,
   TableSkeleton,
+  type RowAction,
   Toolbar,
 } from "./ui";
 
@@ -130,6 +133,37 @@ export function LeadsTab() {
     setFilter("open");
     setPage(1);
   };
+
+  const emptyState =
+    all.length === 0 ? (
+      <EmptyState
+        icon={Inbox}
+        title="Aucune demande reçue pour l’instant."
+        description="Les messages du formulaire de contact apparaîtront ici."
+      />
+    ) : (
+      <EmptyState
+        icon={Inbox}
+        title={!filtersActive ? "Aucune demande à traiter." : "Aucune demande ne correspond."}
+        description={
+          !filtersActive
+            ? "Toutes les demandes ont été traitées."
+            : "Modifiez la recherche, le statut ou la période."
+        }
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            onPress={() => {
+              resetFilters();
+              setFilter("all");
+            }}
+          >
+            Afficher toutes les demandes
+          </Button>
+        }
+      />
+    );
 
   return (
     <div className="grid gap-6">
@@ -229,10 +263,28 @@ export function LeadsTab() {
       {leads.isError ? (
         <LoadError message="Impossible de charger les demandes." onRetry={() => leads.refetch()} />
       ) : leads.isPending ? (
-        <TableSkeleton label="Demandes" columns={COLUMNS} minWidth="min-w-[880px]" />
+        <>
+          <CardListSkeleton label="Demandes" />
+          <div className="hidden md:block">
+            <TableSkeleton label="Demandes" columns={COLUMNS} minWidth="min-w-[880px]" />
+          </div>
+        </>
       ) : (
         <>
-          <Table>
+          {/* Phones: one card per request, call and WhatsApp one tap away. */}
+          <ul aria-label="Demandes de contact" className="grid gap-3 md:hidden">
+            {rows.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                pending={pending.has(lead.id)}
+                onToggle={() => handled.mutate({ id: lead.id, handled: !lead.handled })}
+                onDelete={() => deletion.open(lead)}
+              />
+            ))}
+            {rows.length === 0 && <li>{emptyState}</li>}
+          </ul>
+          <Table className="hidden md:block">
             <Table.ScrollContainer>
               <Table.Content aria-label="Demandes de contact" className="min-w-[880px]">
                 <Table.Header>
@@ -245,43 +297,7 @@ export function LeadsTab() {
                     <span className="sr-only">Actions</span>
                   </Table.Column>
                 </Table.Header>
-                <Table.Body
-                  renderEmptyState={() =>
-                    all.length === 0 ? (
-                      <EmptyState
-                        icon={Inbox}
-                        title="Aucune demande reçue pour l’instant."
-                        description="Les messages du formulaire de contact apparaîtront ici."
-                      />
-                    ) : (
-                      <EmptyState
-                        icon={Inbox}
-                        title={
-                          !filtersActive
-                            ? "Aucune demande à traiter."
-                            : "Aucune demande ne correspond."
-                        }
-                        description={
-                          !filtersActive
-                            ? "Toutes les demandes ont été traitées."
-                            : "Modifiez la recherche, le statut ou la période."
-                        }
-                        action={
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onPress={() => {
-                              resetFilters();
-                              setFilter("all");
-                            }}
-                          >
-                            Afficher toutes les demandes
-                          </Button>
-                        }
-                      />
-                    )
-                  }
-                >
+                <Table.Body renderEmptyState={() => emptyState}>
                   {rows.map((lead) => (
                     <LeadRow
                       key={lead.id}
@@ -407,32 +423,156 @@ function LeadRow({
       <Table.Cell className="text-end">
         <RowMenu
           label={`Actions pour la demande de ${lead.name}`}
-          actions={[
-            {
-              id: "toggle",
-              label: lead.handled ? "Marquer à traiter" : "Marquer traitée",
-              icon: lead.handled ? RotateCcw : CheckCircle2,
-              onAction: onToggle,
-            },
-            { id: "call", label: "Appeler", icon: Phone, href: tel },
-            {
-              id: "whatsapp",
-              label: "WhatsApp",
-              icon: MessageCircle,
-              href: whatsappUrl(lead.phone),
-              external: true,
-            },
-            !!lead.car_slug && {
-              id: "car",
-              label: "Voir le véhicule",
-              icon: Car,
-              href: `/vehicule/${lead.car_slug}`,
-              external: true,
-            },
-            { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
-          ]}
+          actions={leadMenu(lead, onToggle, onDelete)}
         />
       </Table.Cell>
     </Table.Row>
+  );
+}
+
+const telOf = (lead: Lead) => `tel:${lead.phone.replace(/[^\d+]/g, "")}`;
+
+function leadMenu(lead: Lead, onToggle: () => void, onDelete: () => void): (RowAction | false)[] {
+  const tel = telOf(lead);
+  return [
+    {
+      id: "toggle",
+      label: lead.handled ? "Marquer à traiter" : "Marquer traitée",
+      icon: lead.handled ? RotateCcw : CheckCircle2,
+      onAction: onToggle,
+    },
+    { id: "call", label: "Appeler", icon: Phone, href: tel },
+    {
+      id: "whatsapp",
+      label: "WhatsApp",
+      icon: MessageCircle,
+      href: whatsappUrl(lead.phone),
+      external: true,
+    },
+    !!lead.car_slug && {
+      id: "car",
+      label: "Voir le véhicule",
+      icon: Car,
+      href: `/vehicule/${lead.car_slug}`,
+      external: true,
+    },
+    { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
+  ];
+}
+
+/** Phone card: who, when, the message, and the three things you do with a request. */
+function LeadCard({
+  lead,
+  pending,
+  onToggle,
+  onDelete,
+}: {
+  lead: Lead;
+  pending: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const message = lead.message?.trim() ?? "";
+  const long = message.length > 140 || message.includes("\n");
+  const action = buttonVariants({ variant: "secondary", size: "sm" });
+  return (
+    <li
+      className={`grid gap-3 rounded-2xl border bg-surface p-4 ${
+        lead.handled ? "border-separator" : "border-accent/40"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2">
+            <span className="truncate font-semibold text-foreground">{lead.name}</span>
+            <StatusChip tone={lead.handled ? "success" : "warning"}>
+              {lead.handled ? "Traitée" : "À traiter"}
+            </StatusChip>
+            {pending && <Spinner size="sm" aria-label="Mise à jour du statut" />}
+          </p>
+          <p className="text-xs text-muted">
+            <time dateTime={lead.created_at}>
+              {dateTimeFormat.format(new Date(lead.created_at))}
+            </time>
+            {lead.car_slug && (
+              <>
+                {" · "}
+                <a
+                  href={`/vehicule/${lead.car_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline-offset-2 hover:underline"
+                >
+                  voir le véhicule
+                </a>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="-me-1 -mt-1">
+          <RowMenu
+            label={`Actions pour la demande de ${lead.name}`}
+            actions={leadMenu(lead, onToggle, onDelete)}
+            large
+          />
+        </div>
+      </div>
+      {message && (
+        <div>
+          <p
+            id={`lead-card-message-${lead.id}`}
+            className={`text-sm text-foreground ${expanded ? "whitespace-pre-line" : "line-clamp-3"}`}
+          >
+            {message}
+          </p>
+          {long && (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={`lead-card-message-${lead.id}`}
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 text-sm font-medium text-accent"
+            >
+              {expanded ? "Réduire" : "Lire la suite"}
+            </button>
+          )}
+        </div>
+      )}
+      {lead.email && (
+        <a href={`mailto:${lead.email}`} className="break-all text-sm text-accent">
+          {lead.email}
+        </a>
+      )}
+      <div className="grid grid-cols-3 gap-2">
+        <a href={telOf(lead)} className={`${action} h-11`}>
+          <Phone className="size-4" aria-hidden />
+          Appeler
+        </a>
+        <a
+          href={whatsappUrl(lead.phone)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${action} h-11`}
+        >
+          <MessageCircle className="size-4" aria-hidden />
+          WhatsApp
+        </a>
+        <Button
+          size="sm"
+          variant={lead.handled ? "tertiary" : "primary"}
+          className="h-11"
+          isDisabled={pending}
+          onPress={onToggle}
+        >
+          {lead.handled ? (
+            <RotateCcw className="size-4" aria-hidden />
+          ) : (
+            <CheckCircle2 className="size-4" aria-hidden />
+          )}
+          {lead.handled ? "Rouvrir" : "Traitée"}
+        </Button>
+      </div>
+    </li>
   );
 }

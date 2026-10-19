@@ -59,8 +59,10 @@ import {
   LoadError,
   PageHeader,
   RowMenu,
+  type RowAction,
   SectionCard,
   StatusChip,
+  CardListSkeleton,
   TableSkeleton,
 } from "./ui";
 
@@ -115,13 +117,35 @@ export function AdminsTab({ session }: { session: Session }) {
     (a, b) => Number(b.isSelf) - Number(a.isSelf) || a.email.localeCompare(b.email, "fr"),
   );
 
+  const menuFor = (admin: AdminAccount): (RowAction | false)[] => [
+    {
+      id: "reset",
+      label: "Réinitialiser le mot de passe",
+      icon: KeyRound,
+      onAction: () => reset.open(admin),
+    },
+    !admin.isSelf && {
+      id: "role",
+      label: admin.role === "super_admin" ? "Passer administrateur" : "Passer super administrateur",
+      icon: admin.role === "super_admin" ? ShieldOff : ShieldCheck,
+      onAction: () => roleChange.open(admin),
+    },
+    !admin.isSelf && {
+      id: "delete",
+      label: "Supprimer",
+      icon: Trash2,
+      danger: true,
+      onAction: () => deletion.open(admin),
+    },
+  ];
+
   return (
     <div className="grid gap-6">
       <PageHeader
         title="Administrateurs"
         description="Comptes ayant accès à cette administration. Seuls les super administrateurs voient cette page."
         actions={
-          <Button onPress={() => setAdding(true)}>
+          <Button className="max-sm:w-full" onPress={() => setAdding(true)}>
             <UserPlus className="size-4" aria-hidden />
             Ajouter un administrateur
           </Button>
@@ -134,106 +158,105 @@ export function AdminsTab({ session }: { session: Session }) {
           onRetry={() => void admins.refetch()}
         />
       ) : admins.isPending ? (
-        <TableSkeleton
-          label="Administrateurs"
-          columns={COLUMNS}
-          rows={3}
-          minWidth="min-w-[760px]"
-        />
+        <>
+          <CardListSkeleton label="Administrateurs" rows={2} />
+          <div className="hidden md:block">
+            <TableSkeleton
+              label="Administrateurs"
+              columns={COLUMNS}
+              rows={3}
+              minWidth="min-w-[760px]"
+            />
+          </div>
+        </>
       ) : (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label="Administrateurs" className="min-w-[760px]">
-              <Table.Header>
-                <Table.Column isRowHeader>Administrateur</Table.Column>
-                <Table.Column>Rôle</Table.Column>
-                <Table.Column>Double authentification</Table.Column>
-                <Table.Column>Dernière connexion</Table.Column>
-                <Table.Column className="w-16 text-end">
-                  <span className="sr-only">Actions</span>
-                </Table.Column>
-              </Table.Header>
-              <Table.Body
-                renderEmptyState={() => (
-                  <EmptyState
-                    icon={UserCog}
-                    title="Aucun administrateur."
-                    description="Ajoutez un compte pour donner accès à l’administration."
-                  />
-                )}
+        <>
+          {/* Phones: one card per account. */}
+          <ul aria-label="Administrateurs" className="grid gap-3 md:hidden">
+            {list.map((admin) => (
+              <li
+                key={admin.id}
+                className="flex items-start gap-3 rounded-2xl border border-separator bg-surface p-3"
               >
-                {list.map((admin) => (
-                  <Table.Row key={admin.id} id={admin.id}>
-                    <Table.Cell>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate font-medium text-foreground">{admin.email}</span>
-                        {admin.isSelf && <StatusChip tone="accent">Vous</StatusChip>}
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
-                        {ROLE_LABELS[admin.role]}
-                      </StatusChip>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="flex flex-wrap gap-1">
-                        {admin.role === "super_admin" || admin.mfa.length ? (
-                          // Super admins always confirm by e-mail code, plus any app/SMS factor.
-                          [
-                            ...new Set([
-                              ...(admin.role === "super_admin" ? ["email"] : []),
-                              ...admin.mfa,
-                            ]),
-                          ].map((type) => (
-                            <StatusChip key={type} tone="success">
-                              {FACTOR_LABELS[type as Factor["type"]] ?? type}
-                            </StatusChip>
-                          ))
-                        ) : (
-                          <StatusChip tone="default">Non requise</StatusChip>
-                        )}
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell className="text-sm text-muted">
-                      {formatDate(admin.lastSignInAt) ?? "Jamais"}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="flex justify-end">
-                        <RowMenu
-                          label={`Actions pour ${admin.email}`}
-                          actions={[
-                            {
-                              id: "reset",
-                              label: "Réinitialiser le mot de passe",
-                              icon: KeyRound,
-                              onAction: () => reset.open(admin),
-                            },
-                            !admin.isSelf && {
-                              id: "role",
-                              label:
-                                admin.role === "super_admin"
-                                  ? "Passer administrateur"
-                                  : "Passer super administrateur",
-                              icon: admin.role === "super_admin" ? ShieldOff : ShieldCheck,
-                              onAction: () => roleChange.open(admin),
-                            },
-                            !admin.isSelf && {
-                              id: "delete",
-                              label: "Supprimer",
-                              icon: Trash2,
-                              danger: true,
-                              onAction: () => deletion.open(admin),
-                            },
-                          ]}
-                        />
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
+                <span
+                  aria-hidden
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold uppercase text-accent"
+                >
+                  {admin.email.charAt(0)}
+                </span>
+                <div className="grid min-w-0 flex-1 gap-1.5">
+                  <p className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-medium text-foreground">{admin.email}</span>
+                    {admin.isSelf && <StatusChip tone="accent">Vous</StatusChip>}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
+                      {ROLE_LABELS[admin.role]}
+                    </StatusChip>
+                    <FactorChips admin={admin} />
+                  </div>
+                  <p className="text-xs text-muted">
+                    Dernière connexion : {formatDate(admin.lastSignInAt) ?? "jamais"}
+                  </p>
+                </div>
+                <RowMenu label={`Actions pour ${admin.email}`} actions={menuFor(admin)} large />
+              </li>
+            ))}
+          </ul>
+          <Table className="hidden md:block">
+            <Table.ScrollContainer>
+              <Table.Content aria-label="Administrateurs" className="min-w-[760px]">
+                <Table.Header>
+                  <Table.Column isRowHeader>Administrateur</Table.Column>
+                  <Table.Column>Rôle</Table.Column>
+                  <Table.Column>Double authentification</Table.Column>
+                  <Table.Column>Dernière connexion</Table.Column>
+                  <Table.Column className="w-16 text-end">
+                    <span className="sr-only">Actions</span>
+                  </Table.Column>
+                </Table.Header>
+                <Table.Body
+                  renderEmptyState={() => (
+                    <EmptyState
+                      icon={UserCog}
+                      title="Aucun administrateur."
+                      description="Ajoutez un compte pour donner accès à l’administration."
+                    />
+                  )}
+                >
+                  {list.map((admin) => (
+                    <Table.Row key={admin.id} id={admin.id}>
+                      <Table.Cell>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-medium text-foreground">
+                            {admin.email}
+                          </span>
+                          {admin.isSelf && <StatusChip tone="accent">Vous</StatusChip>}
+                        </div>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
+                          {ROLE_LABELS[admin.role]}
+                        </StatusChip>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <FactorChips admin={admin} />
+                      </Table.Cell>
+                      <Table.Cell className="text-sm text-muted">
+                        {formatDate(admin.lastSignInAt) ?? "Jamais"}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex justify-end">
+                          <RowMenu label={`Actions pour ${admin.email}`} actions={menuFor(admin)} />
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
+        </>
       )}
 
       <MySecurity session={session} />
@@ -538,6 +561,26 @@ const FACTOR_NAMES = {
 } as const;
 
 /** The signed-in super admin's own second factors. */
+/** Two-step confirmation methods of an account. */
+function FactorChips({ admin }: { admin: AdminAccount }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {admin.role === "super_admin" || admin.mfa.length ? (
+        // Super admins always confirm by e-mail code, plus any app/SMS factor.
+        [...new Set([...(admin.role === "super_admin" ? ["email"] : []), ...admin.mfa])].map(
+          (type) => (
+            <StatusChip key={type} tone="success">
+              {FACTOR_LABELS[type as Factor["type"]] ?? type}
+            </StatusChip>
+          ),
+        )
+      ) : (
+        <StatusChip tone="default">Non requise</StatusChip>
+      )}
+    </div>
+  );
+}
+
 export function MySecurity({ session }: { session: Session }) {
   const queryClient = useQueryClient();
   const [enrolling, setEnrolling] = useState(false);

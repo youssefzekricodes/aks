@@ -51,6 +51,12 @@
     cache-control = "public, max-age=3600"
 
 [[headers]]
+  for = "/admin.webmanifest"
+  [headers.values]
+    content-type = "application/manifest+json"
+    cache-control = "public, max-age=3600"
+
+[[headers]]
   for = "/icons/*"
   [headers.values]
     cache-control = "public, max-age=604800"

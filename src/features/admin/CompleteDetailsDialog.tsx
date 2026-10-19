@@ -169,9 +169,9 @@ function CompleteDetails({
         </p>
       </Modal.Header>
 
-      <Modal.Body className="grid gap-5">
+      <Modal.Body className="grid grid-cols-[minmax(0,1fr)] gap-5">
         {/* Same value for every vehicle missing it (e.g. gearbox, origin). */}
-        <section className="grid gap-3 rounded-xl border border-border bg-surface-secondary p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <section className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-xl border border-border bg-surface-secondary p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <SelectField
             label="Remplir d’un coup"
             value={bulkField}
@@ -214,7 +214,7 @@ function CompleteDetails({
           ))}
         </div>
 
-        <ul className="grid gap-3">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3">
           {rows.map(({ id, missing }) => {
             const car = merged(id);
             const left = stillMissing(id);
@@ -244,7 +244,7 @@ function CompleteDetails({
                     </p>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {fields.map((field) => (
                     <FieldEditor
                       key={field}

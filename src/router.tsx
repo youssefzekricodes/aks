@@ -15,7 +15,8 @@ export const getRouter = () => {
     // very first load: if the visitor already scrolled the page before the app finished
     // starting (slow phone), it must not jump them back to the top.
     scrollRestoration: () => {
-      if (!firstRender) return true;
+      // Also asked on the server (to render the page): always yes there.
+      if (typeof window === "undefined" || !firstRender) return true;
       firstRender = false;
       return window.scrollY === 0;
     },

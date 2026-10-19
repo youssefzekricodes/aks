@@ -506,29 +506,41 @@ export function ContentEditor() {
           </Tabs.Panel>
         ))}
       </Tabs>
-      <div className="sticky bottom-4 z-20 rounded-2xl border border-separator bg-surface p-4 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p aria-live="polite" className="flex items-center gap-2 text-sm text-foreground">
+      {/* Phones: sits just above the bottom tab bar. */}
+      <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-separator bg-surface p-3 shadow-lg sm:p-4 lg:bottom-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p
+            aria-live="polite"
+            className="flex items-center gap-2 text-xs text-foreground sm:text-sm"
+          >
             {entries.length > 0 && <span className="size-2 rounded-full bg-warning" aria-hidden />}
             {entries.length
               ? `${entries.length} modification(s) non publiée(s)`
               : "Toutes les modifications sont publiées."}
             {uploading && " · Envoi d’image en cours…"}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <Button
               variant="tertiary"
+              className="w-full sm:w-auto"
               isDisabled={!entries.length || busy || uploading}
               onPress={() => setDraft({})}
             >
-              Annuler les modifications
+              Annuler<span className="max-sm:hidden"> les modifications</span>
             </Button>
             <Button
+              className="w-full sm:w-auto"
               isDisabled={!entries.length || uploading || errors.length > 0}
               isPending={save.isPending}
               onPress={() => save.mutate()}
             >
-              {save.isPending ? "Publication…" : "Publier les modifications"}
+              {save.isPending ? (
+                "Publication…"
+              ) : (
+                <>
+                  Publier<span className="max-sm:hidden"> les modifications</span>
+                </>
+              )}
             </Button>
           </div>
         </div>

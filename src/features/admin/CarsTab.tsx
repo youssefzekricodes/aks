@@ -57,8 +57,10 @@ import {
   EmptyState,
   ListPagination,
   LoadError,
+  CardListSkeleton,
   PageHeader,
   RowMenu,
+  type RowAction,
   SelectField,
   StatusChip,
   TableSkeleton,
@@ -331,6 +333,75 @@ export function CarsTab() {
   // Dragging reorders the full list, so it only makes sense in display order without filters.
   const canReorder = sort === "order" && !filtersActive;
 
+  const emptyState = all.length ? (
+    <EmptyState
+      icon={CarIcon}
+      title="Aucun véhicule ne correspond."
+      description="Modifiez la recherche ou le filtre de statut."
+      action={
+        filtersActive && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onPress={() => {
+              setSearch("");
+              setStatus("all");
+            }}
+          >
+            Réinitialiser les filtres
+          </Button>
+        )
+      }
+    />
+  ) : (
+    <EmptyState
+      icon={CarIcon}
+      title="Aucun véhicule pour le moment."
+      description="Ajoutez votre premier véhicule pour l’afficher sur le site."
+      action={
+        <Button size="sm" onPress={() => open(emptyCar)}>
+          <Plus className="size-4" aria-hidden />
+          Ajouter un véhicule
+        </Button>
+      }
+    />
+  );
+
+  /** Same data and actions for a table row (computer) and a card (phone). */
+  const itemProps = (car: AdminCar, index: number): ItemProps => ({
+    car,
+    selected: selected.has(car.id),
+    onSelect: () => toggle(car.id),
+    order: canReorder
+      ? {
+          first: current === 1 && index === 0,
+          last: current === pageCount && index === pageCars.length - 1,
+          onMove: (to) => move(car, to),
+        }
+      : undefined,
+    onToggleSold: () => sell.mutate({ id: car.id, sold: !car.sold }),
+    onDiscount: () => discount.open(car),
+    onShare: () => setSharing([car.id]),
+    onToggleShowcase: () =>
+      vitrine.mutate(
+        car.featured_rank != null ? showcaseWith(all, [], [car.id]) : showcaseWith(all, [car.id]),
+        {
+          onSuccess: () =>
+            toast.success(
+              car.featured_rank != null
+                ? "Retiré de la vitrine."
+                : "Ajouté à la vitrine de l’accueil.",
+            ),
+        },
+      ),
+    publishing: publishing.has(car.id),
+    onEdit: () => open(car),
+    onTogglePublished: () => publish.mutate({ id: car.id, published: !car.published }),
+    onDelete: () => deletion.open(car),
+    facebook: syncByCar.get(car.id),
+    facebookLoading: facebook.isPending,
+  });
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -343,7 +414,11 @@ export function CarsTab() {
         actions={
           <>
             {incomplete > 0 && (
-              <Button variant="secondary" onPress={() => setCompleting(true)}>
+              <Button
+                variant="secondary"
+                className="max-sm:w-full"
+                onPress={() => setCompleting(true)}
+              >
                 <ClipboardList className="size-4" aria-hidden />
                 Compléter les infos manquantes
                 <span className="tabular rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger">
@@ -351,13 +426,24 @@ export function CarsTab() {
                 </span>
               </Button>
             )}
-            <Button onPress={() => open(emptyCar)}>
+            {/* Phones: the round "+" button at the bottom of the screen instead. */}
+            <Button className="max-sm:hidden" onPress={() => open(emptyCar)}>
               <Plus className="size-4" aria-hidden />
               Ajouter un véhicule
             </Button>
           </>
         }
       />
+      {selectedIds.length === 0 && (
+        <Button
+          isIconOnly
+          aria-label="Ajouter un véhicule"
+          onPress={() => open(emptyCar)}
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] end-4 z-30 size-14 rounded-full shadow-lg sm:hidden"
+        >
+          <Plus className="size-6" aria-hidden />
+        </Button>
+      )}
 
       <Toolbar label="Filtrer les véhicules">
         <SearchField
@@ -376,148 +462,167 @@ export function CarsTab() {
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
-        <SelectField
-          label="Statut"
-          value={status}
-          options={STATUS_OPTIONS}
-          onChange={(value) => {
-            setStatus(value as Status);
-            setPage(1);
-          }}
-          className="w-full sm:w-44"
-        />
-        <SelectField
-          label="Trier par"
-          value={sort}
-          options={SORT_OPTIONS}
-          onChange={(value) => {
-            setSort(value as Sort);
-            setPage(1);
-          }}
-          className="w-full sm:w-60"
-        />
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:gap-4">
+          <SelectField
+            label="Statut"
+            value={status}
+            options={STATUS_OPTIONS}
+            onChange={(value) => {
+              setStatus(value as Status);
+              setPage(1);
+            }}
+            className="min-w-0 sm:w-44"
+          />
+          <SelectField
+            label="Trier par"
+            value={sort}
+            options={SORT_OPTIONS}
+            onChange={(value) => {
+              setSort(value as Sort);
+              setPage(1);
+            }}
+            className="min-w-0 sm:w-60"
+          />
+        </div>
       </Toolbar>
 
       {cars.isError ? (
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
       ) : cars.isPending ? (
-        <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[860px]" />
+        <>
+          <CardListSkeleton label="Véhicules" />
+          <div className="hidden md:block">
+            <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[860px]" />
+          </div>
+        </>
       ) : (
         <>
           {selectedIds.length > 0 && (
             <div
               role="toolbar"
               aria-label="Actions groupées"
-              className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-md"
+              // Phones: floats above the bottom bar, actions scroll sideways.
+              className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 grid gap-2 rounded-2xl border border-border bg-surface p-2 shadow-xl md:sticky md:inset-x-auto md:top-2 md:bottom-auto md:z-10 md:flex md:flex-wrap md:items-center md:rounded-xl md:shadow-md"
             >
-              <span className="px-2 text-sm font-medium text-foreground">
-                {plural(selectedIds.length, "sélectionné", "sélectionnés")}
-              </span>
-              {selectedIds.length < visible.length && (
+              <div className="flex items-center gap-2 md:contents">
+                <span className="px-2 text-sm font-medium text-foreground">
+                  {plural(selectedIds.length, "sélectionné", "sélectionnés")}
+                </span>
+                {selectedIds.length < visible.length && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => setSelected(new Set(visible.map((car) => car.id)))}
+                  >
+                    Tout ({visible.length})
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onPress={() => setSelected(new Set(visible.map((car) => car.id)))}
+                  className="ms-auto md:order-last"
+                  onPress={() => setSelected(new Set())}
                 >
-                  Tout sélectionner ({visible.length})
+                  <X className="size-4" aria-hidden />
+                  <span className="max-md:sr-only">Désélectionner</span>
                 </Button>
-              )}
-              {selectedCars.some((car) => !car.published) && (
+              </div>
+              <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-0.5 [scrollbar-width:none] md:contents">
+                {selectedCars.some((car) => !car.published) && (
+                  <BulkButton
+                    icon={Eye}
+                    isDisabled={bulk.isPending}
+                    onPress={() => runBulk("publish")}
+                  >
+                    Publier sur le site
+                  </BulkButton>
+                )}
+                {selectedCars.some((car) => car.published) && (
+                  <BulkButton
+                    icon={EyeOff}
+                    isDisabled={bulk.isPending}
+                    onPress={() => runBulk("unpublish")}
+                  >
+                    Retirer du site
+                  </BulkButton>
+                )}
                 <BulkButton
-                  icon={Eye}
+                  icon={Tag}
                   isDisabled={bulk.isPending}
-                  onPress={() => runBulk("publish")}
+                  onPress={() => setBulkDialog("discount")}
                 >
-                  Publier sur le site
+                  Remise
                 </BulkButton>
-              )}
-              {selectedCars.some((car) => car.published) && (
+                {selectedCars.some((car) => car.featured_rank == null && onSale(car)) && (
+                  <BulkButton
+                    icon={Store}
+                    isDisabled={vitrine.isPending}
+                    onPress={() => {
+                      const ids = selectedCars
+                        .filter((car) => car.featured_rank == null && onSale(car))
+                        .map((car) => car.id);
+                      return vitrine
+                        .mutateAsync(showcaseWith(all, ids))
+                        .then(() => {
+                          toast.success(
+                            `${plural(ids.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
+                          );
+                          setSelected(new Set());
+                        })
+                        .catch(() => undefined); // reported by the mutation
+                    }}
+                  >
+                    Ajouter à la vitrine
+                  </BulkButton>
+                )}
+                {selectedCars.some(onSale) && (
+                  <BulkButton
+                    icon={Share2}
+                    isDisabled={bulk.isPending}
+                    onPress={() => setSharing(selectedCars.filter(onSale).map((car) => car.id))}
+                  >
+                    Facebook / Instagram
+                  </BulkButton>
+                )}
+                {selectedCars.some((car) => !car.sold) && (
+                  <BulkButton
+                    icon={BadgeCheck}
+                    isDisabled={bulk.isPending}
+                    onPress={() => runBulk("sold")}
+                  >
+                    Marquer vendu
+                  </BulkButton>
+                )}
+                {/* Only for vehicles marked sold: removes the mark (drafts stay drafts). */}
+                {selectedCars.some((car) => car.sold) && (
+                  <BulkButton
+                    icon={RotateCcw}
+                    isDisabled={bulk.isPending}
+                    onPress={() => runBulk("unsold")}
+                  >
+                    Annuler « vendu »
+                  </BulkButton>
+                )}
                 <BulkButton
-                  icon={EyeOff}
+                  icon={Trash2}
+                  danger
                   isDisabled={bulk.isPending}
-                  onPress={() => runBulk("unpublish")}
+                  onPress={() => setBulkDialog("delete")}
                 >
-                  Retirer du site
+                  Supprimer
                 </BulkButton>
-              )}
-              <BulkButton
-                icon={Tag}
-                isDisabled={bulk.isPending}
-                onPress={() => setBulkDialog("discount")}
-              >
-                Remise
-              </BulkButton>
-              {selectedCars.some((car) => car.featured_rank == null && onSale(car)) && (
-                <BulkButton
-                  icon={Store}
-                  isDisabled={vitrine.isPending}
-                  onPress={() => {
-                    const ids = selectedCars
-                      .filter((car) => car.featured_rank == null && onSale(car))
-                      .map((car) => car.id);
-                    return vitrine
-                      .mutateAsync(showcaseWith(all, ids))
-                      .then(() => {
-                        toast.success(
-                          `${plural(ids.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
-                        );
-                        setSelected(new Set());
-                      })
-                      .catch(() => undefined); // reported by the mutation
-                  }}
-                >
-                  Ajouter à la vitrine
-                </BulkButton>
-              )}
-              {selectedCars.some(onSale) && (
-                <BulkButton
-                  icon={Share2}
-                  isDisabled={bulk.isPending}
-                  onPress={() => setSharing(selectedCars.filter(onSale).map((car) => car.id))}
-                >
-                  Facebook / Instagram
-                </BulkButton>
-              )}
-              {selectedCars.some((car) => !car.sold) && (
-                <BulkButton
-                  icon={BadgeCheck}
-                  isDisabled={bulk.isPending}
-                  onPress={() => runBulk("sold")}
-                >
-                  Marquer vendu
-                </BulkButton>
-              )}
-              {/* Only for vehicles marked sold: removes the mark (drafts stay drafts). */}
-              {selectedCars.some((car) => car.sold) && (
-                <BulkButton
-                  icon={RotateCcw}
-                  isDisabled={bulk.isPending}
-                  onPress={() => runBulk("unsold")}
-                >
-                  Annuler « vendu »
-                </BulkButton>
-              )}
-              <BulkButton
-                icon={Trash2}
-                danger
-                isDisabled={bulk.isPending}
-                onPress={() => setBulkDialog("delete")}
-              >
-                Supprimer
-              </BulkButton>
-              {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="ms-auto"
-                onPress={() => setSelected(new Set())}
-              >
-                <X className="size-4" aria-hidden />
-                Désélectionner
-              </Button>
+                {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
+              </div>
             </div>
           )}
-          <Table>
+          {/* Phones and small tablets: one card per vehicle. */}
+          <ul aria-label="Véhicules" className="grid gap-3 md:hidden">
+            {pageCars.map((car, index) => (
+              <CarCard key={car.id} {...itemProps(car, index)} selecting={selectedIds.length > 0} />
+            ))}
+            {pageCars.length === 0 && <li>{emptyState}</li>}
+          </ul>
+          <Table className="hidden md:block">
             <Table.ScrollContainer>
               <Table.Content
                 aria-label="Véhicules"
@@ -562,85 +667,9 @@ export function CarsTab() {
                     <span className="sr-only">Actions</span>
                   </Table.Column>
                 </Table.Header>
-                <Table.Body
-                  renderEmptyState={() =>
-                    all.length ? (
-                      <EmptyState
-                        icon={CarIcon}
-                        title="Aucun véhicule ne correspond."
-                        description="Modifiez la recherche ou le filtre de statut."
-                        action={
-                          filtersActive && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onPress={() => {
-                                setSearch("");
-                                setStatus("all");
-                              }}
-                            >
-                              Réinitialiser les filtres
-                            </Button>
-                          )
-                        }
-                      />
-                    ) : (
-                      <EmptyState
-                        icon={CarIcon}
-                        title="Aucun véhicule pour le moment."
-                        description="Ajoutez votre premier véhicule pour l’afficher sur le site."
-                        action={
-                          <Button size="sm" onPress={() => open(emptyCar)}>
-                            <Plus className="size-4" aria-hidden />
-                            Ajouter un véhicule
-                          </Button>
-                        }
-                      />
-                    )
-                  }
-                >
+                <Table.Body renderEmptyState={() => emptyState}>
                   {pageCars.map((car, index) => (
-                    <CarRow
-                      key={car.id}
-                      car={car}
-                      selected={selected.has(car.id)}
-                      onSelect={() => toggle(car.id)}
-                      order={
-                        canReorder
-                          ? {
-                              first: current === 1 && index === 0,
-                              last: current === pageCount && index === pageCars.length - 1,
-                              onMove: (to) => move(car, to),
-                            }
-                          : undefined
-                      }
-                      onToggleSold={() => sell.mutate({ id: car.id, sold: !car.sold })}
-                      onDiscount={() => discount.open(car)}
-                      onShare={() => setSharing([car.id])}
-                      onToggleShowcase={() =>
-                        vitrine.mutate(
-                          car.featured_rank != null
-                            ? showcaseWith(all, [], [car.id])
-                            : showcaseWith(all, [car.id]),
-                          {
-                            onSuccess: () =>
-                              toast.success(
-                                car.featured_rank != null
-                                  ? "Retiré de la vitrine."
-                                  : "Ajouté à la vitrine de l’accueil.",
-                              ),
-                          },
-                        )
-                      }
-                      publishing={publishing.has(car.id)}
-                      onEdit={() => open(car)}
-                      onTogglePublished={() =>
-                        publish.mutate({ id: car.id, published: !car.published })
-                      }
-                      onDelete={() => deletion.open(car)}
-                      facebook={syncByCar.get(car.id)}
-                      facebookLoading={facebook.isPending}
-                    />
+                    <CarRow key={car.id} {...itemProps(car, index)} />
                   ))}
                 </Table.Body>
               </Table.Content>
@@ -747,22 +776,7 @@ type MoveTo = "first" | "last";
 const stop = (event: SyntheticEvent) => event.stopPropagation();
 const isolate = { onPointerDown: stop, onClick: stop, onKeyDown: stop };
 
-function CarRow({
-  car,
-  selected,
-  onSelect,
-  order,
-  publishing,
-  onEdit,
-  onTogglePublished,
-  onToggleSold,
-  onDiscount,
-  onToggleShowcase,
-  onShare,
-  onDelete,
-  facebook,
-  facebookLoading,
-}: {
+type ItemProps = {
   car: AdminCar;
   selected: boolean;
   onSelect: () => void;
@@ -778,7 +792,19 @@ function CarRow({
   onDelete: () => void;
   facebook: FacebookSync | undefined;
   facebookLoading: boolean;
-}) {
+};
+
+function CarRow({
+  car,
+  selected,
+  onSelect,
+  publishing,
+  onEdit,
+  onDiscount,
+  facebook,
+  facebookLoading,
+  ...handlers
+}: ItemProps) {
   const title = titleOf(car);
   const percent = discountPercent(car);
   const missing = missingFields(car);
@@ -904,68 +930,192 @@ function CarRow({
         <div {...isolate} className="inline-flex">
           <RowMenu
             label={`Actions pour ${title}`}
-            actions={[
-              { id: "edit", label: "Modifier", icon: Pencil, onAction: onEdit },
-              car.published && {
-                id: "view",
-                label: "Voir sur le site",
-                icon: ExternalLink,
-                href: `/vehicule/${car.slug}`,
-                external: true,
-              },
-              !car.price_on_request &&
-                car.price > 0 &&
-                !car.sold && {
-                  id: "discount",
-                  label: percent ? "Modifier la remise" : "Ajouter une remise",
-                  icon: Tag,
-                  onAction: onDiscount,
-                },
-              // Only cars en vente can be added; a featured one can always be removed.
-              (onSale(car) || inShowcase) && {
-                id: "vitrine",
-                label: inShowcase ? "Retirer de la vitrine" : "Ajouter à la vitrine",
-                icon: Store,
-                onAction: onToggleShowcase,
-              },
-              onSale(car) && {
-                id: "share",
-                label: "Publier sur Facebook / Instagram",
-                icon: Share2,
-                onAction: onShare,
-              },
-              {
-                id: "sold",
-                label: car.sold ? "Annuler « vendu »" : "Marquer comme vendu",
-                icon: car.sold ? RotateCcw : BadgeCheck,
-                onAction: onToggleSold,
-              },
-              order &&
-                !order.first && {
-                  id: "first",
-                  label: "Afficher en premier",
-                  icon: ArrowUpToLine,
-                  onAction: () => order.onMove("first"),
-                },
-              order &&
-                !order.last && {
-                  id: "last",
-                  label: "Afficher en dernier",
-                  icon: ArrowDownToLine,
-                  onAction: () => order.onMove("last"),
-                },
-              {
-                id: "publish",
-                label: car.published ? "Retirer du site" : "Publier sur le site",
-                icon: car.published ? EyeOff : Eye,
-                onAction: onTogglePublished,
-              },
-              { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
-            ]}
+            actions={carMenu({ car, onEdit, onDiscount, ...handlers })}
           />
         </div>
       </Table.Cell>
     </Table.Row>
+  );
+}
+
+/** The "…" menu of a vehicle (table row and phone card). */
+function carMenu({
+  car,
+  order,
+  onEdit,
+  onTogglePublished,
+  onToggleSold,
+  onDiscount,
+  onToggleShowcase,
+  onShare,
+  onDelete,
+}: Pick<
+  ItemProps,
+  | "car"
+  | "order"
+  | "onEdit"
+  | "onTogglePublished"
+  | "onToggleSold"
+  | "onDiscount"
+  | "onToggleShowcase"
+  | "onShare"
+  | "onDelete"
+>): (RowAction | false | undefined)[] {
+  const percent = discountPercent(car);
+  const inShowcase = car.featured_rank != null;
+  return [
+    { id: "edit", label: "Modifier", icon: Pencil, onAction: onEdit },
+    car.published && {
+      id: "view",
+      label: "Voir sur le site",
+      icon: ExternalLink,
+      href: `/vehicule/${car.slug}`,
+      external: true,
+    },
+    !car.price_on_request &&
+      car.price > 0 &&
+      !car.sold && {
+        id: "discount",
+        label: percent ? "Modifier la remise" : "Ajouter une remise",
+        icon: Tag,
+        onAction: onDiscount,
+      },
+    // Only cars en vente can be added; a featured one can always be removed.
+    (onSale(car) || inShowcase) && {
+      id: "vitrine",
+      label: inShowcase ? "Retirer de la vitrine" : "Ajouter à la vitrine",
+      icon: Store,
+      onAction: onToggleShowcase,
+    },
+    onSale(car) && {
+      id: "share",
+      label: "Publier sur Facebook / Instagram",
+      icon: Share2,
+      onAction: onShare,
+    },
+    {
+      id: "sold",
+      label: car.sold ? "Annuler « vendu »" : "Marquer comme vendu",
+      icon: car.sold ? RotateCcw : BadgeCheck,
+      onAction: onToggleSold,
+    },
+    order &&
+      !order.first && {
+        id: "first",
+        label: "Afficher en premier",
+        icon: ArrowUpToLine,
+        onAction: () => order.onMove("first"),
+      },
+    order &&
+      !order.last && {
+        id: "last",
+        label: "Afficher en dernier",
+        icon: ArrowDownToLine,
+        onAction: () => order.onMove("last"),
+      },
+    {
+      id: "publish",
+      label: car.published ? "Retirer du site" : "Publier sur le site",
+      icon: car.published ? EyeOff : Eye,
+      onAction: onTogglePublished,
+    },
+    { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
+  ];
+}
+
+/**
+ * Phone card: tap opens the vehicle (or ticks it while a selection is in progress),
+ * the box selects it, "…" has every action.
+ */
+function CarCard({
+  selecting,
+  ...props
+}: ItemProps & {
+  /** Some vehicles are ticked: a tap adds or removes this one. */
+  selecting: boolean;
+}) {
+  const { car, selected, onSelect, onEdit, publishing, facebook, facebookLoading } = props;
+  const title = titleOf(car);
+  const percent = discountPercent(car);
+  const missing = missingFields(car);
+  return (
+    <li>
+      <div
+        onClick={selecting ? onSelect : onEdit}
+        className={`relative flex cursor-pointer gap-3 rounded-2xl border bg-surface p-3 transition-colors active:bg-surface-secondary ${
+          selected ? "border-accent ring-1 ring-accent" : "border-separator"
+        } ${car.sold ? "opacity-75" : ""}`}
+      >
+        <div className="relative shrink-0 self-start">
+          <img
+            src={carImage(car)}
+            alt=""
+            loading="lazy"
+            className="aspect-[4/3] w-24 rounded-xl bg-surface-secondary object-cover"
+          />
+          <label
+            {...isolate}
+            className="absolute -start-2 -top-2 grid size-10 cursor-pointer place-items-center"
+          >
+            <input
+              type="checkbox"
+              aria-label={`Sélectionner ${title}`}
+              checked={selected}
+              onChange={onSelect}
+              className="size-5 cursor-pointer rounded accent-[var(--accent)] shadow"
+            />
+          </label>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs text-muted">
+            {car.brand} · {car.year} · {formatKm(car.km_value)}
+          </p>
+          <button
+            type="button"
+            {...isolate}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (selecting) onSelect();
+              else onEdit();
+            }}
+            className="line-clamp-2 text-start font-semibold leading-snug text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            {car.name}
+          </button>
+          <div className="mt-0.5 text-sm">
+            {car.price_on_request ? (
+              <span className="text-muted">Prix masqué</span>
+            ) : (
+              <PriceLabel car={car} percent={percent} />
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {car.sold ? (
+              <StatusChip tone="warning">Vendu</StatusChip>
+            ) : (
+              <StatusChip tone={car.published ? "success" : "default"}>
+                {car.published ? "En vente" : "Brouillon"}
+              </StatusChip>
+            )}
+            {car.featured_rank != null && onSale(car) && (
+              <StatusChip tone="accent">Vitrine</StatusChip>
+            )}
+            {missing.length > 0 && (
+              <StatusChip tone="danger">À compléter · {missing.length}</StatusChip>
+            )}
+            {facebook && (
+              <span className="text-xs">
+                <FacebookCell sync={facebook} loading={facebookLoading} published={car.published} />
+              </span>
+            )}
+            {publishing && <Spinner size="sm" aria-label="Mise à jour du statut" />}
+          </div>
+        </div>
+        <div {...isolate} className="-me-1 -mt-1 self-start">
+          <RowMenu label={`Actions pour ${title}`} actions={carMenu(props)} large />
+        </div>
+      </div>
+    </li>
   );
 }
 

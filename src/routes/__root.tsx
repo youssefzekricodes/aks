@@ -89,8 +89,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ]);
     return { content };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, matches }) => {
     const content = loaderData?.content ?? {};
+    // Admin and login pages install as a separate "AKS Admin" app that opens on /admin.
+    const admin = matches.some(
+      ({ routeId }: { routeId: string }) =>
+        routeId.startsWith("/_authenticated") || routeId === "/auth",
+    );
+    const appName = admin ? "AKS Admin" : "AKS";
     const favicon = resolveContent(content, "identity.favicon");
     const faviconHref = favicon.startsWith("data:")
       ? favicon
@@ -98,14 +104,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     return {
       meta: [
         { charSet: "utf-8" },
-        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        {
+          name: "viewport",
+          // Admin app: full screen on phones, the bars keep clear of the notch/home bar.
+          content: admin
+            ? "width=device-width, initial-scale=1, viewport-fit=cover"
+            : "width=device-width, initial-scale=1",
+        },
         { title: resolveContent(content, "seo.home_title") },
         { name: "author", content: resolveContent(content, "seo.site_name") },
         { name: "theme-color", content: "#1c1c1f" },
         { name: "color-scheme", content: "light" },
         // Installable app (PWA): home-screen name and status bar on iPhone.
-        { name: "application-name", content: "AKS" },
-        { name: "apple-mobile-web-app-title", content: "AKS" },
+        { name: "application-name", content: appName },
+        { name: "apple-mobile-web-app-title", content: appName },
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "black" },
@@ -118,7 +130,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "icon", type: "image/png", href: faviconHref },
-        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "manifest", href: admin ? "/admin.webmanifest" : "/manifest.webmanifest" },
         { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
       ],
       scripts: [{ children: gtagSnippet }],

@@ -6,6 +6,7 @@ import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@d
 import { CSS } from "@dnd-kit/utilities";
 import { Pencil } from "@/components/icons";
 import { CarCard, CarGrid } from "@/components/aks/CarCard";
+import { carImage, formatPrice, salePrice } from "@/lib/cars";
 import { reorderCars } from "@/lib/data";
 import { adminCarsQueryKey, type AdminCar } from "./model";
 import { DragHandle, frenchAnnouncements, frenchInstructions, useSortSensors } from "./sortable";
@@ -76,7 +77,12 @@ export function SortableCarGrid({
       <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
         {draggedCar && (
           <div className="pointer-events-none rotate-1 scale-[1.02] rounded-2xl shadow-2xl">
-            <CarCard car={draggedCar} preview />
+            <div className="hidden md:block">
+              <CarCard car={draggedCar} preview />
+            </div>
+            <div className="md:hidden">
+              <CompactRow car={draggedCar} />
+            </div>
           </div>
         )}
       </DragOverlay>
@@ -111,21 +117,35 @@ function SortableCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`relative ${isDragging ? "opacity-30" : ""}`}
     >
+      {/* Phones: a compact row (several fit on screen), dragged by its handle so the
+          page still scrolls under the finger. */}
+      <div className="md:hidden">
+        <CompactRow car={car} position={position} onClick={onEdit}>
+          {actions}
+          <DragHandle
+            label={`Déplacer ${car.brand} ${car.name}`}
+            attributes={attributes}
+            listeners={listeners}
+            setActivatorNodeRef={setActivatorNodeRef}
+            className="size-10 bg-surface-secondary"
+          />
+        </CompactRow>
+      </div>
       {/* Click to edit; press and move to drag. */}
       <div
         {...listeners}
         onClick={onEdit}
-        className="h-full cursor-grab touch-manipulation select-none active:cursor-grabbing"
+        className="hidden h-full cursor-grab touch-manipulation select-none active:cursor-grabbing md:block"
       >
         <CarCard car={car} preview />
       </div>
-      <div className="pointer-events-none absolute left-3 top-12 flex items-center gap-2">
+      <div className="pointer-events-none absolute left-3 top-12 hidden items-center gap-2 md:flex">
         <span className="tabular grid size-7 place-items-center rounded-full bg-black/70 text-xs font-semibold text-white">
           {position}
         </span>
         {status && <StatusChip tone={car.sold ? "warning" : "default"}>{status}</StatusChip>}
       </div>
-      <div className="absolute bottom-3 right-3 flex gap-1">
+      <div className="absolute bottom-3 right-3 hidden gap-1 md:flex">
         {actions}
         <IconButton
           label={`Modifier ${car.brand} ${car.name}`}
@@ -141,6 +161,54 @@ function SortableCard({
           className="bg-surface shadow-sm"
         />
       </div>
+    </div>
+  );
+}
+
+/** Phone row: position, photo, name, price, status, then the buttons. */
+function CompactRow({
+  car,
+  position,
+  onClick,
+  children,
+}: {
+  car: AdminCar;
+  position?: number;
+  onClick?: () => void;
+  children?: ReactNode;
+}) {
+  const status = car.sold ? "Vendu" : car.published ? null : "Brouillon";
+  return (
+    <div
+      onClick={onClick}
+      className="flex cursor-pointer items-center gap-3 rounded-2xl border border-separator bg-surface p-2.5 active:bg-surface-secondary"
+    >
+      {position !== undefined && (
+        <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background">
+          {position}
+        </span>
+      )}
+      <img
+        src={carImage(car)}
+        alt=""
+        loading="lazy"
+        className="aspect-[4/3] w-20 shrink-0 rounded-lg bg-surface-secondary object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs text-muted">
+          {car.brand} · {car.year}
+        </p>
+        <p className="truncate font-semibold text-foreground">{car.name}</p>
+        <p className="flex items-center gap-1.5 text-sm text-muted">
+          {car.price_on_request || !car.price ? "Prix sur demande" : formatPrice(salePrice(car))}
+          {status && <StatusChip tone={car.sold ? "warning" : "default"}>{status}</StatusChip>}
+        </p>
+      </div>
+      {children && (
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }

@@ -34,6 +34,7 @@ import {
   PageHeader,
   SelectField,
   StatusChip,
+  CardListSkeleton,
   TableSkeleton,
   Toolbar,
   UploadProgress,
@@ -182,6 +183,31 @@ export function BrandsTab() {
   );
   const hiddenCount = all.filter((b) => b.hidden).length;
 
+  /** Same data and actions for a table row (computer) and a card (phone). */
+  const brandProps = (brand: Row): BrandItemProps => {
+    const position = favorites.findIndex((b) => b.slug === brand.slug);
+    return {
+      brand,
+      hasUpload: uploaded.has(brand.slug),
+      upload: uploads.states[brand.slug],
+      onToggleHidden: (visible) => save.mutate([{ ...display(brand), hidden: !visible }]),
+      onToggleFavorite: () => toggleFavorite(brand),
+      onOpen: () =>
+        void navigate({ to: "/admin/vehicules/marque/$brand", params: { brand: brand.slug } }),
+      onEdit: () => setEditing(brand.slug),
+      ...(position >= 0
+        ? {
+            favorite: {
+              position: position + 1,
+              first: position === 0,
+              last: position === favorites.length - 1,
+              onMove: (by: -1 | 1) => moveFavorite(brand, by),
+            },
+          }
+        : {}),
+    };
+  };
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -225,67 +251,60 @@ export function BrandsTab() {
           }}
         />
       ) : cars.isPending || logos.isPending || settings.isPending ? (
-        <TableSkeleton label="Marques" columns={COLUMNS} minWidth="min-w-[880px]" />
+        <>
+          <CardListSkeleton label="Marques" />
+          <div className="hidden md:block">
+            <TableSkeleton label="Marques" columns={COLUMNS} minWidth="min-w-[880px]" />
+          </div>
+        </>
       ) : (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label="Marques" className="min-w-[880px]">
-              <Table.Header>
-                <Table.Column className="w-28">Logo</Table.Column>
-                <Table.Column isRowHeader>Marque</Table.Column>
-                <Table.Column>Véhicules</Table.Column>
-                <Table.Column>Visible</Table.Column>
-                <Table.Column className="w-40">Favori</Table.Column>
-                <Table.Column>Source du logo</Table.Column>
-                <Table.Column className="w-32 text-end">
-                  <span className="sr-only">Actions</span>
-                </Table.Column>
-              </Table.Header>
-              <Table.Body
-                renderEmptyState={() => (
-                  <EmptyState
-                    icon={Tags}
-                    title="Aucune marque ne correspond."
-                    description="Modifiez la recherche ou le filtre."
-                  />
-                )}
-              >
-                {rows.map((brand) => {
-                  const position = favorites.findIndex((b) => b.slug === brand.slug);
-                  return (
-                    <BrandRow
-                      key={brand.slug}
-                      brand={brand}
-                      hasUpload={uploaded.has(brand.slug)}
-                      upload={uploads.states[brand.slug]}
-                      onToggleHidden={(visible) =>
-                        save.mutate([{ ...display(brand), hidden: !visible }])
-                      }
-                      onToggleFavorite={() => toggleFavorite(brand)}
-                      onOpen={() =>
-                        void navigate({
-                          to: "/admin/vehicules/marque/$brand",
-                          params: { brand: brand.slug },
-                        })
-                      }
-                      onEdit={() => setEditing(brand.slug)}
-                      {...(position >= 0
-                        ? {
-                            favorite: {
-                              position: position + 1,
-                              first: position === 0,
-                              last: position === favorites.length - 1,
-                              onMove: (by: -1 | 1) => moveFavorite(brand, by),
-                            },
-                          }
-                        : {})}
+        <>
+          {/* Phones: one card per brand. */}
+          <ul aria-label="Marques" className="grid gap-3 md:hidden">
+            {rows.map((brand) => (
+              <BrandCard key={brand.slug} {...brandProps(brand)} />
+            ))}
+            {rows.length === 0 && (
+              <li>
+                <EmptyState
+                  icon={Tags}
+                  title="Aucune marque ne correspond."
+                  description="Modifiez la recherche ou le filtre."
+                />
+              </li>
+            )}
+          </ul>
+          <Table className="hidden md:block">
+            <Table.ScrollContainer>
+              <Table.Content aria-label="Marques" className="min-w-[880px]">
+                <Table.Header>
+                  <Table.Column className="w-28">Logo</Table.Column>
+                  <Table.Column isRowHeader>Marque</Table.Column>
+                  <Table.Column>Véhicules</Table.Column>
+                  <Table.Column>Visible</Table.Column>
+                  <Table.Column className="w-40">Favori</Table.Column>
+                  <Table.Column>Source du logo</Table.Column>
+                  <Table.Column className="w-32 text-end">
+                    <span className="sr-only">Actions</span>
+                  </Table.Column>
+                </Table.Header>
+                <Table.Body
+                  renderEmptyState={() => (
+                    <EmptyState
+                      icon={Tags}
+                      title="Aucune marque ne correspond."
+                      description="Modifiez la recherche ou le filtre."
                     />
-                  );
-                })}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
+                  )}
+                >
+                  {rows.map((brand) => (
+                    <BrandRow key={brand.slug} {...brandProps(brand)} />
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
+        </>
       )}
 
       <BrandEditDialog
@@ -318,6 +337,17 @@ export function BrandsTab() {
   );
 }
 
+type BrandItemProps = {
+  brand: Row;
+  hasUpload: boolean;
+  upload: UploadState | undefined;
+  onToggleHidden: (visible: boolean) => void;
+  onToggleFavorite: () => void;
+  onOpen: () => void;
+  onEdit: () => void;
+  favorite?: { position: number; first: boolean; last: boolean; onMove: (by: -1 | 1) => void };
+};
+
 function BrandRow({
   brand,
   hasUpload,
@@ -327,16 +357,7 @@ function BrandRow({
   onOpen,
   onEdit,
   favorite,
-}: {
-  brand: Row;
-  hasUpload: boolean;
-  upload: UploadState | undefined;
-  onToggleHidden: (visible: boolean) => void;
-  onToggleFavorite: () => void;
-  onOpen: () => void;
-  onEdit: () => void;
-  favorite?: { position: number; first: boolean; last: boolean; onMove: (by: -1 | 1) => void };
-}) {
+}: BrandItemProps) {
   const working = upload?.status === "working";
   return (
     <Table.Row
@@ -421,6 +442,105 @@ function BrandRow({
         </div>
       </Table.Cell>
     </Table.Row>
+  );
+}
+
+/** Phone card: tap opens the brand's vehicles; visibility, favourite and logo inline. */
+function BrandCard({
+  brand,
+  hasUpload,
+  upload,
+  onToggleHidden,
+  onToggleFavorite,
+  onOpen,
+  onEdit,
+  favorite,
+}: BrandItemProps) {
+  return (
+    <li>
+      <div
+        onClick={onOpen}
+        className={`grid cursor-pointer gap-3 rounded-2xl border border-separator bg-surface p-3 transition-colors active:bg-surface-secondary ${
+          brand.hidden ? "opacity-70" : ""
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-xl border border-separator bg-background p-2 text-foreground">
+            <BrandLogo brand={brand.name} size={26} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold text-foreground">{brand.name}</p>
+            <p className="text-xs text-muted">
+              {brand.cars ? plural(brand.cars, "véhicule", "véhicules") : "Aucun véhicule"} ·{" "}
+              {hasUpload ? "logo personnalisé" : brand.logo ? "logo intégré" : "sans logo"}
+            </p>
+          </div>
+          <div {...isolate}>
+            <Button
+              size="sm"
+              variant="secondary"
+              isIconOnly
+              aria-label={`Modifier le logo de ${brand.name}`}
+              isPending={upload?.status === "working"}
+              onPress={onEdit}
+              className="size-10"
+            >
+              <Pencil className="size-4" aria-hidden />
+            </Button>
+          </div>
+        </div>
+        <div
+          {...isolate}
+          className="flex items-center justify-between gap-2 border-t border-separator pt-2"
+        >
+          <Switch
+            isSelected={!brand.hidden}
+            onChange={onToggleHidden}
+            aria-label={`Afficher ${brand.name} sur le site`}
+          >
+            <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+              <span className="text-sm text-muted">{brand.hidden ? "Masquée" : "Visible"}</span>
+            </Switch.Content>
+          </Switch>
+          <div className="flex items-center gap-1">
+            {favorite && (
+              <>
+                <IconButton
+                  label={`Monter ${brand.name}`}
+                  icon={ArrowUp}
+                  isDisabled={favorite.first}
+                  onPress={() => favorite.onMove(-1)}
+                  className="size-10"
+                />
+                <IconButton
+                  label={`Descendre ${brand.name}`}
+                  icon={ArrowDown}
+                  isDisabled={favorite.last}
+                  onPress={() => favorite.onMove(1)}
+                  className="size-10"
+                />
+                <span className="w-5 text-center text-xs font-semibold tabular-nums text-muted">
+                  {favorite.position}
+                </span>
+              </>
+            )}
+            <IconButton
+              label={
+                favorite
+                  ? `Retirer ${brand.name} des favorites`
+                  : `Ajouter ${brand.name} aux favorites`
+              }
+              icon={favorite ? StarFill : Star}
+              onPress={onToggleFavorite}
+              className={`size-10 ${favorite ? "text-warning" : "text-muted"}`}
+            />
+          </div>
+        </div>
+      </div>
+    </li>
   );
 }
 

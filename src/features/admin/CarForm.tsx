@@ -395,20 +395,26 @@ export function CarForm({
 
       <SocialCard value={value} onChange={onChange} />
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-separator bg-surface p-4 shadow-lg">
+      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-separator bg-surface p-3 shadow-lg sm:bottom-4 sm:p-4">
         <p
           id="car-form-status"
           aria-live="polite"
-          className={`text-sm ${saveBlocked ? "text-danger" : "text-muted"}`}
+          className={`text-xs sm:text-sm ${saveBlocked ? "text-danger" : "text-muted"}`}
         >
           {status}
         </p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="tertiary" onPress={requestLeave} isDisabled={saving}>
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+          <Button
+            variant="tertiary"
+            className="w-full sm:w-auto"
+            onPress={requestLeave}
+            isDisabled={saving}
+          >
             Annuler
           </Button>
           <Button
             type="submit"
+            className="w-full sm:w-auto"
             isPending={saving}
             isDisabled={saveBlocked}
             aria-describedby="car-form-status"
