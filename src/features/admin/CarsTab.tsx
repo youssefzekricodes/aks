@@ -50,6 +50,7 @@ import {
   adminCarsQueryKey,
   dateFormat,
   emptyCar,
+  fieldsToFill,
   missingFields,
   normalize,
   plural,
@@ -258,10 +259,10 @@ export function CarsTab() {
     onSuccess: (result, { action, percent }) => {
       const n = plural(result.done, "véhicule", "véhicules");
       const message: Record<BulkAction, string> = {
-        publish: `${n} publié(s).`,
-        unpublish: `${n} dépublié(s).`,
+        publish: `${n} publié(s) : visible(s) sur le site.`,
+        unpublish: `${n} retiré(s) du site (brouillons).`,
         sold: `${n} marqué(s) comme vendu(s).`,
-        unsold: `${n} remis en vente.`,
+        unsold: `Mention « vendu » retirée pour ${n}.`,
         delete: `${n} supprimé(s).`,
         discount: percent
           ? `Remise de ${percent} % appliquée à ${n}.`
@@ -351,7 +352,8 @@ export function CarsTab() {
   const sold = all.filter((car) => car.sold).length;
   const filtersActive = query !== "" || status !== "all";
   // Selection only counts vehicles currently shown, so hidden rows are never acted on.
-  const selectedIds = visible.filter((car) => selected.has(car.id)).map((car) => car.id);
+  const selectedCars = visible.filter((car) => selected.has(car.id));
+  const selectedIds = selectedCars.map((car) => car.id);
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const pageCars = visible.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
@@ -363,9 +365,24 @@ export function CarsTab() {
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  const runBulk = (action: BulkAction, percent?: number) =>
-    bulk.mutateAsync({ ids: selectedIds, action, ...(percent === undefined ? {} : { percent }) });
-  const incomplete = all.filter((car) => missingFields(car).length > 0).length;
+  /** Vehicles already in the target state are left out, so the message counts real changes. */
+  const needsChange: Partial<Record<BulkAction, (car: AdminCar) => boolean>> = {
+    publish: (car) => !car.published,
+    unpublish: (car) => car.published,
+    sold: (car) => !car.sold,
+    unsold: (car) => car.sold === true,
+  };
+  const runBulk = (action: BulkAction, percent?: number) => {
+    const test = needsChange[action];
+    const ids = test ? selectedCars.filter(test).map((car) => car.id) : selectedIds;
+    if (!ids.length) {
+      toast.info("Aucun changement : les véhicules sélectionnés sont déjà dans cet état.");
+      return Promise.resolve();
+    }
+    return bulk.mutateAsync({ ids, action, ...(percent === undefined ? {} : { percent }) });
+  };
+  // Same list as the completion window (it also asks for prices not set yet).
+  const incomplete = all.filter((car) => fieldsToFill(car).length > 0).length;
   // Dragging reorders the full list, so it only makes sense in display order without filters.
   const canReorder = sort === "order" && !filtersActive;
 
@@ -460,16 +477,24 @@ export function CarsTab() {
                   Tout sélectionner ({visible.length})
                 </Button>
               )}
-              <BulkButton icon={Eye} isDisabled={bulk.isPending} onPress={() => runBulk("publish")}>
-                Publier
-              </BulkButton>
-              <BulkButton
-                icon={EyeOff}
-                isDisabled={bulk.isPending}
-                onPress={() => runBulk("unpublish")}
-              >
-                Dépublier
-              </BulkButton>
+              {selectedCars.some((car) => !car.published) && (
+                <BulkButton
+                  icon={Eye}
+                  isDisabled={bulk.isPending}
+                  onPress={() => runBulk("publish")}
+                >
+                  Publier sur le site
+                </BulkButton>
+              )}
+              {selectedCars.some((car) => car.published) && (
+                <BulkButton
+                  icon={EyeOff}
+                  isDisabled={bulk.isPending}
+                  onPress={() => runBulk("unpublish")}
+                >
+                  Retirer du site
+                </BulkButton>
+              )}
               <BulkButton
                 icon={Tag}
                 isDisabled={bulk.isPending}
@@ -477,20 +502,25 @@ export function CarsTab() {
               >
                 Remise
               </BulkButton>
-              <BulkButton
-                icon={BadgeCheck}
-                isDisabled={bulk.isPending}
-                onPress={() => runBulk("sold")}
-              >
-                Marquer vendu
-              </BulkButton>
-              <BulkButton
-                icon={RotateCcw}
-                isDisabled={bulk.isPending}
-                onPress={() => runBulk("unsold")}
-              >
-                Remettre en vente
-              </BulkButton>
+              {selectedCars.some((car) => !car.sold) && (
+                <BulkButton
+                  icon={BadgeCheck}
+                  isDisabled={bulk.isPending}
+                  onPress={() => runBulk("sold")}
+                >
+                  Marquer vendu
+                </BulkButton>
+              )}
+              {/* Only for vehicles marked sold: removes the mark (drafts stay drafts). */}
+              {selectedCars.some((car) => car.sold) && (
+                <BulkButton
+                  icon={RotateCcw}
+                  isDisabled={bulk.isPending}
+                  onPress={() => runBulk("unsold")}
+                >
+                  Annuler « vendu »
+                </BulkButton>
+              )}
               <BulkButton
                 icon={Trash2}
                 danger
@@ -892,7 +922,7 @@ function CarRow({
                 },
               {
                 id: "sold",
-                label: car.sold ? "Remettre en vente" : "Marquer comme vendu",
+                label: car.sold ? "Annuler « vendu »" : "Marquer comme vendu",
                 icon: car.sold ? RotateCcw : BadgeCheck,
                 onAction: onToggleSold,
               },
@@ -912,7 +942,7 @@ function CarRow({
                 },
               {
                 id: "publish",
-                label: car.published ? "Dépublier" : "Publier",
+                label: car.published ? "Retirer du site" : "Publier sur le site",
                 icon: car.published ? EyeOff : Eye,
                 onAction: onTogglePublished,
               },

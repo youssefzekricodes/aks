@@ -279,3 +279,12 @@ export function missingFields(car: CarInput): string[] {
   ];
   return missing.filter(([isMissing]) => isMissing).map(([, label]) => label);
 }
+
+/**
+ * Fields to fill: the missing ones, plus the price whenever none is set — even
+ * when it is hidden ("Contactez-nous"), as for the cars imported from Facebook.
+ */
+export function fieldsToFill(car: CarInput) {
+  const missing = missingFields(car);
+  return car.price <= 0 && !missing.includes("Prix") ? [...missing, "Prix"] : missing;
+}

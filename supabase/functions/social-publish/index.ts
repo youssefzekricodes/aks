@@ -147,9 +147,10 @@ Deno.serve(async (request) => {
         igUserId: Deno.env.get("META_IG_USER_ID"),
       },
       app: {
-        appId: Deno.env.get("META_APP_ID"),
-        appSecret: Deno.env.get("META_APP_SECRET"),
-        loginConfigId: Deno.env.get("META_LOGIN_CONFIG_ID"),
+        // Trimmed: a pasted space or line break makes Meta reject the app ID.
+        appId: Deno.env.get("META_APP_ID")?.trim() || undefined,
+        appSecret: Deno.env.get("META_APP_SECRET")?.trim() || undefined,
+        loginConfigId: Deno.env.get("META_LOGIN_CONFIG_ID")?.trim() || undefined,
       },
       background: (work) => EdgeRuntime.waitUntil(work),
     });

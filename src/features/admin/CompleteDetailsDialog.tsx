@@ -11,7 +11,7 @@ import {
   GEARBOX_LABELS,
 } from "@/lib/cars";
 import { completeCars } from "@/lib/data";
-import { missingFields, plural, toOptions, type AdminCar } from "./model";
+import { fieldsToFill, plural, toOptions, type AdminCar } from "./model";
 import { ConfirmDialog, IntegerField, SelectField } from "./ui";
 
 type Fields = {
@@ -19,6 +19,7 @@ type Fields = {
   model?: string;
   year?: number;
   price?: number;
+  price_on_request?: boolean;
   km_value?: number;
   fuel?: string;
   gearbox?: string;
@@ -91,7 +92,7 @@ function CompleteDetails({
   // Fields missing when the window opened: they stay visible while being filled.
   const [targets] = useState(() =>
     cars
-      .map((car) => ({ id: car.id, missing: missingFields(car) }))
+      .map((car) => ({ id: car.id, missing: fieldsToFill(car) }))
       .filter((t) => t.missing.length > 0),
   );
   const byId = useMemo(() => new Map(cars.map((car) => [car.id, car])), [cars]);
@@ -108,7 +109,7 @@ function CompleteDetails({
 
   const rows = targets.filter((t) => byId.has(t.id) && (!filter || t.missing.includes(filter)));
   const changed = Object.keys(drafts).filter((id) => Object.keys(drafts[id] ?? {}).length > 0);
-  const stillMissing = (id: string) => missingFields(merged(id));
+  const stillMissing = (id: string) => fieldsToFill(merged(id));
   const fieldCounts = Object.fromEntries(
     [...new Set(targets.flatMap((t) => t.missing))].map((label) => [
       label,
@@ -354,9 +355,15 @@ function FieldEditor({
         <IntegerField
           label="Prix (DT)"
           value={car.price || null}
-          onChange={(price) => onChange({ price: price ?? 0 })}
+          // A price entered here is shown on the site instead of "Contactez-nous".
+          onChange={(price) =>
+            onChange(
+              price ? { price, price_on_request: false } : { price: 0, price_on_request: true },
+            )
+          }
           minValue={0}
           maxValue={1_000_000_000}
+          description="Affiché sur le site. Laissez vide pour « Contactez-nous »."
         />
       );
     case "Kilométrage":

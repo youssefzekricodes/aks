@@ -108,7 +108,10 @@ export function ConnectorsTab() {
 
   const data = status.data;
   const working = connect.isPending || select.isPending;
-  const login = () => data?.appId && startLogin(data.appId, data.loginConfigId);
+  const appId = data?.appId?.trim() ?? "";
+  // A Meta app ID is a number of about 15–16 digits (Paramètres de l’app → Général).
+  const appIdValid = /^\d{12,20}$/.test(appId);
+  const login = () => appIdValid && startLogin(appId, data?.loginConfigId?.trim() || null);
 
   return (
     <div className="grid gap-6">
@@ -139,6 +142,20 @@ export function ConnectorsTab() {
           </Alert.Content>
         </Alert>
       )}
+      {data?.app && !appIdValid && (
+        <Alert status="danger">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>ID d’app Meta incorrect</Alert.Title>
+            <Alert.Description>
+              Le secret META_APP_ID configuré dans Supabase (« {appId || "vide"} ») n’est pas un ID
+              d’app Meta. Copiez l’« ID de l’app » (un nombre d’environ 16 chiffres) depuis
+              developers.facebook.com → votre app → Paramètres de l’app → Général, puis remplacez le
+              secret dans Supabase → Edge Functions → Secrets.
+            </Alert.Description>
+          </Alert.Content>
+        </Alert>
+      )}
       {data?.error && (
         <Alert status="warning">
           <Alert.Indicator />
@@ -164,7 +181,11 @@ export function ConnectorsTab() {
         >
           {data?.facebook ? (
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" isDisabled={!data.app || working} onPress={login}>
+              <Button
+                variant="secondary"
+                isDisabled={!data.app || !appIdValid || working}
+                onPress={login}
+              >
                 <RefreshCw className="size-4" aria-hidden />
                 Changer de Page
               </Button>
@@ -174,7 +195,7 @@ export function ConnectorsTab() {
               </Button>
             </div>
           ) : (
-            <FacebookButton isDisabled={!data?.app || working} onPress={login} />
+            <FacebookButton isDisabled={!data?.app || !appIdValid || working} onPress={login} />
           )}
           {!status.isPending && !data?.app && (
             <p className="text-sm text-muted">
@@ -210,7 +231,11 @@ export function ConnectorsTab() {
                 Liez-le depuis la Page (Paramètres → Comptes liés → Instagram), puis reconnectez.
               </p>
               <div>
-                <Button variant="secondary" isDisabled={!data.app || working} onPress={login}>
+                <Button
+                  variant="secondary"
+                  isDisabled={!data.app || !appIdValid || working}
+                  onPress={login}
+                >
                   <RefreshCw className="size-4" aria-hidden />
                   Reconnecter
                 </Button>
@@ -224,6 +249,14 @@ export function ConnectorsTab() {
           )}
         </ConnectorCard>
       </div>
+
+      {appId && (
+        <p className="text-sm text-muted">
+          App Meta utilisée : <span className="tabular font-medium text-foreground">{appId}</span>.
+          Elle doit être identique à l’« ID de l’app » affiché sur developers.facebook.com
+          (Paramètres de l’app → Général).
+        </p>
+      )}
 
       <Modal.Backdrop isOpen={pages !== null} onOpenChange={(open) => !open && setPages(null)}>
         <Modal.Container placement="auto" scroll="inside">
