@@ -8,6 +8,7 @@ import { carImage, carTitle } from "@/lib/cars";
 import { Navbar } from "@/components/aks/Navbar";
 import { SiteFooter } from "@/components/aks/SiteFooter";
 import { SearchPage } from "@/components/aks/search/SearchPage";
+import { brandLanding, POPULAR_BRANDS } from "@/features/seo/landings";
 
 export const Route = createFileRoute("/marques/$brand")({
   validateSearch,
@@ -30,17 +31,17 @@ export const Route = createFileRoute("/marques/$brand")({
     const origin = loaderData?.origin;
     const name = loaderData?.name ?? params.brand;
     const count = loaderData?.cars.length ?? 0;
-    const fill = (template: string) =>
-      template.replaceAll("{brand}", name).replaceAll("{count}", String(count));
     const path = `/marques/${params.brand}`;
+    const wording = brandLanding(name, count);
     return seo({
-      title: fill(resolveContent(content, "seo.brand_title")),
-      description: fill(resolveContent(content, "seo.brand_description")),
+      title: wording.title,
+      description: wording.description,
       siteName: resolveContent(content, "seo.site_name"),
       origin,
       path,
       image: loaderData?.cars[0] ? carImage(loaderData.cars[0]) : undefined,
-      noindex: count === 0,
+      // In stock, or a brand people search for in Tunisia (page explains import on request).
+      noindex: count === 0 && !POPULAR_BRANDS.includes(params.brand),
       jsonLd: [
         {
           "@context": "https://schema.org",
@@ -74,7 +75,7 @@ export const Route = createFileRoute("/marques/$brand")({
 
 function BrandPage() {
   const { brand } = Route.useParams();
-  const { name } = Route.useLoaderData();
+  const { name, cars } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   return (
@@ -86,7 +87,8 @@ function BrandPage() {
           navigate({ search: rest, replace: true, resetScroll: false })
         }
         lockedBrand={name}
-        title={`${name} neuves et d’occasion`}
+        title={brandLanding(name, cars.length).h1}
+        intro={<p>{brandLanding(name, cars.length).intro}</p>}
         breadcrumbs={[
           { label: "Accueil", to: "/" },
           { label: "Marques", to: "/marques" },

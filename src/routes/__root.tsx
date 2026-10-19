@@ -102,6 +102,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "author", content: resolveContent(content, "seo.site_name") },
         { name: "theme-color", content: "#1c1c1f" },
         { name: "color-scheme", content: "light" },
+        // Local search: the showroom is in Sfax (region TN-61).
+        { name: "geo.region", content: "TN-61" },
+        { name: "geo.placename", content: "Sfax" },
+        { name: "geo.position", content: "34.774285;10.80124" },
+        { name: "ICBM", content: "34.774285, 10.80124" },
       ],
       links: [
         { rel: "stylesheet", href: appCss },

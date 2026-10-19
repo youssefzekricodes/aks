@@ -87,7 +87,9 @@ export const Route = createFileRoute("/vehicule/$slug")({
     const price = car.price_on_request ? "Prix sur demande" : formatPrice(salePrice(car));
     const brand = brandInfo(car.brand);
     return seo({
-      title: `${carTitle(car)} ${car.year} — ${car.state} — ${siteName}`,
+      // "Peugeot 208 2021 occasion à Sfax — 45 000 DT | AKS": what people type, then the price.
+      title: `${carTitle(car)} ${car.year} ${car.state.toLowerCase()} à Sfax${car.price_on_request ? "" : ` — ${formatPrice(salePrice(car))}`} | AKS`,
+      ogType: "product",
       description: `${carTitle(car)} ${car.year}, ${formatKm(car.km_value)}, ${car.fuel}, ${label(GEARBOX_LABELS, car.gearbox)} — ${price} chez ${siteName} à Sfax.`,
       siteName,
       origin,
@@ -125,10 +127,28 @@ export const Route = createFileRoute("/vehicule/$slug")({
             : {
                 offers: {
                   "@type": "Offer",
+                  url: absoluteUrl(origin, path),
                   price: salePrice(car),
                   priceCurrency: "TND",
                   availability: "https://schema.org/InStock",
-                  seller: { "@type": "AutoDealer", name: siteName },
+                  itemCondition:
+                    car.state === "Neuf"
+                      ? "https://schema.org/NewCondition"
+                      : "https://schema.org/UsedCondition",
+                  areaServed: { "@type": "City", name: "Sfax" },
+                  seller: {
+                    "@type": "AutoDealer",
+                    "@id": absoluteUrl(origin, "/#dealer"),
+                    name: siteName,
+                    url: absoluteUrl(origin, "/"),
+                    address: {
+                      "@type": "PostalAddress",
+                      streetAddress: "Route Sidi Mansour, km 5",
+                      addressLocality: "Sfax",
+                      postalCode: "3000",
+                      addressCountry: "TN",
+                    },
+                  },
                 },
               }),
         },

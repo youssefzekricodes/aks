@@ -25,7 +25,8 @@ export const listPublicSiteContent = createServerFn({ method: "GET" }).handler(a
 /** Public runtime settings the browser needs (no secrets). */
 export const getPublicConfig = createServerFn({ method: "GET" }).handler(async () => ({
   turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || null,
-  origin: process.env["APP_ORIGIN"] || null,
+  // Canonical links and structured data: the public address of the site.
+  origin: (await repository()).publicOrigin(),
 }));
 export const listBrandLogos = createServerFn({ method: "GET" }).handler(async () =>
   (await repository()).brandLogos(),

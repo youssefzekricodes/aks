@@ -10,6 +10,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import type { SocialPlatform } from "@/features/catalog/social";
 import { adminClient, callEdgeFunction, checkOrigin } from "./auth";
 import { env } from "./env";
+import { requestSiteOrigin } from "./origin";
 import { failure, publicClient, type Db } from "./supabase";
 import {
   deleteObjects,
@@ -226,6 +227,11 @@ export async function publishCar(id: string, published: boolean) {
   return { ok: true, social: published ? await shareCar(supabase, id) : null };
 }
 
+/** Public address of the site (see siteOrigin: a local APP_ORIGIN is ignored in production). */
+export function publicOrigin() {
+  return requestSiteOrigin(getRequest(), env.appOrigin);
+}
+
 /* ------------------------------------------------------------------ Facebook / Instagram */
 
 export type ShareResult = {
@@ -246,7 +252,7 @@ async function shareCar(supabase: Db, id: string): Promise<ShareResult | null> {
     .maybeSingle<CarRow>();
   if (!row || !row.published || row.sold || !row.social_targets?.length) return null;
   const car = toCar(row);
-  const url = `${env.appOrigin || new URL(getRequest().url).origin}/vehicule/${car.slug}`;
+  const url = `${publicOrigin()}/vehicule/${car.slug}`;
   try {
     return (await callEdgeFunction("social-publish", {
       action: "publish",

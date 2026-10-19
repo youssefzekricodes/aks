@@ -57,9 +57,9 @@ export function Hero() {
         <div className="container-page flex min-h-[min(78svh,40rem)] flex-col justify-end pb-20 pt-24 md:min-h-[min(82svh,46rem)] md:justify-center md:pb-28">
           <div className="max-w-3xl">
             <h1 className="text-[2.1rem] font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
-              {text("hero.text_26", "Le showroom automobile")}{" "}
+              {text("hero.text_26", "Voitures d’occasion et neuves")}{" "}
               <span className="text-[oklch(0.7_0.19_27)]">
-                {text("hero.text_27", "premium de Sfax")}
+                {text("hero.text_27", "à Sfax, chez AKS")}
               </span>
             </h1>
             {intro && (

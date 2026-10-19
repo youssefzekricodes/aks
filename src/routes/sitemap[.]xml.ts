@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { normalizeOrigin } from "@/lib/seo";
+import { requestSiteOrigin } from "@/server/origin";
 import type { Car } from "@/lib/cars";
-import { facetOptions } from "@/features/catalog/search";
+import { facetOptions, filterCars } from "@/features/catalog/search";
+import { brandBySlug } from "@/features/catalog/brands";
+import { allLandings, POPULAR_BRANDS } from "@/features/seo/landings";
 
 const escape = (value: string) => value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -24,7 +28,7 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const origin = process.env["APP_ORIGIN"] || new URL(request.url).origin;
+        const origin = requestSiteOrigin(request, normalizeOrigin(process.env["APP_ORIGIN"]));
         const cars = await (await import("@/server/repository")).carSummaries();
         const latest = newest(cars);
         const entries: Entry[] = [
@@ -34,10 +38,21 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/contact" },
           { path: "/confidentialite" },
           { path: "/suppression-des-donnees" },
-          ...facetOptions(cars, {}, "marque").map((brand) => ({
-            path: `/marques/${brand.value}`,
-            lastmod: newest(cars.filter((car) => facetMatches(car, brand.value))),
+          // Brand pages: in stock, or searched brands (indexed with an "on request" text).
+          ...[
+            ...new Set([
+              ...facetOptions(cars, {}, "marque").map((brand) => brand.value),
+              ...POPULAR_BRANDS.filter((slug) => brandBySlug(slug)),
+            ]),
+          ].map((slug) => ({
+            path: `/marques/${slug}`,
+            lastmod: newest(cars.filter((car) => facetMatches(car, slug))),
           })),
+          // Search landing pages ("SUV d'occasion à Sfax"…) that have vehicles.
+          ...allLandings()
+            .map((landing) => ({ landing, matching: filterCars(cars, landing.filters) }))
+            .filter(({ matching }) => matching.length > 0)
+            .map(({ landing, matching }) => ({ path: landing.path, lastmod: newest(matching) })),
           ...cars.map((car) => ({
             path: `/vehicule/${car.slug}`,
             lastmod: car.updated_at?.slice(0, 10),

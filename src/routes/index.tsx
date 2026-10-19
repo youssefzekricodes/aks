@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSiteText } from "@/lib/site-content";
-import { primaryPhone, resolveContent, resolvePhones } from "@/features/content/definition";
+import { resolveContent } from "@/features/content/definition";
 import { Navbar } from "@/components/aks/Navbar";
 import { SellCarBanner } from "@/components/aks/SellCarBanner";
 import { Hero } from "@/components/aks/Hero";
@@ -11,9 +11,12 @@ import { About } from "@/components/aks/About";
 import { Services } from "@/components/aks/Services";
 import { Testimonials } from "@/components/aks/Testimonials";
 import { Showroom } from "@/components/aks/Showroom";
+import { HomeSeo } from "@/components/aks/HomeSeo";
+import { homeFaq } from "@/features/seo/faq";
+import { dealerJsonLd, faqJsonLd, websiteJsonLd } from "@/features/seo/structured";
 import { SiteFooter } from "@/components/aks/SiteFooter";
 import { publicCarsQuery, publicConfigQuery, siteContentQuery } from "@/lib/queries";
-import { seo, absoluteUrl } from "@/lib/seo";
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -36,38 +39,9 @@ export const Route = createFileRoute("/")({
       path: "/",
       image: get("hero.image_1"),
       jsonLd: [
-        {
-          "@context": "https://schema.org",
-          "@type": "AutoDealer",
-          name: get("seo.site_name"),
-          url: absoluteUrl(origin, "/"),
-          logo: absoluteUrl(origin, get("identity.logo")),
-          image: absoluteUrl(origin, get("hero.image_1")),
-          telephone: primaryPhone(resolvePhones(content))?.number,
-          openingHoursSpecification: {
-            "@type": "OpeningHoursSpecification",
-            dayOfWeek: [
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-              "Sunday",
-            ],
-            opens: "09:00",
-            closes: "21:00",
-          },
-          sameAs: [get("contact.link_1"), get("contact.link_instagram")].filter(Boolean),
-          email: get("identity.email"),
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: get("showroom.text_3"),
-            addressLocality: "Sfax",
-            postalCode: "3000",
-            addressCountry: "TN",
-          },
-        },
+        dealerJsonLd(content, origin),
+        websiteJsonLd(content, origin),
+        faqJsonLd(homeFaq(content)),
       ],
     });
   },
@@ -86,6 +60,7 @@ function Index() {
     ["about", <About />],
     ["services", <Services />],
     ["testimonials", <Testimonials />],
+    ["seo", <HomeSeo />],
     ["showroom", <Showroom />],
   ];
   return (

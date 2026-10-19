@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { normalizeOrigin } from "@/lib/seo";
+import { requestSiteOrigin } from "@/server/origin";
 
 export const Route = createFileRoute("/robots.txt")({
   server: {
     handlers: {
       GET: ({ request }) => {
-        const origin = process.env["APP_ORIGIN"] || new URL(request.url).origin;
+        const origin = requestSiteOrigin(request, normalizeOrigin(process.env["APP_ORIGIN"]));
         const body = [
           "User-agent: *",
           "Allow: /",

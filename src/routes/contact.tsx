@@ -8,6 +8,7 @@ import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
 import { telHref, whatsappHref } from "@/features/content/definition";
 import { carImage, carTitle, formatKm, formatPrice, salePrice, type Car } from "@/lib/cars";
 import { seo } from "@/lib/seo";
+import { dealerJsonLd } from "@/features/seo/structured";
 import { Navbar } from "@/components/aks/Navbar";
 import { SiteFooter, SocialLinks } from "@/components/aks/SiteFooter";
 import { ContactForm } from "@/components/aks/ContactForm";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/contact")({
     const content = loaderData?.content ?? {};
     const site = resolveContent(content, "seo.site_name");
     return seo({
-      title: `Contact — ${site}`,
+      title: `Contact et adresse — ${site} (AKS), showroom automobile à Sfax`,
       description: resolveContent(
         content,
         "contact.text_3",
@@ -50,6 +51,7 @@ export const Route = createFileRoute("/contact")({
       path: "/contact",
       // Vehicle-specific variants are the same page with a pre-filled message.
       noindex: Boolean(loaderData?.car),
+      jsonLd: [dealerJsonLd(content, loaderData?.origin)],
     });
   },
   component: ContactPage,

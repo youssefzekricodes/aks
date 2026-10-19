@@ -95,14 +95,14 @@
     "group": "hero",
     "label": "Titre principal — Le showroom automobile",
     "type": "text",
-    "value": "Le showroom automobile"
+    "value": "Voitures d’occasion et neuves"
   },
   {
     "key": "hero.text_27",
     "group": "hero",
     "label": "Texte — premium de Sfax",
     "type": "text",
-    "value": "premium de Sfax"
+    "value": "à Sfax, chez AKS"
   },
   {
     "key": "hero.textarea_1",
@@ -984,42 +984,42 @@
     "group": "seo",
     "label": "Titre de la page d’accueil",
     "type": "text",
-    "value": "Auto Kontor Sfax — Showroom automobile premium à Sfax"
+    "value": "Voitures d’occasion à Sfax | Auto Kontor Sfax (AKS) — Showroom automobile"
   },
   {
     "key": "seo.home_description",
     "group": "seo",
     "label": "Description de la page d’accueil",
     "type": "textarea",
-    "value": "Auto Kontor Sfax : vente de véhicules neufs et d'occasion premium à Sfax. Financement, reprise, garantie et importation sur commande."
+    "value": "AKS – Auto Kontor Sfax : voitures d’occasion et neuves à Sfax, contrôlées et garanties. Reprise, financement et importation sur commande. Route Sidi Mansour, km 5 — ouvert 7j/7."
   },
   {
     "key": "seo.search_title",
     "group": "seo",
     "label": "Titre — page Véhicules",
     "type": "text",
-    "value": "Voitures neuves et d'occasion à Sfax — Auto Kontor Sfax"
+    "value": "Voitures d’occasion et neuves à Sfax — Stock Auto Kontor Sfax (AKS)"
   },
   {
     "key": "seo.search_description",
     "group": "seo",
     "label": "Description — page Véhicules",
     "type": "textarea",
-    "value": "Trouvez votre véhicule neuf ou d'occasion premium chez Auto Kontor Sfax, showroom automobile à Sfax."
+    "value": "Tout le stock AKS – Auto Kontor Sfax : voitures d’occasion et neuves à Sfax par marque, prix, carrosserie et boîte. Photos, prix et kilométrage de chaque véhicule."
   },
   {
     "key": "seo.brands_title",
     "group": "seo",
     "label": "Titre — page Marques",
     "type": "text",
-    "value": "Marques automobiles disponibles — Auto Kontor Sfax"
+    "value": "Marques de voitures d’occasion à Sfax — Auto Kontor Sfax (AKS)"
   },
   {
     "key": "seo.brands_description",
     "group": "seo",
     "label": "Description — page Marques",
     "type": "textarea",
-    "value": "Toutes les marques de véhicules neufs et d'occasion disponibles chez Auto Kontor Sfax."
+    "value": "Toutes les marques chez AKS – Auto Kontor Sfax : Volkswagen, Peugeot, Kia, Hyundai, Mercedes, BMW… Voitures d’occasion et neuves à Sfax, importation sur commande."
   },
   {
     "key": "seo.brand_title",

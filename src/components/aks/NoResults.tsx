@@ -1,17 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@heroui/styles";
-import { MessageCircle, Phone, RotateCcw, Search, Ship, Sparkles, Timer } from "lucide-react";
 import { telHref, whatsappHref } from "@/features/content/definition";
 import type { Car } from "@/lib/cars";
-import { usePhones, useSiteText } from "@/lib/site-content";
+import { usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
-import { BodyIcon } from "./BodyIcon";
 import { CarCard, CarGrid } from "./CarCard";
 
 /**
- * Empty results, as a sales opportunity: the team can find or import the car.
- * Two cases: filters too narrow (reset + suggestions) or no stock at all
- * (new arrivals coming).
+ * Empty results: say it plainly, and give the real ways to reach the showroom.
+ * Two cases: filters too narrow (reset + suggestions) or no stock at all.
  */
 export function NoResults({
   filtersActive,
@@ -27,103 +24,95 @@ export function NoResults({
 }) {
   const text = useSiteText();
   const { primary, whatsapp } = usePhones();
+  const hours = useSiteCollection("showroom.items");
   const empty = !filtersActive;
-  const perks = [
-    { Icon: Search, label: "Recherche personnalisée" },
-    { Icon: Ship, label: "Importation sur demande" },
-    { Icon: Timer, label: "Réponse rapide" },
-  ];
 
   return (
     <div className={cn("grid gap-12", className)}>
       <section
         aria-live="polite"
-        className="relative overflow-hidden rounded-2xl border border-border bg-surface px-6 py-12 text-center shadow-sm sm:px-12 sm:py-16"
+        className="grid overflow-hidden rounded-2xl border border-border bg-surface md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 left-1/2 size-[26rem] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
-        />
-        <div className="relative mx-auto grid max-w-xl justify-items-center">
-          {/* Car silhouette with a search badge. */}
-          <div className="relative grid size-28 place-items-center rounded-full bg-background ring-1 ring-border">
-            <BodyIcon body="SUV" className="h-auto w-20" />
-            <span className="absolute -bottom-1 -right-1 grid size-10 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg ring-4 ring-surface">
-              {empty ? (
-                <Sparkles className="size-5" aria-hidden />
-              ) : (
-                <Search className="size-5" aria-hidden />
-              )}
-            </span>
-          </div>
-
-          <h2 className="mt-7 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <div className="p-6 sm:p-10">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             {empty
-              ? text("search.empty_stock_title", "De nouveaux véhicules arrivent bientôt")
-              : text("search.text_5", "Aucun véhicule ne correspond à vos critères")}
+              ? text("search.empty_stock_title", "Notre stock se renouvelle")
+              : text("search.text_5", "Rien ne correspond à cette recherche")}
           </h2>
-          <p className="mt-3 text-base leading-relaxed text-muted">
+          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">
             {empty
               ? text(
                   "search.empty_stock_text",
-                  "Notre showroom se renouvelle. Dites-nous ce que vous cherchez : nous vous prévenons dès son arrivée, ou nous l’importons pour vous.",
+                  "Les véhicules partent vite et de nouveaux arrivent chaque semaine. Dites-nous ce que vous cherchez : on vous appelle dès qu’un modèle correspond, ou on le fait venir pour vous.",
                 )
               : text(
                   "search.empty_text",
-                  "Élargissez votre recherche, ou confiez-nous votre projet : notre équipe trouve ou importe le modèle exact que vous voulez.",
+                  "Essayez avec moins de filtres, ou décrivez-nous la voiture que vous cherchez : on peut la trouver ou l’importer.",
                 )}
           </p>
-
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
             {!empty && onReset && (
-              <button type="button" onClick={onReset} className={buttonVariants({ size: "lg" })}>
-                <RotateCcw className="size-4" aria-hidden />
-                Réinitialiser les filtres
+              <button type="button" onClick={onReset} className={buttonVariants()}>
+                Retirer les filtres
               </button>
             )}
             <Link
               to="/contact"
-              className={buttonVariants({ size: "lg", variant: empty ? "primary" : "secondary" })}
+              className={buttonVariants({ variant: empty ? "primary" : "secondary" })}
             >
-              Décrire le véhicule recherché
+              Décrire la voiture recherchée
             </Link>
-            {whatsapp && (
-              <a
-                href={whatsappHref(whatsapp.number)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={buttonVariants({ size: "lg", variant: "tertiary" })}
-              >
-                <MessageCircle className="size-4" aria-hidden />
-                WhatsApp
-              </a>
-            )}
-            {primary && (
-              <a
-                href={telHref(primary.number)}
-                className={buttonVariants({ size: "lg", variant: "tertiary" })}
-              >
-                <Phone className="size-4" aria-hidden />
-                Appeler
-              </a>
-            )}
           </div>
-
-          <ul className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 border-t border-separator pt-6 text-sm text-muted">
-            {perks.map(({ Icon, label }) => (
-              <li key={label} className="flex items-center gap-2">
-                <Icon className="size-4 text-accent" aria-hidden />
-                {label}
-              </li>
-            ))}
-          </ul>
         </div>
+
+        {/* Real contact details rather than generic promises. */}
+        <dl className="grid content-center gap-5 border-t border-border bg-background p-6 text-sm sm:p-10 md:border-l md:border-t-0">
+          {primary && (
+            <div>
+              <dt className="text-muted">Par téléphone</dt>
+              <dd className="mt-1">
+                <a
+                  href={telHref(primary.number)}
+                  className="tabular text-lg font-semibold text-foreground hover:text-accent"
+                >
+                  {primary.number}
+                </a>
+              </dd>
+            </div>
+          )}
+          {whatsapp && (
+            <div>
+              <dt className="text-muted">Sur WhatsApp</dt>
+              <dd className="mt-1">
+                <a
+                  href={whatsappHref(whatsapp.number)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-accent"
+                >
+                  Écrire au {whatsapp.number}
+                </a>
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-muted">Au showroom</dt>
+            <dd className="mt-1 text-foreground">
+              {text("showroom.text_3", "Route Sidi Mansour, km 5, Sfax 3000, Tunisie")}
+              {hours[0] && (
+                <span className="block text-muted">
+                  {hours.map(({ day, time }) => `${day} · ${time}`).join(" — ")}
+                </span>
+              )}
+            </dd>
+          </div>
+        </dl>
       </section>
 
       {suggestions.length > 0 && (
         <section aria-labelledby="no-results-suggestions">
           <h2 id="no-results-suggestions" className="mb-5 text-xl font-semibold tracking-tight">
-            {text("search.suggestions", "Ces véhicules pourraient vous intéresser")}
+            {text("search.suggestions", "D’autres véhicules disponibles")}
           </h2>
           <CarGrid>
             {suggestions.map((car) => (

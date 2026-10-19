@@ -29,3 +29,10 @@
   for = "/bodies/*"
   [headers.values]
     cache-control = "public, max-age=604800"
+
+# One address for search engines: www → autokontorsfax.com (permanent).
+[[redirects]]
+  from = "https://www.autokontorsfax.com/*"
+  to = "https://autokontorsfax.com/:splat"
+  status = 301
+  force = true

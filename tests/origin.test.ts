@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isAllowedOrigin } from "../src/server/origin.ts";
+import { isAllowedOrigin, siteOrigin } from "../src/server/origin.ts";
 
 test("same-site requests pass whatever APP_ORIGIN says; other sites never do", () => {
   // Netlify: the function sees an internal URL, the real host in the headers.
@@ -26,5 +26,31 @@ test("same-site requests pass whatever APP_ORIGIN says; other sites never do", (
       host: "127.0.0.1:3001",
     }).ok,
     true,
+  );
+});
+
+test("public address: APP_ORIGIN, except a copied local address in production", () => {
+  const live = {
+    url: "http://localhost:8888/sitemap.xml",
+    host: "autokontorsfax.com",
+    forwardedProto: "https",
+  };
+  assert.equal(
+    siteOrigin({ ...live, appOrigin: "http://127.0.0.1:3001" }),
+    "https://autokontorsfax.com",
+  );
+  assert.equal(
+    siteOrigin({ ...live, appOrigin: "https://autokontorsfax.com" }),
+    "https://autokontorsfax.com",
+  );
+  assert.equal(siteOrigin({ ...live, appOrigin: null }), "https://autokontorsfax.com");
+  // On the developer's machine the local address is right.
+  assert.equal(
+    siteOrigin({
+      url: "http://127.0.0.1:3001/",
+      host: "127.0.0.1:3001",
+      appOrigin: "http://127.0.0.1:3001",
+    }),
+    "http://127.0.0.1:3001",
   );
 });
