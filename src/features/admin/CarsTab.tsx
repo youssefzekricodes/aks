@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, SearchField, Spinner, Table, toast, Tooltip } from "@heroui/react";
@@ -40,6 +40,7 @@ import { ShareDialog } from "./ShareDialog";
 import { onSale, showcaseWith, useVitrine } from "./VitrinePage";
 import { BulkDiscountDialog, DiscountDialog } from "./DiscountDialog";
 import { useDialogTarget } from "./hooks";
+import { CarCardsSkeleton, fadeIn } from "./skeletons";
 import {
   adminCarsQuery,
   adminCarsQueryKey,
@@ -60,7 +61,6 @@ import {
   ListPagination,
   LoadError,
   BottomSheet,
-  CardListSkeleton,
   PageHeader,
   SheetOption,
   RowMenu,
@@ -137,6 +137,18 @@ export function CarsTab() {
   const [bulkDialog, setBulkDialog] = useState<"discount" | "delete" | null>(null);
   const [completing, setCompleting] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  // Height of the phone selection panel: the list leaves exactly that much room
+  // below its last card, so every card can be scrolled above the panel.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelHeight, setPanelHeight] = useState(0);
+  const hasSelection = selected.size > 0;
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setPanelHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasSelection]);
   /** Vehicles to share on Facebook / Instagram (row or bulk action). */
   const [sharing, setSharing] = useState<string[] | null>(null);
   const [page, setPage] = useState(1);
@@ -715,7 +727,7 @@ export function CarsTab() {
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
       ) : cars.isPending ? (
         <>
-          <CardListSkeleton label="Véhicules" />
+          <CarCardsSkeleton />
           <div className="hidden md:block">
             <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[860px]" />
           </div>
@@ -765,13 +777,15 @@ export function CarsTab() {
                 </Button>
               </div>
 
-              {/* Phones: panel at the bottom, one labelled tile per action. */}
+              {/* Phones: compact panel at the bottom, one labelled action per tile. */}
               <div
+                ref={panelRef}
+                data-selection-panel
                 role="toolbar"
                 aria-label="Actions groupées"
-                className="fixed inset-x-0 bottom-0 z-30 rounded-t-[1.75rem] bg-surface pb-[calc(0.75rem+env(safe-area-inset-bottom))] pe-[max(1rem,env(safe-area-inset-right))] ps-[max(1rem,env(safe-area-inset-left))] pt-3 shadow-[0_-10px_30px_-10px_rgb(15_23_42/0.3)] animate-in slide-in-from-bottom-6 duration-200 md:hidden"
+                className="fixed inset-x-0 bottom-0 z-30 rounded-t-[1.75rem] bg-surface pb-[calc(0.75rem+env(safe-area-inset-bottom))] pe-[max(1rem,env(safe-area-inset-right))] ps-[max(1rem,env(safe-area-inset-left))] pt-2.5 shadow-[0_-10px_30px_-10px_rgb(15_23_42/0.3)] animate-in slide-in-from-bottom-6 duration-200 md:hidden"
               >
-                <div className="mb-2 flex items-center gap-3">
+                <div className="mb-1.5 flex items-center gap-3">
                   <p className="flex-1 text-[15px] font-semibold text-foreground">
                     {plural(selectedIds.length, "véhicule sélectionné", "véhicules sélectionnés")}
                   </p>
@@ -794,7 +808,8 @@ export function CarsTab() {
                     <X className="size-4" aria-hidden />
                   </button>
                 </div>
-                <div className="grid grid-cols-4 gap-1">
+                {/* One row: swipe sideways when there are more actions than fit. */}
+                <div className="-mx-4 flex snap-x gap-1 overflow-x-auto px-3 [scrollbar-width:none]">
                   {bulkItems.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -803,10 +818,10 @@ export function CarsTab() {
                         type="button"
                         disabled={item.disabled ?? bulk.isPending}
                         onClick={() => void item.onPress()}
-                        className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2 outline-none transition-colors active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40"
+                        className="flex w-[4.6rem] shrink-0 snap-start flex-col items-center gap-1 rounded-2xl px-1 py-1.5 outline-none transition-colors active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40"
                       >
                         <span
-                          className={`grid size-11 place-items-center rounded-full ${item.tint}`}
+                          className={`grid size-10 place-items-center rounded-full ${item.tint}`}
                         >
                           <Icon className="size-5" aria-hidden />
                         </span>
@@ -823,7 +838,7 @@ export function CarsTab() {
             </>
           )}
           {/* Phones and small tablets: one card per vehicle. */}
-          <ul aria-label="Véhicules" className="grid gap-3 md:hidden">
+          <ul aria-label="Véhicules" className={`grid gap-3 md:hidden ${fadeIn}`}>
             {pageCars.map((car, index) => (
               <CarCard key={car.id} {...itemProps(car, index)} />
             ))}
@@ -894,7 +909,9 @@ export function CarsTab() {
             />
           )}
           {/* Room under the last cards for the phone selection panel. */}
-          {selectedIds.length > 0 && <div aria-hidden className="h-44 md:hidden" />}
+          {selectedIds.length > 0 && (
+            <div aria-hidden className="md:hidden" style={{ height: panelHeight + 16 }} />
+          )}
           <p className="text-sm text-muted">
             Pour changer l’ordre d’affichage sur le site, cliquez sur la marque d’un véhicule : ses
             véhicules s’affichent en cartes, à glisser-déposer.
@@ -1248,7 +1265,20 @@ function CarCard(props: ItemProps) {
         aria-checked={selected}
         aria-label={title}
         tabIndex={0}
-        onClick={onSelect}
+        onClick={(event) => {
+          const card = event.currentTarget;
+          onSelect();
+          // Once the selection panel is up, keep the tapped card visible above it.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const panel = document.querySelector("[data-selection-panel]");
+              const limit = panel ? panel.getBoundingClientRect().top : window.innerHeight;
+              const bottom = card.getBoundingClientRect().bottom;
+              if (bottom > limit - 8)
+                window.scrollBy({ top: bottom - limit + 16, behavior: "smooth" });
+            }),
+          );
+        }}
         onKeyDown={(event) => {
           if (event.key === " " || event.key === "Enter") {
             event.preventDefault();

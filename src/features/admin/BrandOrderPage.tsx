@@ -4,6 +4,7 @@ import { Car as CarIcon } from "@/components/icons";
 import { BrandLogo } from "@/components/aks/BrandLogo";
 import { brandInfo } from "@/features/catalog/brands";
 import { adminCarsQuery, plural } from "./model";
+import { SortableCarsSkeleton } from "./skeletons";
 import { SortableCarGrid, useReorderWithin } from "./SortableCarGrid";
 import { AdminBreadcrumbs, EmptyState, LoadError, PageHeader } from "./ui";
 
@@ -41,7 +42,7 @@ export function BrandOrderPage({ brand }: { brand: string }) {
       {cars.isError ? (
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
       ) : cars.isPending ? (
-        <p className="text-sm text-muted">Chargement…</p>
+        <SortableCarsSkeleton />
       ) : mine.length === 0 ? (
         <EmptyState
           icon={CarIcon}

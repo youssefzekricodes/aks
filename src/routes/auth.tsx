@@ -7,6 +7,7 @@ import { getSession, signIn, signOut } from "@/features/auth/auth.functions";
 import { MfaEnroll, MfaVerify } from "@/features/admin/mfa";
 import { sessionQueryKey, type Factor } from "@/features/admin/model";
 import { PasswordField } from "@/features/admin/password";
+import { hideSplash } from "@/lib/splash";
 import logo from "@/assets/aks-logo.png.asset.json";
 
 const title = "Espace administration — Auto Kontor Sfax";
@@ -40,6 +41,8 @@ function AuthPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { pendingMfa } = Route.useRouteContext();
+  // Signed out in the admin app: the login page replaces the launch splash.
+  useEffect(() => hideSplash(), []);
   const [step, setStep] = useState<Step>(() =>
     pendingMfa
       ? { kind: "mfa", mfa: pendingMfa.mfa, factors: pendingMfa.factors }

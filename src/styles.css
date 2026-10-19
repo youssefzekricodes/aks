@@ -316,3 +316,22 @@ html {
     white-space: normal;
   }
 }
+
+/* Admin splash: the loading bar sweeps left to right. */
+@keyframes splash-bar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.splash-bar {
+  animation: splash-bar 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-bar {
+    animation: none;
+    transform: translateX(100%);
+  }
+}

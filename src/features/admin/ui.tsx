@@ -290,24 +290,6 @@ export function Toolbar({ children, label }: { children: ReactNode; label: strin
   );
 }
 
-/** Loading placeholder of a phone card list (shown below `md`, next to a TableSkeleton). */
-export function CardListSkeleton({ label, rows = 4 }: { label: string; rows?: number }) {
-  return (
-    <ul aria-label={`${label} : chargement`} aria-busy className="grid gap-3 md:hidden">
-      {Array.from({ length: rows }, (_, i) => (
-        <li key={i} className="flex gap-3 rounded-2xl border border-separator bg-surface p-3">
-          <Skeleton className="aspect-[4/3] w-24 shrink-0 rounded-xl" />
-          <div className="grid flex-1 content-start gap-2">
-            <Skeleton className="h-3 w-1/2 rounded" />
-            <Skeleton className="h-4 w-3/4 rounded" />
-            <Skeleton className="h-4 w-1/3 rounded" />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /* ───────── Status & feedback ───────── */
 
 export type Tone = "default" | "accent" | "success" | "warning" | "danger";

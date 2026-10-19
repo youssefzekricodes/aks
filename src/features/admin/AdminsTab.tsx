@@ -62,9 +62,9 @@ import {
   type RowAction,
   SectionCard,
   StatusChip,
-  CardListSkeleton,
   TableSkeleton,
 } from "./ui";
+import { AdminCardsSkeleton, fadeIn } from "./skeletons";
 
 const COLUMNS = ["Administrateur", "Rôle", "Double authentification", "Dernière connexion", ""];
 
@@ -159,7 +159,7 @@ export function AdminsTab({ session }: { session: Session }) {
         />
       ) : admins.isPending ? (
         <>
-          <CardListSkeleton label="Administrateurs" rows={2} />
+          <AdminCardsSkeleton />
           <div className="hidden md:block">
             <TableSkeleton
               label="Administrateurs"
@@ -172,7 +172,7 @@ export function AdminsTab({ session }: { session: Session }) {
       ) : (
         <>
           {/* Phones: one card per account. */}
-          <ul aria-label="Administrateurs" className="grid gap-3 md:hidden">
+          <ul aria-label="Administrateurs" className={`grid gap-3 md:hidden ${fadeIn}`}>
             {list.map((admin) => (
               <li
                 key={admin.id}

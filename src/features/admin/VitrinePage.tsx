@@ -6,6 +6,7 @@ import { Plus, Store, Trash2 } from "@/components/icons";
 import { carImage, formatKm } from "@/lib/cars";
 import { setVitrine } from "@/lib/data";
 import { adminCarsQuery, adminCarsQueryKey, normalize, plural, type AdminCar } from "./model";
+import { SortableCarsSkeleton } from "./skeletons";
 import { SortableCarGrid } from "./SortableCarGrid";
 import { EmptyState, IconButton, LoadError, PageHeader } from "./ui";
 
@@ -92,7 +93,7 @@ export function VitrinePage() {
       {cars.isError ? (
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
       ) : cars.isPending ? (
-        <p className="text-sm text-muted">Chargement…</p>
+        <SortableCarsSkeleton intro />
       ) : (
         <section className="grid gap-4">
           <p className="text-sm text-muted">

@@ -24,6 +24,7 @@ import {
   uploadImage,
 } from "@/lib/data";
 import { useDialogTarget, useUploads, type UploadState } from "./hooks";
+import { BrandCardsSkeleton, fadeIn } from "./skeletons";
 import { LOGO_TYPES, adminCarsQuery, plural } from "./model";
 import {
   ConfirmDialog,
@@ -34,7 +35,6 @@ import {
   PageHeader,
   SelectField,
   StatusChip,
-  CardListSkeleton,
   TableSkeleton,
   Toolbar,
   UploadProgress,
@@ -252,7 +252,7 @@ export function BrandsTab() {
         />
       ) : cars.isPending || logos.isPending || settings.isPending ? (
         <>
-          <CardListSkeleton label="Marques" />
+          <BrandCardsSkeleton />
           <div className="hidden md:block">
             <TableSkeleton label="Marques" columns={COLUMNS} minWidth="min-w-[880px]" />
           </div>
@@ -260,7 +260,7 @@ export function BrandsTab() {
       ) : (
         <>
           {/* Phones: one card per brand. */}
-          <ul aria-label="Marques" className="grid gap-3 md:hidden">
+          <ul aria-label="Marques" className={`grid gap-3 md:hidden ${fadeIn}`}>
             {rows.map((brand) => (
               <BrandCard key={brand.slug} {...brandProps(brand)} />
             ))}

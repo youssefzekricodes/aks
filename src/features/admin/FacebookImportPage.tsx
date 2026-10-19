@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Alert, Button, Input, Label, Spinner, TextArea, TextField, toast } from "@heroui/react";
+import { Alert, Button, Input, Label, TextArea, TextField, toast } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import { Check, ExternalLink, EyeOff, Link2, RefreshCw, RotateCcw } from "@/components/icons";
 import { FacebookLogo } from "@/components/aks/SocialLogos";
@@ -31,6 +31,7 @@ import {
 } from "./model";
 import { socialStatusQuery } from "./SocialCard";
 import { EmptyState, IntegerField, PageHeader, SelectField } from "./ui";
+import { FacebookPostsSkeleton } from "./skeletons";
 
 const inboxQuery = queryOptions({
   queryKey: ["admin-facebook-inbox"],
@@ -162,9 +163,7 @@ export function FacebookImportPage() {
       </div>
 
       {inbox.isPending ? (
-        <div className="grid place-items-center py-16">
-          <Spinner aria-label="Chargement des publications" />
-        </div>
+        <FacebookPostsSkeleton />
       ) : shown.length === 0 ? (
         <EmptyState
           icon={RefreshCw}

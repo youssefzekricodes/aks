@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Spinner, toast } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { buildSocialCaption, SOCIAL_PLATFORMS } from "@/features/catalog/social";
 import { brandInfo } from "@/features/catalog/brands";
 import { saveCar, type CarInput } from "@/lib/data";
@@ -10,6 +10,7 @@ import { CarForm } from "./CarForm";
 import { adminCarsQuery, adminCarsQueryKey, emptyCar, toDraft, toPayload } from "./model";
 import { announceShare, socialStatusQuery } from "./SocialCard";
 import { AdminBreadcrumbs, EmptyState, type Crumb } from "./ui";
+import { CarFormSkeleton } from "./skeletons";
 import { Car as CarIcon } from "@/components/icons";
 
 /**
@@ -62,12 +63,7 @@ export function CarEditPage({ carId, from }: { carId: string; from: EditOrigin }
   const car = isNew ? undefined : cars.data?.find((c) => c.id === carId);
 
   // A new vehicle opens at once; the networks to post on are filled in when known.
-  if (!isNew && cars.isPending)
-    return (
-      <div className="grid place-items-center py-24">
-        <Spinner aria-label="Chargement du véhicule" />
-      </div>
-    );
+  if (!isNew && cars.isPending) return <CarFormSkeleton />;
   if (!isNew && !car)
     return (
       <EmptyState

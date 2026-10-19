@@ -7,6 +7,7 @@ import { carImage } from "@/lib/cars";
 import type { Lead } from "@/lib/data";
 import { adminCarsQuery } from "./model";
 import { RowMenu, type RowAction } from "./ui";
+import { fadeIn, LeadCardsSkeleton } from "./skeletons";
 
 /*
  * Phone view of the contact requests: status tabs with counts, a search bar and
@@ -195,17 +196,7 @@ export function LeadsMobile({
       {error ? (
         error
       ) : isPending ? (
-        <div className="grid gap-3" aria-busy>
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="admin-card grid gap-3 p-4">
-              <div className="flex items-center gap-3">
-                <Skeleton className="size-11 rounded-full" />
-                <Skeleton className="h-4 w-32 rounded" />
-              </div>
-              <Skeleton className="h-12 w-full rounded-2xl" />
-            </div>
-          ))}
-        </div>
+        <LeadCardsSkeleton />
       ) : groups.length === 0 ? (
         <div className="admin-card grid justify-items-center gap-2 px-6 py-10 text-center">
           <span className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
@@ -235,7 +226,7 @@ export function LeadsMobile({
         </div>
       ) : (
         groups.map((group) => (
-          <section key={group.title} aria-label={group.title} className="grid gap-3">
+          <section key={group.title} aria-label={group.title} className={`grid gap-3 ${fadeIn}`}>
             <h2 className="px-1 pt-1 text-xs font-semibold uppercase tracking-wider text-muted">
               {group.title}
             </h2>

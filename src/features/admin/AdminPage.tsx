@@ -30,6 +30,7 @@ import {
 import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
 import { brandInfo } from "@/features/catalog/brands";
+import { hideSplash } from "@/lib/splash";
 import {
   ADMIN_SECTIONS,
   ROLE_LABELS,
@@ -233,6 +234,12 @@ export function AdminShell({
       showPull(0, true);
     }
   }
+  // The admin is on screen: the launch splash fades out (next frame, once painted).
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => hideSplash());
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   // Every section's code (and data) loads in the background once the app is idle,
   // so switching screens never waits on the network with the old screen still showing.
   useEffect(() => {

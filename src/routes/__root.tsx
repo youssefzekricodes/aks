@@ -1,5 +1,6 @@
 import { gtagSnippet } from "@/lib/analytics";
 import { WhatsAppButton } from "@/components/aks/WhatsAppButton";
+import { hideSplash, SPLASH_HTML, SPLASH_ID } from "@/lib/splash";
 import {
   brandLogosQuery,
   brandSettingsQuery,
@@ -13,6 +14,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -145,6 +147,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const startsOnAdmin = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/admin"),
+  });
   return (
     // Light theme only; the header and footer bands are dark by design.
     <html lang="fr" className="light" data-theme="light">
@@ -152,6 +157,16 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-background text-foreground">
+        {startsOnAdmin && (
+          // Admin app launch screen (phones): static markup, faded out by hideSplash().
+          <div
+            id={SPLASH_ID}
+            role="status"
+            aria-live="polite"
+            className="fixed inset-0 z-[100] grid place-items-center bg-[#1c1c1f] transition-opacity duration-300 lg:hidden"
+            dangerouslySetInnerHTML={{ __html: SPLASH_HTML }}
+          />
+        )}
         {children}
         <Scripts />
       </body>
@@ -162,6 +177,14 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+
+  // The admin splash only covers the very first load of an admin page: the public
+  // site never shows it, and it can never stay stuck (slow network, error).
+  useEffect(() => {
+    if (!window.location.pathname.startsWith("/admin")) hideSplash();
+    const timer = window.setTimeout(hideSplash, 10_000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Installable app (PWA): the service worker only runs on the built site, so the
   // dev server never serves cached files.

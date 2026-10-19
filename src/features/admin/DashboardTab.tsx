@@ -21,6 +21,7 @@ import {
   type AdminCar,
 } from "./model";
 import { EmptyState, LoadError, PageHeader, SectionCard } from "./ui";
+import { BodyBreakdownSkeleton, MostViewedSkeleton } from "./skeletons";
 
 const number = new Intl.NumberFormat("fr-FR");
 const TOP_VIEWED = 8;
@@ -100,7 +101,7 @@ export function DashboardTab() {
           title="Stock par carrosserie"
           description="Véhicules actuellement en vente sur le site."
         >
-          {cars.isPending ? <ListSkeleton rows={6} /> : <BodyBreakdown cars={onSale} />}
+          {cars.isPending ? <BodyBreakdownSkeleton /> : <BodyBreakdown cars={onSale} />}
         </SectionCard>
 
         <SectionCard
@@ -113,7 +114,7 @@ export function DashboardTab() {
               onRetry={() => stats.refetch()}
             />
           ) : cars.isPending || stats.isPending ? (
-            <ListSkeleton rows={5} />
+            <MostViewedSkeleton />
           ) : (
             <MostViewed cars={all} views={views} />
           )}
@@ -279,15 +280,5 @@ export function MostViewed({
         );
       })}
     </ol>
-  );
-}
-
-export function ListSkeleton({ rows }: { rows: number }) {
-  return (
-    <div className="grid gap-3" aria-hidden>
-      {Array.from({ length: rows }, (_, i) => (
-        <Skeleton key={i} className="h-6 w-full rounded-md" />
-      ))}
-    </div>
   );
 }

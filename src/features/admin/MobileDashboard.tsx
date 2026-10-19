@@ -4,7 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@heroui/react";
 import { Banknote, Car, ClipboardList, Eye, Inbox, Tag, type LucideIcon } from "@/components/icons";
 import { salePrice } from "@/lib/cars";
-import { BodyBreakdown, ListSkeleton, MostViewed } from "./DashboardTab";
+import { BodyBreakdown, MostViewed } from "./DashboardTab";
+import { BodyBreakdownSkeleton, fadeIn, MostViewedSkeleton, StockSplitSkeleton } from "./skeletons";
 import {
   SECTION_PATHS,
   adminCarsQuery,
@@ -110,23 +111,37 @@ export function MobileDashboard() {
 
       <Panel
         title="Répartition du stock"
-        hint={ready ? plural(all.length, "véhicule", "véhicules") : ""}
+        hint={ready ? plural(all.length, "véhicule", "véhicules") : "\u00a0"}
       >
-        {ready ? <StockSplit counts={counts} total={all.length} /> : <ListSkeleton rows={3} />}
+        {ready ? (
+          <div className={fadeIn}>
+            <StockSplit counts={counts} total={all.length} />
+          </div>
+        ) : (
+          <StockSplitSkeleton />
+        )}
       </Panel>
 
       <Panel title="Les plus consultés" hint="Vues des 30 derniers jours">
         {stats.isError ? (
           <LoadError message="Statistiques indisponibles." onRetry={() => stats.refetch()} />
         ) : cars.isPending || stats.isPending ? (
-          <ListSkeleton rows={5} />
+          <MostViewedSkeleton />
         ) : (
-          <MostViewed cars={all} views={stats.data?.views ?? []} />
+          <div className={fadeIn}>
+            <MostViewed cars={all} views={stats.data?.views ?? []} />
+          </div>
         )}
       </Panel>
 
       <Panel title="Stock par carrosserie" hint="Véhicules en vente sur le site">
-        {cars.isPending ? <ListSkeleton rows={6} /> : <BodyBreakdown cars={forSale} />}
+        {cars.isPending ? (
+          <BodyBreakdownSkeleton />
+        ) : (
+          <div className={fadeIn}>
+            <BodyBreakdown cars={forSale} />
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -157,15 +172,20 @@ function Kpi({
       </span>
       <dd className="mt-2">
         {value === undefined ? (
-          <Skeleton className="h-7 w-16 rounded-md" />
+          <Skeleton className="h-[2.1875rem] w-16 rounded-md" />
         ) : (
           <span
-            className={`block truncate text-[1.75rem] font-bold leading-tight tracking-tight tabular-nums ${tint.split(" ").find((c) => c.startsWith("text-")) ?? "text-foreground"}`}
+            className={`block truncate text-[1.75rem] font-bold leading-tight tracking-tight tabular-nums animate-in fade-in-0 duration-300 ${tint.split(" ").find((c) => c.startsWith("text-")) ?? "text-foreground"}`}
           >
             {value}
           </span>
         )}
-        {hint && <span className="mt-0.5 block truncate text-xs text-muted">{hint}</span>}
+        {/* The caption line is kept while loading: the card height never changes. */}
+        {hint ? (
+          <span className="mt-0.5 block truncate text-xs text-muted">{hint}</span>
+        ) : (
+          <Skeleton className="mt-1.5 h-3 w-20 rounded" />
+        )}
       </dd>
     </>
   );

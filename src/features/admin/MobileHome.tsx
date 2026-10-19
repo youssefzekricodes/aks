@@ -114,18 +114,20 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
     <div className="grid gap-5">
       {/* Overview, with the main action in the cut-out corner. */}
       <section className="relative overflow-hidden rounded-[1.75rem] bg-[oklch(0.94_0.03_20)] p-5 pb-[5.25rem]">
-        <p className="max-w-[15rem] text-[15px] font-medium leading-snug text-[oklch(0.3_0.06_20)]">
-          {cars.data && leads.data ? (
-            <>
-              {plural(forSale.length, "véhicule", "véhicules")} en vente
-              {openLeads
-                ? ` et ${plural(openLeads, "demande", "demandes")} à traiter.`
-                : ", aucune demande en attente."}
-            </>
-          ) : (
-            <Skeleton className="h-10 w-56 rounded-lg" />
-          )}
-        </p>
+        {cars.data && leads.data ? (
+          <p className="animate-in fade-in-0 duration-300 max-w-[15rem] text-[15px] font-medium leading-snug text-[oklch(0.3_0.06_20)]">
+            {plural(forSale.length, "véhicule", "véhicules")} en vente
+            {openLeads
+              ? ` et ${plural(openLeads, "demande", "demandes")} à traiter.`
+              : ", aucune demande en attente."}
+          </p>
+        ) : (
+          // Two text lines, same height as the sentence.
+          <div className="grid max-w-[15rem] gap-2 py-0.5">
+            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-4 w-2/3 rounded" />
+          </div>
+        )}
         {/* Stock split as small bars: for sale / drafts / sold. */}
         <div className="absolute bottom-5 end-5 grid justify-items-end gap-1.5" aria-hidden>
           <span className="text-xs font-semibold text-[oklch(0.45_0.08_20)]">
@@ -300,18 +302,18 @@ function FigureCard({
       </span>
       <p className="mt-3 px-1 text-base font-semibold text-foreground">{title}</p>
       <p className="px-1 text-xs text-muted">{subtitle}</p>
-      <p className="mt-2 flex items-baseline gap-1.5 px-1">
+      <div className="mt-2 flex items-baseline gap-1.5 px-1">
         {value === undefined ? (
           <Skeleton className="h-10 w-16 rounded-lg" />
         ) : (
           <span
-            className={`text-[2.5rem] font-bold leading-none tracking-tight tabular-nums ${color}`}
+            className={`text-[2.5rem] font-bold leading-none tracking-tight tabular-nums animate-in fade-in-0 duration-300 ${color}`}
           >
             {value}
           </span>
         )}
         <span className={`text-sm font-medium ${color}`}>{unit}</span>
-      </p>
+      </div>
       <p className="mt-3 truncate rounded-full bg-surface-secondary px-3 py-1.5 text-xs text-muted">
         {footer ?? "…"}
       </p>
