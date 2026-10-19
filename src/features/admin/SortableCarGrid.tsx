@@ -115,7 +115,9 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative ${isDragging ? "opacity-30" : ""}`}
+      // Dragging a card never triggers the pull-to-refresh of the page.
+      data-no-pull
+      className={`relative min-w-0 ${isDragging ? "opacity-30" : ""}`}
     >
       {/* Phones: a compact row (several fit on screen), dragged by its handle so the
           page still scrolls under the finger. */}
@@ -181,7 +183,7 @@ function CompactRow({
   return (
     <div
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-3 rounded-2xl border border-separator bg-surface p-2.5 active:bg-surface-secondary"
+      className="flex min-w-0 cursor-pointer items-center gap-3 rounded-2xl border border-separator bg-surface p-2.5 active:bg-surface-secondary"
     >
       {position !== undefined && (
         <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background">

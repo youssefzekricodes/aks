@@ -277,3 +277,29 @@ html {
     0 1px 2px rgb(15 23 42 / 0.04),
     0 10px 24px -14px rgb(15 23 42 / 0.14);
 }
+
+/*
+ * Safe areas (notch, rounded corners, home bar) in the installed admin app, which
+ * runs edge to edge (viewport-fit=cover): content and floating messages stay inside.
+ */
+@media (width < 64rem) {
+  .admin-app {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+.toast-region--top {
+  top: calc(1rem + env(safe-area-inset-top)) !important;
+}
+.toast-region--bottom {
+  bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+}
+/* Dialogs on phones: keep clear of the notch, the corners and the home bar. */
+@media (width < 40rem) {
+  .modal__container {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}

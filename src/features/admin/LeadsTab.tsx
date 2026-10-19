@@ -11,7 +11,6 @@ import {
   Table,
   toast,
 } from "@heroui/react";
-import { buttonVariants } from "@heroui/styles";
 import { getLocalTimeZone, toCalendarDate, today, type DateValue } from "@internationalized/date";
 import {
   Car,
@@ -24,6 +23,7 @@ import {
 } from "@/components/icons";
 import { deleteLead, setLeadHandled, type Lead } from "@/lib/data";
 import { useDialogTarget } from "./hooks";
+import { LeadsMobile, type Period } from "./LeadsMobile";
 import { dateTimeFormat, leadsQueryOptions, normalize, plural } from "./model";
 import {
   ConfirmDialog,
@@ -34,7 +34,6 @@ import {
   RowMenu,
   SelectField,
   StatusChip,
-  CardListSkeleton,
   TableSkeleton,
   type RowAction,
   Toolbar,
@@ -62,6 +61,7 @@ export function LeadsTab() {
   const [filter, setFilter] = useState<Filter>("open");
   const [search, setSearch] = useState("");
   const [range, setRange] = useState<Range | null>(null);
+  const [period, setPeriod] = useState<Period>("all");
   const [page, setPage] = useState(1);
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const deletion = useDialogTarget<Lead>();
@@ -130,6 +130,7 @@ export function LeadsTab() {
   const resetFilters = () => {
     setSearch("");
     setRange(null);
+    setPeriod("all");
     setFilter("open");
     setPage(1);
   };
@@ -165,162 +166,203 @@ export function LeadsTab() {
       />
     );
 
-  return (
-    <div className="grid gap-6">
-      <PageHeader
-        title="Demandes"
-        description={
-          leads.data
-            ? `Messages envoyés depuis le formulaire du site · ${plural(openCount, "demande à traiter", "demandes à traiter")}`
-            : "Messages envoyés depuis le formulaire du site."
-        }
-      />
+  const choosePeriod = (next: Period) => {
+    setPeriod(next);
+    setRange(
+      next === "all"
+        ? null
+        : { start: today(tz).subtract({ days: Number(next) - 1 }), end: today(tz) },
+    );
+    setPage(1);
+  };
 
-      <Toolbar label="Filtrer les demandes">
-        <SearchField
-          value={search}
-          onChange={(value) => {
+  return (
+    <>
+      {/* Phones: conversation cards grouped by day. */}
+      <div className="lg:hidden">
+        <LeadsMobile
+          all={all}
+          filtered={filtered}
+          isPending={leads.isPending}
+          error={
+            leads.isError ? (
+              <LoadError
+                message="Impossible de charger les demandes."
+                onRetry={() => leads.refetch()}
+              />
+            ) : null
+          }
+          filter={filter}
+          onFilter={(next) => {
+            setFilter(next);
+            setPage(1);
+          }}
+          search={search}
+          onSearch={(value) => {
             setSearch(value);
             setPage(1);
           }}
-          className="min-w-0 flex-1 basis-64"
-          fullWidth
-        >
-          <Label>Rechercher</Label>
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input placeholder="Nom, téléphone ou message…" />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
-        <SelectField
-          label="Statut"
-          value={filter}
-          options={FILTERS}
-          onChange={(value) => {
-            setFilter(value as Filter);
-            setPage(1);
+          period={period}
+          onPeriod={choosePeriod}
+          pending={pending}
+          telOf={telOf}
+          whatsappUrl={whatsappUrl}
+          menu={(lead) =>
+            leadMenu(
+              lead,
+              () => handled.mutate({ id: lead.id, handled: !lead.handled }),
+              () => deletion.open(lead),
+            )
+          }
+          onToggle={(lead) => handled.mutate({ id: lead.id, handled: !lead.handled })}
+          onReset={() => {
+            resetFilters();
+            setFilter("all");
           }}
-          className="w-full sm:w-44"
         />
-        <DateRangePicker
-          value={range}
-          onChange={(value) => {
-            setRange(value);
-            setPage(1);
-          }}
-          maxValue={today(tz)}
-          className="w-full sm:w-80"
-        >
-          <Label>Reçues entre le</Label>
-          <DateField.Group fullWidth>
-            <DateField.Input slot="start">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateRangePicker.RangeSeparator />
-            <DateField.Input slot="end">
-              {(segment) => <DateField.Segment segment={segment} />}
-            </DateField.Input>
-            <DateField.Suffix>
-              <DateRangePicker.Trigger aria-label="Choisir les dates">
-                <DateRangePicker.TriggerIndicator />
-              </DateRangePicker.Trigger>
-            </DateField.Suffix>
-          </DateField.Group>
-          <DateRangePicker.Popover>
-            <RangeCalendar aria-label="Période de réception">
-              <RangeCalendar.Header>
-                <RangeCalendar.YearPickerTrigger>
-                  <RangeCalendar.YearPickerTriggerHeading />
-                  <RangeCalendar.YearPickerTriggerIndicator />
-                </RangeCalendar.YearPickerTrigger>
-                <RangeCalendar.NavButton slot="previous" />
-                <RangeCalendar.NavButton slot="next" />
-              </RangeCalendar.Header>
-              <RangeCalendar.Grid>
-                <RangeCalendar.GridHeader>
-                  {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
-                </RangeCalendar.GridHeader>
-                <RangeCalendar.GridBody>
-                  {(date) => <RangeCalendar.Cell date={date} />}
-                </RangeCalendar.GridBody>
-              </RangeCalendar.Grid>
-              <RangeCalendar.YearPickerGrid>
-                <RangeCalendar.YearPickerGridBody>
-                  {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
-                </RangeCalendar.YearPickerGridBody>
-              </RangeCalendar.YearPickerGrid>
-            </RangeCalendar>
-          </DateRangePicker.Popover>
-        </DateRangePicker>
-        {filtersActive && (
-          <Button variant="tertiary" onPress={resetFilters}>
-            Réinitialiser
-          </Button>
-        )}
-      </Toolbar>
+      </div>
 
-      {leads.isError ? (
-        <LoadError message="Impossible de charger les demandes." onRetry={() => leads.refetch()} />
-      ) : leads.isPending ? (
-        <>
-          <CardListSkeleton label="Demandes" />
-          <div className="hidden md:block">
-            <TableSkeleton label="Demandes" columns={COLUMNS} minWidth="min-w-[880px]" />
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Phones: one card per request, call and WhatsApp one tap away. */}
-          <ul aria-label="Demandes de contact" className="grid gap-3 md:hidden">
-            {rows.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                pending={pending.has(lead.id)}
-                onToggle={() => handled.mutate({ id: lead.id, handled: !lead.handled })}
-                onDelete={() => deletion.open(lead)}
-              />
-            ))}
-            {rows.length === 0 && <li>{emptyState}</li>}
-          </ul>
-          <Table className="hidden md:block">
-            <Table.ScrollContainer>
-              <Table.Content aria-label="Demandes de contact" className="min-w-[880px]">
-                <Table.Header>
-                  <Table.Column className="w-40">Reçue le</Table.Column>
-                  <Table.Column isRowHeader>Contact</Table.Column>
-                  <Table.Column>Véhicule</Table.Column>
-                  <Table.Column className="w-80">Message</Table.Column>
-                  <Table.Column>Statut</Table.Column>
-                  <Table.Column className="w-14">
-                    <span className="sr-only">Actions</span>
-                  </Table.Column>
-                </Table.Header>
-                <Table.Body renderEmptyState={() => emptyState}>
-                  {rows.map((lead) => (
-                    <LeadRow
-                      key={lead.id}
-                      lead={lead}
-                      pending={pending.has(lead.id)}
-                      onToggle={() => handled.mutate({ id: lead.id, handled: !lead.handled })}
-                      onDelete={() => deletion.open(lead)}
-                    />
-                  ))}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-          {filtered.length > 0 && (
-            <ListPagination
-              page={current}
-              pageCount={pageCount}
-              onChange={setPage}
-              summary={`${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, filtered.length)} sur ${plural(filtered.length, "demande", "demandes")}`}
-            />
+      <div className="grid gap-6 max-lg:hidden">
+        <PageHeader
+          title="Demandes"
+          description={
+            leads.data
+              ? `Messages envoyés depuis le formulaire du site · ${plural(openCount, "demande à traiter", "demandes à traiter")}`
+              : "Messages envoyés depuis le formulaire du site."
+          }
+        />
+
+        <Toolbar label="Filtrer les demandes">
+          <SearchField
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            className="min-w-0 flex-1 basis-64"
+            fullWidth
+          >
+            <Label>Rechercher</Label>
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Nom, téléphone ou message…" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+          <SelectField
+            label="Statut"
+            value={filter}
+            options={FILTERS}
+            onChange={(value) => {
+              setFilter(value as Filter);
+              setPage(1);
+            }}
+            className="w-full sm:w-44"
+          />
+          <DateRangePicker
+            value={range}
+            onChange={(value) => {
+              setRange(value);
+              setPage(1);
+            }}
+            maxValue={today(tz)}
+            className="w-full sm:w-80"
+          >
+            <Label>Reçues entre le</Label>
+            <DateField.Group fullWidth>
+              <DateField.Input slot="start">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateRangePicker.RangeSeparator />
+              <DateField.Input slot="end">
+                {(segment) => <DateField.Segment segment={segment} />}
+              </DateField.Input>
+              <DateField.Suffix>
+                <DateRangePicker.Trigger aria-label="Choisir les dates">
+                  <DateRangePicker.TriggerIndicator />
+                </DateRangePicker.Trigger>
+              </DateField.Suffix>
+            </DateField.Group>
+            <DateRangePicker.Popover>
+              <RangeCalendar aria-label="Période de réception">
+                <RangeCalendar.Header>
+                  <RangeCalendar.YearPickerTrigger>
+                    <RangeCalendar.YearPickerTriggerHeading />
+                    <RangeCalendar.YearPickerTriggerIndicator />
+                  </RangeCalendar.YearPickerTrigger>
+                  <RangeCalendar.NavButton slot="previous" />
+                  <RangeCalendar.NavButton slot="next" />
+                </RangeCalendar.Header>
+                <RangeCalendar.Grid>
+                  <RangeCalendar.GridHeader>
+                    {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+                  </RangeCalendar.GridHeader>
+                  <RangeCalendar.GridBody>
+                    {(date) => <RangeCalendar.Cell date={date} />}
+                  </RangeCalendar.GridBody>
+                </RangeCalendar.Grid>
+                <RangeCalendar.YearPickerGrid>
+                  <RangeCalendar.YearPickerGridBody>
+                    {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
+                  </RangeCalendar.YearPickerGridBody>
+                </RangeCalendar.YearPickerGrid>
+              </RangeCalendar>
+            </DateRangePicker.Popover>
+          </DateRangePicker>
+          {filtersActive && (
+            <Button variant="tertiary" onPress={resetFilters}>
+              Réinitialiser
+            </Button>
           )}
-        </>
-      )}
+        </Toolbar>
+
+        {leads.isError ? (
+          <LoadError
+            message="Impossible de charger les demandes."
+            onRetry={() => leads.refetch()}
+          />
+        ) : leads.isPending ? (
+          <TableSkeleton label="Demandes" columns={COLUMNS} minWidth="min-w-[880px]" />
+        ) : (
+          <>
+            <Table>
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Demandes de contact" className="min-w-[880px]">
+                  <Table.Header>
+                    <Table.Column className="w-40">Reçue le</Table.Column>
+                    <Table.Column isRowHeader>Contact</Table.Column>
+                    <Table.Column>Véhicule</Table.Column>
+                    <Table.Column className="w-80">Message</Table.Column>
+                    <Table.Column>Statut</Table.Column>
+                    <Table.Column className="w-14">
+                      <span className="sr-only">Actions</span>
+                    </Table.Column>
+                  </Table.Header>
+                  <Table.Body renderEmptyState={() => emptyState}>
+                    {rows.map((lead) => (
+                      <LeadRow
+                        key={lead.id}
+                        lead={lead}
+                        pending={pending.has(lead.id)}
+                        onToggle={() => handled.mutate({ id: lead.id, handled: !lead.handled })}
+                        onDelete={() => deletion.open(lead)}
+                      />
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+            {filtered.length > 0 && (
+              <ListPagination
+                page={current}
+                pageCount={pageCount}
+                onChange={setPage}
+                summary={`${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, filtered.length)} sur ${plural(filtered.length, "demande", "demandes")}`}
+              />
+            )}
+          </>
+        )}
+      </div>
 
       <ConfirmDialog
         isOpen={deletion.isOpen}
@@ -334,7 +376,7 @@ export function LeadsTab() {
           Cette action est irréversible.
         </p>
       </ConfirmDialog>
-    </div>
+    </>
   );
 }
 
@@ -458,117 +500,4 @@ function leadMenu(lead: Lead, onToggle: () => void, onDelete: () => void): (RowA
     },
     { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
   ];
-}
-
-/** Phone card: who, when, the message, and the three things you do with a request. */
-function LeadCard({
-  lead,
-  pending,
-  onToggle,
-  onDelete,
-}: {
-  lead: Lead;
-  pending: boolean;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const message = lead.message?.trim() ?? "";
-  const long = message.length > 140 || message.includes("\n");
-  const action = buttonVariants({ variant: "secondary", size: "sm" });
-  return (
-    <li className="grid gap-3 rounded-2xl border border-separator bg-surface p-4">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2">
-            <span className="truncate font-semibold text-foreground">{lead.name}</span>
-            <StatusChip tone={lead.handled ? "success" : "warning"}>
-              {lead.handled ? "Traitée" : "À traiter"}
-            </StatusChip>
-            {pending && <Spinner size="sm" aria-label="Mise à jour du statut" />}
-          </p>
-          <p className="text-xs text-muted">
-            <time dateTime={lead.created_at}>
-              {dateTimeFormat.format(new Date(lead.created_at))}
-            </time>
-            {lead.car_slug && (
-              <>
-                {" · "}
-                <a
-                  href={`/vehicule/${lead.car_slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent underline-offset-2 hover:underline"
-                >
-                  voir le véhicule
-                </a>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="-me-1 -mt-1">
-          <RowMenu
-            label={`Actions pour la demande de ${lead.name}`}
-            actions={leadMenu(lead, onToggle, onDelete)}
-            large
-          />
-        </div>
-      </div>
-      {message && (
-        <div>
-          <p
-            id={`lead-card-message-${lead.id}`}
-            className={`text-sm text-foreground ${expanded ? "whitespace-pre-line" : "line-clamp-3"}`}
-          >
-            {message}
-          </p>
-          {long && (
-            <button
-              type="button"
-              aria-expanded={expanded}
-              aria-controls={`lead-card-message-${lead.id}`}
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-1 text-sm font-medium text-accent"
-            >
-              {expanded ? "Réduire" : "Lire la suite"}
-            </button>
-          )}
-        </div>
-      )}
-      {lead.email && (
-        <a href={`mailto:${lead.email}`} className="break-all text-sm text-accent">
-          {lead.email}
-        </a>
-      )}
-      <div className="grid grid-cols-3 gap-2">
-        <a href={telOf(lead)} className={`${action} h-11 w-full min-w-0 px-2`}>
-          <Phone className="size-4" aria-hidden />
-          Appeler
-        </a>
-        <a
-          href={whatsappUrl(lead.phone)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${action} h-11 w-full min-w-0 px-2`}
-        >
-          <MessageCircle className="size-4" aria-hidden />
-          WhatsApp
-        </a>
-        <Button
-          size="sm"
-          variant={lead.handled ? "tertiary" : "primary"}
-          className="h-11 w-full min-w-0 px-2"
-          isDisabled={pending}
-          onPress={onToggle}
-        >
-          {lead.handled ? (
-            <RotateCcw className="size-4" aria-hidden />
-          ) : (
-            <CheckCircle2 className="size-4" aria-hidden />
-          )}
-          {lead.handled ? "Rouvrir" : "Traitée"}
-        </Button>
-      </div>
-    </li>
-  );
 }

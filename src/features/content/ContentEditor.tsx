@@ -7,9 +7,6 @@ import {
   FieldError,
   Input,
   Label,
-  ListBox,
-  NumberField,
-  Select,
   Skeleton,
   Switch,
   Tabs,
@@ -44,8 +41,10 @@ import { adminContentQuery } from "@/features/admin/model";
 import {
   FilePickButton,
   IconButton,
+  IntegerField,
   LoadError,
   PageHeader,
+  SelectField,
   UnsavedChangesDialog,
   UploadProgress,
 } from "@/features/admin/ui";
@@ -1118,34 +1117,16 @@ function CollectionInput({
                 update(rows.map((item, i) => (i === index ? { ...item, [key]: next } : item)));
               if (key === "icon")
                 return (
-                  <Select
+                  <SelectField
                     key={key}
+                    label={label}
                     value={String(current ?? "")}
-                    onChange={(next) => {
-                      if (typeof next === "string") change(next);
-                    }}
-                    fullWidth
-                  >
-                    <Label>{label}</Label>
-                    <Select.Trigger>
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {SERVICE_ICONS.map((icon) => (
-                          <ListBox.Item
-                            key={icon}
-                            id={icon}
-                            textValue={SERVICE_LABELS[icon] ?? icon}
-                          >
-                            {SERVICE_LABELS[icon] ?? icon}
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
+                    options={SERVICE_ICONS.map((icon) => ({
+                      id: icon,
+                      label: SERVICE_LABELS[icon] ?? icon,
+                    }))}
+                    onChange={change}
+                  />
                 );
               if (key === "stars")
                 return (
@@ -1158,22 +1139,14 @@ function CollectionInput({
                 );
               if (typeof example === "number")
                 return (
-                  <NumberField
+                  <IntegerField
                     key={key}
+                    label={label}
                     value={typeof current === "number" ? current : Number(current) || 0}
-                    onChange={(next) => change(next === undefined || Number.isNaN(next) ? 0 : next)}
-                    minValue={key === "stars" ? 1 : 0}
-                    maxValue={key === "stars" ? 5 : 100_000_000}
-                    formatOptions={{ maximumFractionDigits: 0 }}
-                    fullWidth
-                  >
-                    <Label>{label}</Label>
-                    <NumberField.Group>
-                      <NumberField.DecrementButton />
-                      <NumberField.Input />
-                      <NumberField.IncrementButton />
-                    </NumberField.Group>
-                  </NumberField>
+                    onChange={(next) => change(next ?? 0)}
+                    minValue={0}
+                    maxValue={100_000_000}
+                  />
                 );
               return (
                 <TextField

@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Skeleton } from "@heroui/react";
 import {
   ArrowUpRight,
@@ -19,6 +19,7 @@ import {
 } from "@/components/icons";
 import { salePrice } from "@/lib/cars";
 import { Notch } from "./Notch";
+import { socialStatusQuery } from "./SocialCard";
 import {
   SECTION_LABELS,
   SECTION_PATHS,
@@ -74,6 +75,16 @@ const GROUPS: { title: string; tiles: Tile[]; more?: { label: string; to: string
 
 export function MobileHome({ sections }: { sections: readonly AdminSection[] }) {
   const navigate = useNavigate();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  // The editor opens instantly from "Ajouter un véhicule": its code and the
+  // network status are fetched in the background beforehand.
+  useEffect(() => {
+    void router
+      .preloadRoute({ to: "/admin/vehicules/$carId", params: { carId: "nouveau" } })
+      .catch(() => undefined);
+    void queryClient.prefetchQuery(socialStatusQuery);
+  }, [router, queryClient]);
   const cars = useQuery(adminCarsQuery);
   const leads = useQuery(leadsQueryOptions);
 

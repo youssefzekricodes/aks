@@ -1,5 +1,5 @@
-import { useState, type ReactNode, type SyntheticEvent } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode, type SyntheticEvent } from "react";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, SearchField, Spinner, Table, toast, Tooltip } from "@heroui/react";
 import {
@@ -8,6 +8,8 @@ import {
   BadgeCheck,
   ClipboardList,
   X,
+  Check,
+  ArrowUpDown,
   Car as CarIcon,
   Eye,
   EyeOff,
@@ -33,7 +35,7 @@ import {
 } from "@/lib/data";
 import type { BulkAction, FacebookSync } from "@/server/repository";
 import { CompleteDetailsDialog } from "./CompleteDetailsDialog";
-import { announceShare } from "./SocialCard";
+import { announceShare, socialStatusQuery } from "./SocialCard";
 import { ShareDialog } from "./ShareDialog";
 import { onSale, showcaseWith, useVitrine } from "./VitrinePage";
 import { BulkDiscountDialog, DiscountDialog } from "./DiscountDialog";
@@ -57,8 +59,10 @@ import {
   EmptyState,
   ListPagination,
   LoadError,
+  BottomSheet,
   CardListSkeleton,
   PageHeader,
+  SheetOption,
   RowMenu,
   type RowAction,
   SelectField,
@@ -132,6 +136,7 @@ export function CarsTab() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [bulkDialog, setBulkDialog] = useState<"discount" | "delete" | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   /** Vehicles to share on Facebook / Instagram (row or bulk action). */
   const [sharing, setSharing] = useState<string[] | null>(null);
   const [page, setPage] = useState(1);
@@ -280,6 +285,14 @@ export function CarsTab() {
   };
 
   const navigate = useNavigate();
+  const router = useRouter();
+  // "+" opens the editor instantly: its code and the network status load beforehand.
+  useEffect(() => {
+    void router
+      .preloadRoute({ to: "/admin/vehicules/$carId", params: { carId: "nouveau" } })
+      .catch(() => undefined);
+    void queryClient.prefetchQuery(socialStatusQuery);
+  }, [router, queryClient]);
   /** Opens the vehicle editor page (or a new vehicle). */
   const open = (car: CarInput) =>
     void navigate({ to: "/admin/vehicules/$carId", params: { carId: car.id ?? "nouveau" } });
@@ -402,89 +415,301 @@ export function CarsTab() {
     facebookLoading: facebook.isPending,
   });
 
+  /** Actions on the selection: short label + tint for the phone panel, full label on computers. */
+  type BulkItem = {
+    id: string;
+    label: string;
+    long?: string;
+    icon: typeof Eye;
+    tint: string;
+    danger?: boolean;
+    disabled?: boolean;
+    onPress: () => unknown;
+  };
+  const toShowcase = selectedCars.filter((car) => car.featured_rank == null && onSale(car));
+  const bulkCandidates: (BulkItem | false)[] = [
+    selectedCars.length === 1 && {
+      id: "edit",
+      label: "Modifier",
+      icon: Pencil,
+      tint: "bg-slate-100 text-slate-700",
+      onPress: () => open(selectedCars[0]!),
+    },
+    selectedCars.some((car) => !car.published) && {
+      id: "publish",
+      label: "Publier",
+      long: "Publier sur le site",
+      icon: Eye,
+      tint: "bg-emerald-50 text-emerald-700",
+      onPress: () => runBulk("publish"),
+    },
+    selectedCars.some((car) => car.published) && {
+      id: "unpublish",
+      label: "Retirer",
+      long: "Retirer du site",
+      icon: EyeOff,
+      tint: "bg-zinc-100 text-zinc-700",
+      onPress: () => runBulk("unpublish"),
+    },
+    {
+      id: "discount",
+      label: "Remise",
+      icon: Tag,
+      tint: "bg-violet-50 text-violet-700",
+      onPress: () => setBulkDialog("discount"),
+    },
+    toShowcase.length > 0 && {
+      id: "showcase",
+      label: "Vitrine",
+      long: "Ajouter à la vitrine",
+      icon: Store,
+      tint: "bg-amber-50 text-amber-700",
+      disabled: vitrine.isPending,
+      onPress: () =>
+        vitrine
+          .mutateAsync(
+            showcaseWith(
+              all,
+              toShowcase.map((car) => car.id),
+            ),
+          )
+          .then(() => {
+            toast.success(
+              `${plural(toShowcase.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
+            );
+            setSelected(new Set());
+          })
+          .catch(() => undefined), // reported by the mutation
+    },
+    selectedCars.some(onSale) && {
+      id: "share",
+      label: "Réseaux",
+      long: "Facebook / Instagram",
+      icon: Share2,
+      tint: "bg-blue-50 text-blue-700",
+      onPress: () => setSharing(selectedCars.filter(onSale).map((car) => car.id)),
+    },
+    selectedCars.some((car) => !car.sold) && {
+      id: "sold",
+      label: "Vendu",
+      long: "Marquer vendu",
+      icon: BadgeCheck,
+      tint: "bg-sky-50 text-sky-700",
+      onPress: () => runBulk("sold"),
+    },
+    // Only for vehicles marked sold: removes the mark (drafts stay drafts).
+    selectedCars.some((car) => car.sold) && {
+      id: "unsold",
+      label: "Remettre",
+      long: "Annuler « vendu »",
+      icon: RotateCcw,
+      tint: "bg-teal-50 text-teal-700",
+      onPress: () => runBulk("unsold"),
+    },
+    {
+      id: "delete",
+      label: "Supprimer",
+      icon: Trash2,
+      tint: "bg-red-50 text-red-600",
+      danger: true,
+      onPress: () => setBulkDialog("delete"),
+    },
+  ];
+  const bulkItems = bulkCandidates.filter((item): item is BulkItem => item !== false);
+
+  const statusCount = (id: Status) => all.filter((car) => matchesStatus(car, id)).length;
+
   return (
     <div className="grid gap-6">
-      <PageHeader
-        title="Véhicules"
-        description={
-          cars.data
-            ? `${plural(all.length, "véhicule", "véhicules")} · ${plural(published, "en vente", "en vente")} · ${plural(sold, "vendu", "vendus")}`
-            : "Gérez le stock affiché sur le site."
-        }
-        actions={
-          <>
-            {incomplete > 0 && (
-              <Button
-                variant="secondary"
-                className="max-sm:w-full"
-                onPress={() => setCompleting(true)}
-              >
-                <ClipboardList className="size-4" aria-hidden />
-                Compléter les infos manquantes
-                <span className="tabular rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger">
-                  {incomplete}
-                </span>
-              </Button>
+      {/* Phones: compact header, search with a sort button, status chips. */}
+      <div className="grid gap-3 md:hidden">
+        <header>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Véhicules</h1>
+          <p className="text-sm text-muted">
+            {cars.data
+              ? `${all.length} au total · ${published} en vente · ${plural(sold, "vendu", "vendus")}`
+              : "Chargement…"}
+          </p>
+        </header>
+        <div className="flex gap-2">
+          <SearchField
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            aria-label="Rechercher un véhicule"
+            className="min-w-0 flex-1"
+            fullWidth
+          >
+            <SearchField.Group className="h-12 rounded-full bg-surface px-1 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Marque, modèle…" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+          <button
+            type="button"
+            onClick={() => setSortOpen(true)}
+            aria-label={`Trier : ${SORT_OPTIONS.find((o) => o.id === sort)?.label}`}
+            className="relative grid size-12 shrink-0 place-items-center rounded-full bg-surface text-foreground shadow-[0_1px_2px_rgb(15_23_42/0.04)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ArrowUpDown className="size-5" aria-hidden />
+            {sort !== "order" && (
+              <span className="absolute end-2.5 top-2.5 size-2 rounded-full bg-accent" />
             )}
-            {/* Phones: the round "+" button at the bottom of the screen instead. */}
-            <Button className="max-sm:hidden" onPress={() => open(emptyCar)}>
-              <Plus className="size-4" aria-hidden />
-              Ajouter un véhicule
-            </Button>
-          </>
-        }
-      />
+          </button>
+        </div>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="group" aria-label="Statut">
+          {STATUS_OPTIONS.map((option) => {
+            const active = status === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  setStatus(option.id as Status);
+                  setPage(1);
+                }}
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+                  active
+                    ? "bg-foreground text-background"
+                    : "bg-surface text-muted shadow-[0_1px_2px_rgb(15_23_42/0.05)]"
+                }`}
+              >
+                {option.label}
+                {cars.data && (
+                  <span
+                    className={`text-xs tabular-nums ${active ? "text-background/70" : "text-muted/80"}`}
+                  >
+                    {statusCount(option.id as Status)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {incomplete > 0 && (
+          <button
+            type="button"
+            onClick={() => setCompleting(true)}
+            className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-start text-sm text-amber-900 outline-none ring-1 ring-amber-200 active:bg-amber-100 focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ClipboardList className="size-5 shrink-0 text-amber-600" aria-hidden />
+            <span className="flex-1">
+              <strong className="font-semibold">
+                {plural(incomplete, "véhicule", "véhicules")}
+              </strong>{" "}
+              à compléter
+            </span>
+            <span className="font-semibold text-amber-700">Compléter</span>
+          </button>
+        )}
+        <BottomSheet isOpen={sortOpen} onOpenChange={setSortOpen} title="Trier par">
+          <div role="listbox" aria-label="Trier par" className="grid gap-0.5">
+            {SORT_OPTIONS.map((option) => (
+              <SheetOption
+                key={option.id}
+                selected={sort === option.id}
+                onPress={() => {
+                  setSort(option.id as Sort);
+                  setPage(1);
+                  setSortOpen(false);
+                }}
+              >
+                {option.label}
+              </SheetOption>
+            ))}
+          </div>
+        </BottomSheet>
+      </div>
+
+      <div className="max-md:hidden">
+        <PageHeader
+          title="Véhicules"
+          description={
+            cars.data
+              ? `${plural(all.length, "véhicule", "véhicules")} · ${plural(published, "en vente", "en vente")} · ${plural(sold, "vendu", "vendus")}`
+              : "Gérez le stock affiché sur le site."
+          }
+          actions={
+            <>
+              {incomplete > 0 && (
+                <Button
+                  variant="secondary"
+                  className="max-sm:w-full"
+                  onPress={() => setCompleting(true)}
+                >
+                  <ClipboardList className="size-4" aria-hidden />
+                  Compléter les infos manquantes
+                  <span className="tabular rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger">
+                    {incomplete}
+                  </span>
+                </Button>
+              )}
+              {/* Phones: the round "+" button at the bottom of the screen instead. */}
+              <Button className="max-sm:hidden" onPress={() => open(emptyCar)}>
+                <Plus className="size-4" aria-hidden />
+                Ajouter un véhicule
+              </Button>
+            </>
+          }
+        />
+      </div>
       {selectedIds.length === 0 && (
         <Button
           isIconOnly
           aria-label="Ajouter un véhicule"
           onPress={() => open(emptyCar)}
-          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] end-4 z-30 size-14 rounded-full shadow-lg sm:hidden"
+          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] end-[max(1rem,env(safe-area-inset-right))] z-30 size-14 rounded-full shadow-lg md:hidden"
         >
           <Plus className="size-6" aria-hidden />
         </Button>
       )}
 
-      <Toolbar label="Filtrer les véhicules">
-        <SearchField
-          value={search}
-          onChange={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-          className="min-w-0 flex-1 basis-64"
-          fullWidth
-        >
-          <Label>Rechercher</Label>
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input placeholder="Marque, modèle ou version…" />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
-        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:gap-4">
-          <SelectField
-            label="Statut"
-            value={status}
-            options={STATUS_OPTIONS}
+      <div className="max-md:hidden">
+        <Toolbar label="Filtrer les véhicules">
+          <SearchField
+            value={search}
             onChange={(value) => {
-              setStatus(value as Status);
+              setSearch(value);
               setPage(1);
             }}
-            className="min-w-0 sm:w-44"
-          />
-          <SelectField
-            label="Trier par"
-            value={sort}
-            options={SORT_OPTIONS}
-            onChange={(value) => {
-              setSort(value as Sort);
-              setPage(1);
-            }}
-            className="min-w-0 sm:w-60"
-          />
-        </div>
-      </Toolbar>
+            className="min-w-0 flex-1 basis-64"
+            fullWidth
+          >
+            <Label>Rechercher</Label>
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Marque, modèle ou version…" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+          <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:gap-4">
+            <SelectField
+              label="Statut"
+              value={status}
+              options={STATUS_OPTIONS}
+              onChange={(value) => {
+                setStatus(value as Status);
+                setPage(1);
+              }}
+              className="min-w-0 sm:w-44"
+            />
+            <SelectField
+              label="Trier par"
+              value={sort}
+              options={SORT_OPTIONS}
+              onChange={(value) => {
+                setSort(value as Sort);
+                setPage(1);
+              }}
+              className="min-w-0 sm:w-60"
+            />
+          </div>
+        </Toolbar>
+      </div>
 
       {cars.isError ? (
         <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
@@ -498,13 +723,13 @@ export function CarsTab() {
       ) : (
         <>
           {selectedIds.length > 0 && (
-            <div
-              role="toolbar"
-              aria-label="Actions groupées"
-              // Phones: floats at the bottom of the screen, actions scroll sideways.
-              className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 grid gap-2 rounded-2xl border border-border bg-surface p-2 shadow-xl md:sticky md:inset-x-auto md:top-2 md:bottom-auto md:z-10 md:flex md:flex-wrap md:items-center md:rounded-xl md:shadow-md"
-            >
-              <div className="flex items-center gap-2 md:contents">
+            <>
+              {/* Computers: bar above the table. */}
+              <div
+                role="toolbar"
+                aria-label="Actions groupées"
+                className="sticky top-2 z-10 hidden flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-md md:flex"
+              >
                 <span className="px-2 text-sm font-medium text-foreground">
                   {plural(selectedIds.length, "sélectionné", "sélectionnés")}
                 </span>
@@ -514,111 +739,93 @@ export function CarsTab() {
                     variant="ghost"
                     onPress={() => setSelected(new Set(visible.map((car) => car.id)))}
                   >
-                    Tout ({visible.length})
+                    Tout sélectionner ({visible.length})
                   </Button>
                 )}
+                {bulkItems.map((item) => (
+                  <BulkButton
+                    key={item.id}
+                    icon={item.icon}
+                    danger={item.danger ?? false}
+                    isDisabled={item.disabled ?? bulk.isPending}
+                    onPress={item.onPress}
+                  >
+                    {item.long ?? item.label}
+                  </BulkButton>
+                ))}
+                {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="ms-auto md:order-last"
+                  className="ms-auto"
                   onPress={() => setSelected(new Set())}
                 >
                   <X className="size-4" aria-hidden />
-                  <span className="max-md:sr-only">Désélectionner</span>
+                  Désélectionner
                 </Button>
               </div>
-              <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-0.5 [scrollbar-width:none] md:contents">
-                {selectedCars.some((car) => !car.published) && (
-                  <BulkButton
-                    icon={Eye}
-                    isDisabled={bulk.isPending}
-                    onPress={() => runBulk("publish")}
+
+              {/* Phones: panel at the bottom, one labelled tile per action. */}
+              <div
+                role="toolbar"
+                aria-label="Actions groupées"
+                className="fixed inset-x-0 bottom-0 z-30 rounded-t-[1.75rem] bg-surface pb-[calc(0.75rem+env(safe-area-inset-bottom))] pe-[max(1rem,env(safe-area-inset-right))] ps-[max(1rem,env(safe-area-inset-left))] pt-3 shadow-[0_-10px_30px_-10px_rgb(15_23_42/0.3)] animate-in slide-in-from-bottom-6 duration-200 md:hidden"
+              >
+                <div className="mb-2 flex items-center gap-3">
+                  <p className="flex-1 text-[15px] font-semibold text-foreground">
+                    {plural(selectedIds.length, "véhicule sélectionné", "véhicules sélectionnés")}
+                  </p>
+                  {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
+                  {selectedIds.length < visible.length && (
+                    <button
+                      type="button"
+                      onClick={() => setSelected(new Set(visible.map((car) => car.id)))}
+                      className="h-9 rounded-full px-3 text-sm font-semibold text-accent active:bg-accent-soft"
+                    >
+                      Tout ({visible.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Désélectionner"
+                    onClick={() => setSelected(new Set())}
+                    className="grid size-9 place-items-center rounded-full bg-surface-secondary text-foreground active:opacity-80"
                   >
-                    Publier sur le site
-                  </BulkButton>
-                )}
-                {selectedCars.some((car) => car.published) && (
-                  <BulkButton
-                    icon={EyeOff}
-                    isDisabled={bulk.isPending}
-                    onPress={() => runBulk("unpublish")}
-                  >
-                    Retirer du site
-                  </BulkButton>
-                )}
-                <BulkButton
-                  icon={Tag}
-                  isDisabled={bulk.isPending}
-                  onPress={() => setBulkDialog("discount")}
-                >
-                  Remise
-                </BulkButton>
-                {selectedCars.some((car) => car.featured_rank == null && onSale(car)) && (
-                  <BulkButton
-                    icon={Store}
-                    isDisabled={vitrine.isPending}
-                    onPress={() => {
-                      const ids = selectedCars
-                        .filter((car) => car.featured_rank == null && onSale(car))
-                        .map((car) => car.id);
-                      return vitrine
-                        .mutateAsync(showcaseWith(all, ids))
-                        .then(() => {
-                          toast.success(
-                            `${plural(ids.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
-                          );
-                          setSelected(new Set());
-                        })
-                        .catch(() => undefined); // reported by the mutation
-                    }}
-                  >
-                    Ajouter à la vitrine
-                  </BulkButton>
-                )}
-                {selectedCars.some(onSale) && (
-                  <BulkButton
-                    icon={Share2}
-                    isDisabled={bulk.isPending}
-                    onPress={() => setSharing(selectedCars.filter(onSale).map((car) => car.id))}
-                  >
-                    Facebook / Instagram
-                  </BulkButton>
-                )}
-                {selectedCars.some((car) => !car.sold) && (
-                  <BulkButton
-                    icon={BadgeCheck}
-                    isDisabled={bulk.isPending}
-                    onPress={() => runBulk("sold")}
-                  >
-                    Marquer vendu
-                  </BulkButton>
-                )}
-                {/* Only for vehicles marked sold: removes the mark (drafts stay drafts). */}
-                {selectedCars.some((car) => car.sold) && (
-                  <BulkButton
-                    icon={RotateCcw}
-                    isDisabled={bulk.isPending}
-                    onPress={() => runBulk("unsold")}
-                  >
-                    Annuler « vendu »
-                  </BulkButton>
-                )}
-                <BulkButton
-                  icon={Trash2}
-                  danger
-                  isDisabled={bulk.isPending}
-                  onPress={() => setBulkDialog("delete")}
-                >
-                  Supprimer
-                </BulkButton>
-                {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {bulkItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        disabled={item.disabled ?? bulk.isPending}
+                        onClick={() => void item.onPress()}
+                        className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2 outline-none transition-colors active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40"
+                      >
+                        <span
+                          className={`grid size-11 place-items-center rounded-full ${item.tint}`}
+                        >
+                          <Icon className="size-5" aria-hidden />
+                        </span>
+                        <span
+                          className={`text-center text-xs font-medium leading-tight ${item.danger ? "text-danger" : "text-foreground"}`}
+                        >
+                          {item.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </>
           )}
           {/* Phones and small tablets: one card per vehicle. */}
           <ul aria-label="Véhicules" className="grid gap-3 md:hidden">
             {pageCars.map((car, index) => (
-              <CarCard key={car.id} {...itemProps(car, index)} selecting={selectedIds.length > 0} />
+              <CarCard key={car.id} {...itemProps(car, index)} />
             ))}
             {pageCars.length === 0 && <li>{emptyState}</li>}
           </ul>
@@ -686,6 +893,8 @@ export function CarsTab() {
               summary={`${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, visible.length)} sur ${plural(visible.length, "véhicule", "véhicules")}${filtersActive ? ` (${all.length} au total)` : ""}`}
             />
           )}
+          {/* Room under the last cards for the phone selection panel. */}
+          {selectedIds.length > 0 && <div aria-hidden className="h-44 md:hidden" />}
           <p className="text-sm text-muted">
             Pour changer l’ordre d’affichage sur le site, cliquez sur la marque d’un véhicule : ses
             véhicules s’affichent en cartes, à glisser-déposer.
@@ -1024,27 +1233,33 @@ function carMenu({
 }
 
 /**
- * Phone card: tap opens the vehicle (or ticks it while a selection is in progress),
- * the box selects it, "…" has every action.
+ * Phone card: a tap selects it (highlighted, tick on the photo); the actions,
+ * "Modifier" first, are in "…" and in the bar of the selection.
  */
-function CarCard({
-  selecting,
-  ...props
-}: ItemProps & {
-  /** Some vehicles are ticked: a tap adds or removes this one. */
-  selecting: boolean;
-}) {
-  const { car, selected, onSelect, onEdit, publishing, facebook, facebookLoading } = props;
+function CarCard(props: ItemProps) {
+  const { car, selected, onSelect, publishing, facebook, facebookLoading } = props;
   const title = titleOf(car);
   const percent = discountPercent(car);
   const missing = missingFields(car);
   return (
     <li>
       <div
-        onClick={selecting ? onSelect : onEdit}
-        className={`relative flex cursor-pointer gap-3 rounded-2xl border bg-surface p-3 transition-colors active:bg-surface-secondary ${
-          selected ? "border-accent ring-1 ring-accent" : "border-separator"
-        } ${car.sold ? "opacity-75" : ""}`}
+        role="checkbox"
+        aria-checked={selected}
+        aria-label={title}
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === " " || event.key === "Enter") {
+            event.preventDefault();
+            onSelect();
+          }
+        }}
+        className={`relative flex cursor-pointer select-none gap-3 rounded-2xl border p-3 outline-none transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-focus ${
+          selected
+            ? "border-accent bg-[color-mix(in_oklab,var(--accent)_7%,var(--surface))] ring-2 ring-accent"
+            : "border-separator bg-surface"
+        } ${car.sold && !selected ? "opacity-75" : ""}`}
       >
         <div className="relative shrink-0 self-start">
           <img
@@ -1053,35 +1268,17 @@ function CarCard({
             loading="lazy"
             className="aspect-[4/3] w-24 rounded-xl bg-surface-secondary object-cover"
           />
-          <label
-            {...isolate}
-            className="absolute -start-2 -top-2 grid size-10 cursor-pointer place-items-center"
-          >
-            <input
-              type="checkbox"
-              aria-label={`Sélectionner ${title}`}
-              checked={selected}
-              onChange={onSelect}
-              className="size-5 cursor-pointer rounded accent-[var(--accent)] shadow"
-            />
-          </label>
+          {selected && (
+            <span className="absolute -start-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-accent text-accent-foreground shadow-md ring-2 ring-surface animate-in zoom-in-50 duration-150">
+              <Check className="size-3.5" aria-hidden />
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs text-muted">
             {car.brand} · {car.year} · {formatKm(car.km_value)}
           </p>
-          <button
-            type="button"
-            {...isolate}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (selecting) onSelect();
-              else onEdit();
-            }}
-            className="line-clamp-2 text-start font-semibold leading-snug text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            {car.name}
-          </button>
+          <p className="line-clamp-2 font-semibold leading-snug text-foreground">{car.name}</p>
           <div className="mt-0.5 text-sm">
             {car.price_on_request ? (
               <span className="text-muted">Prix masqué</span>
@@ -1104,7 +1301,7 @@ function CarCard({
               <StatusChip tone="danger">À compléter · {missing.length}</StatusChip>
             )}
             {facebook && (
-              <span className="text-xs">
+              <span className="text-xs" {...isolate}>
                 <FacebookCell sync={facebook} loading={facebookLoading} published={car.published} />
               </span>
             )}

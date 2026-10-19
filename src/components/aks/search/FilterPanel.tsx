@@ -37,7 +37,7 @@ function Group({
   action?: ReactNode;
 }) {
   return (
-    <fieldset className="border-b border-separator py-5 first:pt-0 last:border-b-0">
+    <fieldset className="min-w-0 border-b border-separator py-5 first:pt-0 last:border-b-0">
       <div className="mb-3 flex items-center justify-between gap-2">
         <legend className="text-sm font-semibold">{title}</legend>
         {action}
@@ -72,7 +72,7 @@ function Tile({
       disabled={disabled}
       onClick={onPress}
       className={cn(
-        "group flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-md border px-1.5 py-2 text-center text-xs transition-colors focus-visible:outline-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40",
+        "group flex min-h-20 w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-md border px-1.5 py-2 text-center text-xs transition-colors focus-visible:outline-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40",
         pressed
           ? "border-accent bg-accent-soft text-foreground"
           : "border-border bg-surface text-muted hover:text-foreground",
@@ -215,7 +215,7 @@ export function FilterPanel({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2">
               {shownBrands.map((b) => (
                 <Tile
                   key={b.value}
@@ -232,10 +232,10 @@ export function FilterPanel({
                   {logoUrl(b.label) ? (
                     <>
                       <BrandLogo brand={b.label} size={26} />
-                      <span className="line-clamp-1">{b.label}</span>
+                      <span className="block w-full truncate">{b.label}</span>
                     </>
                   ) : (
-                    <span className="line-clamp-2 font-semibold uppercase leading-tight tracking-wide text-foreground/80">
+                    <span className="line-clamp-2 w-full break-words font-semibold uppercase leading-tight tracking-wide text-foreground/80">
                       {b.label}
                     </span>
                   )}
@@ -274,7 +274,7 @@ export function FilterPanel({
 
       {bodies.length > 0 && (
         <Group title="Carrosserie">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2">
             {bodies.map((b) => (
               <Tile
                 key={b.value}
@@ -289,8 +289,12 @@ export function FilterPanel({
                     : setEmpty({ kind: "body", label: b.label })
                 }
               >
-                <BodyIcon body={b.label} active={filters.carrosserie === b.value} className="h-7" />
-                <span className="line-clamp-1">{b.label}</span>
+                <BodyIcon
+                  body={b.label}
+                  active={filters.carrosserie === b.value}
+                  className="h-7 max-w-full"
+                />
+                <span className="block w-full truncate">{b.label}</span>
               </Tile>
             ))}
           </div>

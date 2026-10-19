@@ -1,10 +1,19 @@
-import { Fragment, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   Alert,
   AlertDialog,
   Button,
   Chip,
   Description,
+  Drawer,
   Dropdown,
   EmptyState as EmptyStateRoot,
   Label,
@@ -21,7 +30,13 @@ import {
   type ButtonProps,
 } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
-import { ChevronRight, MoreHorizontal, type LucideIcon } from "@/components/icons";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  type LucideIcon,
+} from "@/components/icons";
 import { Link } from "@tanstack/react-router";
 
 import type { UploadState } from "./hooks";
@@ -32,6 +47,186 @@ import { IMAGE_TYPES, type Option } from "./model";
  * body text-sm, meta text-xs. Spacing on the 8px grid (gap-2/4/6/8). Controls use
  * the default HeroUI size, except dense table/tile actions which use size="sm".
  */
+
+/* ───────── Phone (and installed app) ───────── */
+
+const PHONE_QUERY = "(max-width: 1023.98px)";
+const subscribePhone = (onChange: () => void) => {
+  const media = window.matchMedia(PHONE_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+};
+/**
+ * Phone-width screen (the admin app): menus and selects open as bottom sheets,
+ * numbers use the phone keypad and wheel. Computers keep popovers.
+ */
+export function useIsPhone() {
+  return useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(PHONE_QUERY).matches,
+    () => false,
+  );
+}
+
+/** Drag (px) or flick speed (px/ms) that closes a bottom sheet. */
+const SHEET_CLOSE_DISTANCE = 110;
+const SHEET_CLOSE_SPEED = 0.6;
+
+/**
+ * Sheet sliding up from the bottom of the screen (phone replacement for popovers).
+ * It follows the finger when dragged down and closes past a distance or on a
+ * quick flick; a list inside keeps scrolling normally until it is at its top.
+ */
+export function BottomSheet({
+  isOpen,
+  onOpenChange,
+  title,
+  description,
+  children,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
+  const drag = useRef<{ y: number; t: number; dy: number; active: boolean } | null>(null);
+  const sheet = useRef<HTMLElement | null>(null);
+  const move = (dy: number, animate: boolean) => {
+    const el = sheet.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 220ms cubic-bezier(0.2, 0, 0, 1)" : "none";
+    el.style.transform = dy ? `translateY(${dy}px)` : "";
+  };
+  return (
+    <Drawer.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Drawer.Content placement="bottom">
+        <Drawer.Dialog className="max-h-[85dvh] rounded-t-[1.75rem] px-[env(safe-area-inset-left)] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
+          <div
+            ref={(el) => {
+              sheet.current = el?.closest<HTMLElement>("[role='dialog']") ?? null;
+            }}
+            className="flex min-h-0 flex-1 flex-col"
+            onTouchStart={(event) => {
+              const t = event.touches[0];
+              if (!t) return;
+              // Inside a list scrolled down: that list scrolls, the sheet stays.
+              const list = (event.target as HTMLElement).closest<HTMLElement>(
+                "[data-sheet-scroll]",
+              );
+              if (list && list.scrollTop > 0) return;
+              drag.current = { y: t.clientY, t: event.timeStamp, dy: 0, active: false };
+            }}
+            onTouchMove={(event) => {
+              const d = drag.current;
+              const t = event.touches[0];
+              if (!d || !t) return;
+              const dy = t.clientY - d.y;
+              if (!d.active) {
+                if (dy < 0) {
+                  drag.current = null; // scrolling the list up
+                  return;
+                }
+                if (dy > 6) d.active = true;
+              }
+              if (d.active) {
+                d.dy = Math.max(0, dy);
+                move(d.dy, false);
+              }
+            }}
+            onTouchEnd={(event) => {
+              const d = drag.current;
+              drag.current = null;
+              if (!d?.active) return;
+              const speed = d.dy / Math.max(1, event.timeStamp - d.t);
+              if (d.dy > SHEET_CLOSE_DISTANCE || speed > SHEET_CLOSE_SPEED) {
+                move(window.innerHeight, true);
+                window.setTimeout(() => {
+                  onOpenChange(false);
+                  move(0, false);
+                }, 180);
+              } else move(0, true);
+            }}
+          >
+            <Drawer.Handle />
+            <Drawer.Header className="px-5 pb-1 pt-2">
+              <Drawer.Heading className="text-base font-semibold text-foreground">
+                {title}
+              </Drawer.Heading>
+              {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+            </Drawer.Header>
+            <Drawer.Body data-sheet-scroll className="overscroll-contain px-3 pb-1 pt-2">
+              {children}
+            </Drawer.Body>
+          </div>
+        </Drawer.Dialog>
+      </Drawer.Content>
+    </Drawer.Backdrop>
+  );
+}
+
+/** One choice row of a bottom sheet (large touch target, tick when selected). */
+export function SheetOption({
+  selected = false,
+  danger = false,
+  icon: Icon,
+  onPress,
+  href,
+  external,
+  children,
+}: {
+  selected?: boolean;
+  danger?: boolean;
+  icon?: LucideIcon;
+  onPress?: () => void;
+  href?: string;
+  external?: boolean;
+  children: ReactNode;
+}) {
+  const className = `flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-start text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+    selected
+      ? "bg-accent-soft font-semibold text-accent"
+      : danger
+        ? "text-danger active:bg-danger-soft"
+        : "text-foreground active:bg-surface-secondary"
+  }`;
+  const body = (
+    <>
+      {Icon && (
+        <Icon
+          className={`size-5 shrink-0 ${danger ? "text-danger" : selected ? "text-accent" : "text-muted"}`}
+          aria-hidden
+        />
+      )}
+      <span className="min-w-0 flex-1">{children}</span>
+      {selected && <Check className="size-5 shrink-0 text-accent" aria-hidden />}
+    </>
+  );
+  return href ? (
+    <a
+      href={href}
+      className={className}
+      onClick={onPress}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+    >
+      {body}
+    </a>
+  ) : (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      className={className}
+      onClick={onPress}
+    >
+      {body}
+    </button>
+  );
+}
+
+/** Field-looking button that opens a sheet (phone select, brand picker…). */
+export const sheetFieldClass =
+  "flex h-11 w-full items-center gap-2 rounded-[var(--field-radius)] border border-[var(--field-border)] bg-[var(--field-background,var(--surface))] px-3 text-start text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus active:bg-surface-secondary";
 
 /* ───────── Layout ───────── */
 
@@ -291,6 +486,40 @@ export function RowMenu({
 }) {
   const items = actions.filter((action): action is RowAction => Boolean(action));
   const firstDanger = items.findIndex((item) => item.danger);
+  const phone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  if (phone)
+    return (
+      <>
+        <IconButton
+          label={label}
+          icon={MoreHorizontal}
+          onPress={() => setOpen(true)}
+          {...(large ? { className: "size-10" } : {})}
+        />
+        <BottomSheet isOpen={open} onOpenChange={setOpen} title={label}>
+          <div className="grid gap-0.5">
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {index === firstDanger && index > 0 && <Separator className="my-1.5" />}
+                <SheetOption
+                  icon={item.icon}
+                  danger={item.danger ?? false}
+                  {...(item.href ? { href: item.href, external: item.external ?? false } : {})}
+                  onPress={() => {
+                    setOpen(false);
+                    // Let the sheet close before a dialog the action may open.
+                    if (item.onAction) window.setTimeout(item.onAction, 180);
+                  }}
+                >
+                  {item.label}
+                </SheetOption>
+              </Fragment>
+            ))}
+          </div>
+        </BottomSheet>
+      </>
+    );
   return (
     <Dropdown>
       <IconButton
@@ -577,6 +806,46 @@ export function SelectField({
   const all = options.some((o) => o.id === value)
     ? options
     : [...options, { id: value, label: value }];
+  const phone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  const labelId = useId();
+  if (phone)
+    return (
+      <div className={`grid min-w-0 gap-1 ${className ?? ""}`}>
+        <span id={labelId} className="text-sm font-medium text-foreground">
+          {label}
+        </span>
+        <button
+          type="button"
+          aria-labelledby={labelId}
+          aria-haspopup="listbox"
+          disabled={isDisabled ?? false}
+          onClick={() => setOpen(true)}
+          className={`${sheetFieldClass} disabled:opacity-50`}
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {all.find((o) => o.id === value)?.label ?? "Choisir"}
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+        </button>
+        <BottomSheet isOpen={open} onOpenChange={setOpen} title={label}>
+          <div role="listbox" aria-label={label} className="grid gap-0.5">
+            {all.map((option) => (
+              <SheetOption
+                key={option.id}
+                selected={option.id === value}
+                onPress={() => {
+                  onChange(option.id);
+                  setOpen(false);
+                }}
+              >
+                {option.label}
+              </SheetOption>
+            ))}
+          </div>
+        </BottomSheet>
+      </div>
+    );
   return (
     <Select
       value={value}
@@ -620,6 +889,7 @@ export function IntegerField({
   isRequired,
   grouping = true,
   description,
+  wheel,
 }: {
   label: string;
   value: number | null | undefined;
@@ -630,7 +900,26 @@ export function IntegerField({
   isRequired?: boolean;
   grouping?: boolean;
   description?: ReactNode;
+  /** Phones: pick from the native wheel (e.g. years) instead of typing. */
+  wheel?: { from: number; to: number };
 }) {
+  const phone = useIsPhone();
+  if (phone)
+    return (
+      <PhoneNumberField
+        label={label}
+        value={value}
+        onChange={onChange}
+        {...(minValue === undefined ? {} : { minValue })}
+        {...(maxValue === undefined ? {} : { maxValue })}
+        isDisabled={isDisabled ?? false}
+        isRequired={isRequired ?? false}
+        description={description}
+        wheel={wheel}
+        grouping={grouping}
+      />
+    );
+
   return (
     <NumberField
       value={value ?? Number.NaN}
@@ -737,5 +1026,112 @@ export function AdminAvatar({
     >
       {email.charAt(0) || "A"}
     </span>
+  );
+}
+
+const grouped = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+
+/**
+ * Phone number input: the native numeric keypad (or the native wheel for a range
+ * such as years). Out-of-range values are brought back within limits on leaving.
+ */
+function PhoneNumberField({
+  label,
+  value,
+  onChange,
+  minValue,
+  maxValue,
+  isDisabled,
+  isRequired,
+  description,
+  wheel,
+  grouping,
+}: {
+  label: string;
+  value: number | null | undefined;
+  onChange: (value: number | null) => void;
+  minValue?: number;
+  maxValue?: number;
+  grouping: boolean;
+  isDisabled: boolean;
+  isRequired: boolean;
+  description?: ReactNode;
+  wheel?: { from: number; to: number } | undefined;
+}) {
+  const id = useId();
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState(value == null || Number.isNaN(value) ? "" : String(value));
+  // Follow changes made elsewhere (e.g. price cleared by "Masquer le prix").
+  useEffect(() => {
+    setText((current) =>
+      Number(current) === value
+        ? current
+        : value == null || Number.isNaN(value)
+          ? ""
+          : String(value),
+    );
+  }, [value]);
+  const clamp = (n: number) =>
+    Math.min(maxValue ?? Number.MAX_SAFE_INTEGER, Math.max(minValue ?? 0, n));
+  const field =
+    "h-11 w-full rounded-[var(--field-radius)] border border-[var(--field-border)] bg-[var(--field-background,var(--surface))] px-3 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
+  return (
+    <div className="grid min-w-0 gap-1">
+      <label htmlFor={id} className="text-sm font-medium text-foreground">
+        {label}
+        {isRequired && <span className="text-danger"> *</span>}
+      </label>
+      {wheel ? (
+        <span className="relative block">
+          <select
+            id={id}
+            value={value ?? ""}
+            disabled={isDisabled}
+            required={isRequired}
+            onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
+            className={`${field} appearance-none pe-9`}
+          >
+            {!isRequired && <option value="">—</option>}
+            {Array.from({ length: wheel.to - wheel.from + 1 }, (_, i) => wheel.to - i).map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+            aria-hidden
+          />
+        </span>
+      ) : (
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          enterKeyHint="done"
+          // Spaces between thousands while not typing (152 000), digits only while typing.
+          value={focused || !grouping ? text : text && grouped.format(Number(text))}
+          onFocus={() => setFocused(true)}
+          disabled={isDisabled}
+          required={isRequired}
+          onChange={(event) => {
+            const digits = event.target.value.replace(/\D/g, "");
+            setText(digits);
+            onChange(digits ? Number(digits) : null);
+          }}
+          onBlur={() => {
+            setFocused(false);
+            if (!text) return;
+            const n = clamp(Number(text));
+            setText(String(n));
+            onChange(n);
+          }}
+          className={`${field} tabular-nums`}
+        />
+      )}
+      {description && <span className="text-xs text-muted">{description}</span>}
+    </div>
   );
 }

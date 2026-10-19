@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Spinner, toast } from "@heroui/react";
@@ -61,7 +61,8 @@ export function CarEditPage({ carId, from }: { carId: string; from: EditOrigin }
   const isNew = carId === "nouveau";
   const car = isNew ? undefined : cars.data?.find((c) => c.id === carId);
 
-  if ((!isNew && cars.isPending) || (isNew && social.isPending))
+  // A new vehicle opens at once; the networks to post on are filled in when known.
+  if (!isNew && cars.isPending)
     return (
       <div className="grid place-items-center py-24">
         <Spinner aria-label="Chargement du véhicule" />
@@ -80,17 +81,25 @@ export function CarEditPage({ carId, from }: { carId: string; from: EditOrigin }
   return (
     <Editor
       key={carId}
-      initial={
-        car ??
-          // New vehicle: pre-set to post on the connected networks.
-          { ...emptyCar, social_targets: SOCIAL_PLATFORMS.filter((p) => social.data?.[p]) }
+      initial={car ?? emptyCar}
+      // New vehicle: pre-set to post on the connected networks (once known).
+      socialTargets={
+        isNew && social.data ? SOCIAL_PLATFORMS.filter((p) => social.data?.[p]) : undefined
       }
       from={from}
     />
   );
 }
 
-function Editor({ initial, from }: { initial: CarInput; from: EditOrigin }) {
+function Editor({
+  initial,
+  from,
+  socialTargets,
+}: {
+  initial: CarInput;
+  from: EditOrigin;
+  socialTargets?: CarInput["social_targets"] | undefined;
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { primary } = usePhones();
@@ -98,6 +107,18 @@ function Editor({ initial, from }: { initial: CarInput; from: EditOrigin }) {
   const [draft, setDraft] = useState(() => toDraft(initial));
   const [original, setOriginal] = useState(() => JSON.stringify(toDraft(initial)));
   const [done, setDone] = useState(false);
+
+  // Default networks arrive after the form is shown: applied once, as the
+  // starting point (not an unsaved change), unless the user already edited.
+  const targetsApplied = useRef(false);
+  useEffect(() => {
+    if (!socialTargets || targetsApplied.current) return;
+    targetsApplied.current = true;
+    if (JSON.stringify(draft) !== original) return;
+    const next = { ...draft, social_targets: socialTargets };
+    setDraft(next);
+    setOriginal(JSON.stringify(next));
+  }, [socialTargets, draft, original]);
 
   const leave = useCallback(() => {
     if (origin.brand)

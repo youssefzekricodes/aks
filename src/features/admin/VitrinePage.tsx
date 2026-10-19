@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Button, Label, Modal, SearchField, toast } from "@heroui/react";
-import { Plus, Store, X } from "@/components/icons";
+import { Plus, Store, Trash2 } from "@/components/icons";
 import { carImage, formatKm } from "@/lib/cars";
 import { setVitrine } from "@/lib/data";
 import { adminCarsQuery, adminCarsQueryKey, normalize, plural, type AdminCar } from "./model";
@@ -26,12 +26,14 @@ export function useVitrine() {
   return useMutation({
     mutationFn: (ids: string[]) => setVitrine({ data: { ids } }),
     onMutate: async (ids) => {
-      await queryClient.cancelQueries({ queryKey: adminCarsQueryKey });
+      // New order applied in the same frame as the drop (no jump back), then
+      // pending refetches cancelled so they cannot bring the old order back.
       const previous = queryClient.getQueryData<AdminCar[]>(adminCarsQueryKey);
       const rank = new Map(ids.map((id, index) => [id, index]));
       queryClient.setQueryData<AdminCar[]>(adminCarsQueryKey, (list) =>
         list?.map((car) => ({ ...car, featured_rank: rank.get(car.id) ?? null })),
       );
+      await queryClient.cancelQueries({ queryKey: adminCarsQueryKey });
       return { previous };
     },
     onError: (e: Error, _ids, context) => {
@@ -111,7 +113,7 @@ export function VitrinePage() {
               actions={(car) => (
                 <IconButton
                   label={`Retirer ${car.brand} ${car.name} de la vitrine`}
-                  icon={X}
+                  icon={Trash2}
                   variant="danger-soft"
                   onPress={() => vitrine.mutate(showcaseWith(all, [], [car.id]))}
                 />

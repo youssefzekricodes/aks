@@ -44,7 +44,7 @@ import {
   type Session,
 } from "./model";
 import { AvatarDialog } from "./AvatarDialog";
-import { AdminAvatar } from "./ui";
+import { AdminAvatar, BottomSheet, SheetOption, useIsPhone } from "./ui";
 
 const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -106,6 +106,16 @@ const homeDate = new Intl.DateTimeFormat("fr-FR", {
 /** A swipe that starts this close to the left edge (px) and goes this far goes back. */
 const EDGE = 28;
 const SWIPE_BACK = 90;
+/** Pull-to-refresh: distance (px, after resistance) that triggers it, hold position, limit. */
+const PULL_REFRESH = 76;
+const PULL_HOLD = 56;
+const PULL_MAX = 120;
+/** Finger travel before the pull starts, and how long the page must have been still at the top. */
+const PULL_START = 22;
+const PULL_REST_MS = 450;
+/** Touches starting here never pull: drag handles and draggable cards, fields, sheets. */
+const NO_PULL =
+  "[aria-roledescription='sortable'], [data-no-pull], input, textarea, select, [role='dialog']";
 
 /**
  * Computer: sidebar + top bar (unchanged). Phone and the installed "AKS Admin" app:
@@ -156,6 +166,13 @@ export function AdminShell({
   const current = useRef(pathname);
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const phone = useIsPhone();
+  /** Close the account sheet, then run what was chosen (dialogs open after it). */
+  const fromSheet = (action: () => void) => {
+    setAccountOpen(false);
+    window.setTimeout(action, 180);
+  };
   useEffect(() => {
     if (current.current === pathname) return;
     previous.current = current.current;
@@ -185,16 +202,94 @@ export function AdminShell({
     el.style.transform = dx ? `translateX(${dx}px)` : "";
     el.style.boxShadow = dx ? "-12px 0 24px rgb(0 0 0 / 0.12)" : "";
   };
+  // Pull down at the top of a page (phones): the refresh icon follows the finger,
+  // and releasing far enough reloads every piece of data on screen.
+  const indicator = useRef<HTMLDivElement>(null);
+  const pull = useRef<{ x: number; y: number; d: number; active: boolean } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const showPull = (d: number, animate: boolean) => {
+    const el = page.current;
+    const ind = indicator.current;
+    const ease = animate ? "transform 220ms cubic-bezier(0.2, 0, 0, 1)" : "none";
+    if (el) {
+      el.style.transition = ease;
+      el.style.transform = d ? `translateY(${d}px)` : "";
+    }
+    if (ind) {
+      ind.style.transition = animate ? `${ease}, opacity 220ms` : "none";
+      ind.style.transform = `translateY(${d - 48}px)`;
+      ind.style.opacity = String(Math.min(1, d / PULL_REFRESH));
+      const icon = ind.firstElementChild as HTMLElement | null;
+      if (icon) icon.style.transform = `rotate(${d * 3}deg)`;
+    }
+  };
+  async function refresh() {
+    setRefreshing(true);
+    showPull(PULL_HOLD, true);
+    try {
+      await queryClient.refetchQueries({ type: "active" });
+    } finally {
+      setRefreshing(false);
+      showPull(0, true);
+    }
+  }
+  // Last time the page scrolled: a pull only starts once it has rested at the top
+  // (so the end of a fling up, or a scroll back to the top, never refreshes).
+  const lastScroll = useRef(0);
+  useEffect(() => {
+    const onScroll = () => {
+      lastScroll.current = performance.now();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  // The browser's own pull-to-refresh / bounce would compete with this one.
+  useEffect(() => {
+    const root = document.documentElement;
+    const before = root.style.overscrollBehaviorY;
+    root.style.overscrollBehaviorY = "none";
+    return () => {
+      root.style.overscrollBehaviorY = before;
+    };
+  }, []);
+
   const touch = {
     onTouchStart: (event: React.TouchEvent) => {
       const t = event.touches[0];
-      if (!parent || !t || window.innerWidth >= 1024 || t.clientX > EDGE) return;
-      swipe.current = { x: t.clientX, y: t.clientY, dx: 0, active: false };
+      if (!t || window.innerWidth >= 1024) return;
+      if (parent && t.clientX <= EDGE) {
+        swipe.current = { x: t.clientX, y: t.clientY, dx: 0, active: false };
+        return;
+      }
+      const resting = performance.now() - lastScroll.current > PULL_REST_MS;
+      const target = event.target as HTMLElement;
+      if (window.scrollY <= 0 && resting && !refreshing && !target.closest(NO_PULL))
+        pull.current = { x: t.clientX, y: t.clientY, d: 0, active: false };
     },
     onTouchMove: (event: React.TouchEvent) => {
-      const s = swipe.current;
       const t = event.touches[0];
-      if (!s || !t) return;
+      if (!t) return;
+      const p = pull.current;
+      if (p) {
+        const dx = t.clientX - p.x;
+        const dy = t.clientY - p.y;
+        if (!p.active) {
+          // Upwards, sideways or the page moved: not a pull.
+          if (dy < 0 || Math.abs(dx) * 2 > Math.abs(dy) || window.scrollY > 0) {
+            pull.current = null;
+            return;
+          }
+          if (dy > PULL_START) p.active = true;
+        }
+        if (p.active) {
+          // Resistance: the page moves less than the finger, up to a limit.
+          p.d = Math.min(PULL_MAX, Math.max(0, (dy - PULL_START) * 0.45));
+          showPull(p.d, false);
+        }
+        return;
+      }
+      const s = swipe.current;
+      if (!s) return;
       const dx = t.clientX - s.x;
       const dy = t.clientY - s.y;
       if (!s.active) {
@@ -210,6 +305,13 @@ export function AdminShell({
       }
     },
     onTouchEnd: () => {
+      const p = pull.current;
+      pull.current = null;
+      if (p?.active) {
+        if (p.d >= PULL_REFRESH) void refresh();
+        else showPull(0, true);
+        return;
+      }
       const s = swipe.current;
       swipe.current = null;
       if (!s?.active) return;
@@ -238,13 +340,14 @@ export function AdminShell({
 
   const avatarUrl = session.data?.avatarUrl ?? null;
   /** Account button and menu; `large`: the bigger photo of the phone home screen. */
-  const accountMenu = (large = false) => (
-    <Dropdown>
-      <Button
-        variant="ghost"
-        size={large ? "md" : "sm"}
-        className={large ? "h-auto rounded-full p-0.5" : ""}
+  const accountMenu = (large = false) =>
+    phone ? (
+      <button
+        type="button"
+        onClick={() => setAccountOpen(true)}
         aria-label={`Compte ${email}`.trim()}
+        aria-haspopup="dialog"
+        className="rounded-full outline-none active:opacity-80 focus-visible:ring-2 focus-visible:ring-focus"
       >
         <AdminAvatar
           email={email}
@@ -252,58 +355,76 @@ export function AdminShell({
           className={
             large
               ? "size-12 text-lg ring-[3px] ring-surface shadow-[0_4px_12px_-4px_rgb(15_23_42/0.25)]"
-              : "size-7 text-xs"
+              : "size-8 text-xs"
           }
         />
-        <span className="hidden max-w-56 truncate lg:inline">{email || "Compte"}</span>
-        <ChevronDown className="size-4 text-muted max-lg:hidden" aria-hidden />
-      </Button>
-      <Dropdown.Popover placement="bottom end" className="min-w-60">
-        <Dropdown.Menu
-          aria-label="Compte"
-          onAction={(key) => {
-            if (key === "logout") void signOut();
-            if (key === "avatar") setAvatarOpen(true);
-            if (key === "security")
-              void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
-          }}
+      </button>
+    ) : (
+      <Dropdown>
+        <Button
+          variant="ghost"
+          size={large ? "md" : "sm"}
+          className={large ? "h-auto rounded-full p-0.5" : ""}
+          aria-label={`Compte ${email}`.trim()}
         >
-          <Dropdown.Section>
-            <Header>
-              <span className="block text-xs text-muted">Connecté en tant que</span>
-              <span className="block truncate text-sm text-foreground">
-                {email || "Administrateur"}
-              </span>
-              {session.data && (
-                <span className="mt-0.5 block text-xs text-muted">
-                  {ROLE_LABELS[session.data.role]}
+          <AdminAvatar
+            email={email}
+            url={avatarUrl}
+            className={
+              large
+                ? "size-12 text-lg ring-[3px] ring-surface shadow-[0_4px_12px_-4px_rgb(15_23_42/0.25)]"
+                : "size-7 text-xs"
+            }
+          />
+          <span className="hidden max-w-56 truncate lg:inline">{email || "Compte"}</span>
+          <ChevronDown className="size-4 text-muted max-lg:hidden" aria-hidden />
+        </Button>
+        <Dropdown.Popover placement="bottom end" className="min-w-60">
+          <Dropdown.Menu
+            aria-label="Compte"
+            onAction={(key) => {
+              if (key === "logout") void signOut();
+              if (key === "avatar") setAvatarOpen(true);
+              if (key === "security")
+                void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
+            }}
+          >
+            <Dropdown.Section>
+              <Header>
+                <span className="block text-xs text-muted">Connecté en tant que</span>
+                <span className="block truncate text-sm text-foreground">
+                  {email || "Administrateur"}
                 </span>
-              )}
-            </Header>
-            <Dropdown.Item id="avatar" textValue="Ma photo">
-              <ImagePlus className="size-4 shrink-0 text-muted" aria-hidden />
-              <Label>{avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}</Label>
-            </Dropdown.Item>
-            {isSuperAdmin ? (
-              <Dropdown.Item id="security" textValue="Ma sécurité">
-                <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
-                <Label>Ma sécurité</Label>
+                {session.data && (
+                  <span className="mt-0.5 block text-xs text-muted">
+                    {ROLE_LABELS[session.data.role]}
+                  </span>
+                )}
+              </Header>
+              <Dropdown.Item id="avatar" textValue="Ma photo">
+                <ImagePlus className="size-4 shrink-0 text-muted" aria-hidden />
+                <Label>{avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}</Label>
               </Dropdown.Item>
-            ) : null}
-            <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
-              <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
-              <Label>Voir le site</Label>
+              {isSuperAdmin ? (
+                <Dropdown.Item id="security" textValue="Ma sécurité">
+                  <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
+                  <Label>Ma sécurité</Label>
+                </Dropdown.Item>
+              ) : null}
+              <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
+                <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
+                <Label>Voir le site</Label>
+              </Dropdown.Item>
+            </Dropdown.Section>
+            <Separator />
+            <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
+              <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
+              <Label>Déconnexion</Label>
             </Dropdown.Item>
-          </Dropdown.Section>
-          <Separator />
-          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
-            <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
-            <Label>Déconnexion</Label>
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
-  );
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+    );
 
   return (
     <div className="admin-app min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
@@ -381,6 +502,23 @@ export function AdminShell({
             </div>
           </div>
         )}
+        {/* Pull-to-refresh indicator (phones), moved by the touch handlers. */}
+        <div
+          ref={indicator}
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center opacity-0 lg:hidden"
+          style={{
+            top: `calc(env(safe-area-inset-top) + ${parent ? "3.75rem" : "0.75rem"})`,
+            transform: "translateY(-48px)",
+          }}
+        >
+          <span className="grid size-10 place-items-center rounded-full bg-surface text-accent shadow-[0_4px_14px_-4px_rgb(15_23_42/0.25)]">
+            <RefreshCw className={`size-5 ${refreshing ? "animate-spin" : ""}`} />
+          </span>
+        </div>
+        <p role="status" className="sr-only">
+          {refreshing ? "Actualisation des données…" : ""}
+        </p>
         <div ref={page} {...touch} onTouchCancel={touch.onTouchEnd} className="flex-1">
           <main
             id="admin-main"
@@ -401,6 +539,38 @@ export function AdminShell({
           </main>
         </div>
       </div>
+
+      <BottomSheet
+        isOpen={accountOpen}
+        onOpenChange={setAccountOpen}
+        title={email || "Compte"}
+        description={session.data ? ROLE_LABELS[session.data.role] : undefined}
+      >
+        <div className="grid gap-0.5">
+          <SheetOption icon={ImagePlus} onPress={() => fromSheet(() => setAvatarOpen(true))}>
+            {avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}
+          </SheetOption>
+          {isSuperAdmin && (
+            <SheetOption
+              icon={ShieldCheck}
+              onPress={() =>
+                fromSheet(
+                  () => void navigate({ to: "/admin/administrateurs", hash: "ma-securite" }),
+                )
+              }
+            >
+              Ma sécurité
+            </SheetOption>
+          )}
+          <SheetOption icon={ExternalLink} href="/" external onPress={() => setAccountOpen(false)}>
+            Voir le site
+          </SheetOption>
+          <Separator className="my-1.5" />
+          <SheetOption icon={LogOut} danger onPress={() => fromSheet(() => void signOut())}>
+            Déconnexion
+          </SheetOption>
+        </div>
+      </BottomSheet>
 
       <AvatarDialog
         email={email}

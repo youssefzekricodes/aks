@@ -271,10 +271,11 @@ function facetLabel(car: Car, key: FacetKey) {
   }
 }
 
+/** Number of active filters; each chosen brand counts (7 brands = 7 filters). */
 export function activeFilterCount(filters: SearchFilters) {
-  return (Object.keys(filters) as (keyof SearchFilters)[]).filter(
-    (key) => key !== "tri" && key !== "page" && filters[key] !== undefined,
-  ).length;
+  return (Object.keys(filters) as (keyof SearchFilters)[])
+    .filter((key) => key !== "tri" && key !== "page" && filters[key] !== undefined)
+    .reduce((count, key) => count + (key === "marque" ? brandsOf(filters).length : 1), 0);
 }
 
 export function paginate<T>(items: T[], page = 1) {

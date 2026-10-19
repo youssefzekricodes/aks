@@ -13,7 +13,7 @@ import {
   TextField,
 } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowLeft, ExternalLink } from "@/components/icons";
+import { ArrowLeft, ChevronDown, ExternalLink, Plus } from "@/components/icons";
 import {
   CAR_BODIES,
   CAR_COUNTRIES,
@@ -35,8 +35,12 @@ import { autoSlug, plural, toOptions } from "./model";
 import { PhotoManager } from "./PhotoManager";
 import { SocialCard } from "./SocialCard";
 import {
+  BottomSheet,
   IntegerField,
   PageHeader,
+  SheetOption,
+  sheetFieldClass,
+  useIsPhone,
   SectionCard,
   SelectField,
   SwitchField,
@@ -142,31 +146,7 @@ export function CarForm({
 
       <SectionCard title="Identification">
         <div className="grid gap-4 sm:grid-cols-2">
-          <ComboBox
-            allowsCustomValue
-            inputValue={value.brand}
-            onInputChange={(brand) => setIdentity({ brand })}
-            isRequired
-            fullWidth
-          >
-            <Label>Marque</Label>
-            <ComboBox.InputGroup>
-              <Input placeholder="Choisir ou saisir une marque" />
-              <ComboBox.Trigger />
-            </ComboBox.InputGroup>
-            <Description>Une marque absente de la liste peut être saisie librement.</Description>
-            <FieldError />
-            <ComboBox.Popover>
-              <ListBox>
-                {BRANDS.map((brand) => (
-                  <ListBox.Item key={brand.slug} id={brand.slug} textValue={brand.name}>
-                    {brand.name}
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </ComboBox.Popover>
-          </ComboBox>
+          <BrandField value={value.brand} onChange={(brand) => setIdentity({ brand })} />
           <TextField
             value={value.model ?? ""}
             onChange={(model) => setIdentity({ model })}
@@ -275,6 +255,7 @@ export function CarForm({
             minValue={1900}
             maxValue={2100}
             grouping={false}
+            wheel={{ from: 1950, to: new Date().getFullYear() + 1 }}
             isRequired
           />
           <IntegerField
@@ -444,5 +425,100 @@ export function CarForm({
         </p>
       </UnsavedChangesDialog>
     </Form>
+  );
+}
+
+/**
+ * Brand: list with free typing. Computers: combo box. Phones: a sheet with a
+ * search box and the list (any other name can be used as typed).
+ */
+function BrandField({ value, onChange }: { value: string; onChange: (brand: string) => void }) {
+  const phone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  if (!phone)
+    return (
+      <ComboBox allowsCustomValue inputValue={value} onInputChange={onChange} isRequired fullWidth>
+        <Label>Marque</Label>
+        <ComboBox.InputGroup>
+          <Input placeholder="Choisir ou saisir une marque" />
+          <ComboBox.Trigger />
+        </ComboBox.InputGroup>
+        <Description>Une marque absente de la liste peut être saisie librement.</Description>
+        <FieldError />
+        <ComboBox.Popover>
+          <ListBox>
+            {BRANDS.map((brand) => (
+              <ListBox.Item key={brand.slug} id={brand.slug} textValue={brand.name}>
+                {brand.name}
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </ComboBox.Popover>
+      </ComboBox>
+    );
+  const q = query.trim().toLowerCase();
+  const matches = BRANDS.filter((brand) => brand.name.toLowerCase().includes(q));
+  const exact = BRANDS.some((brand) => brand.name.toLowerCase() === q);
+  const choose = (brand: string) => {
+    onChange(brand);
+    setOpen(false);
+    setQuery("");
+  };
+  return (
+    <div className="grid min-w-0 gap-1">
+      <span className="text-sm font-medium text-foreground">
+        Marque<span className="text-danger"> *</span>
+      </span>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        onClick={() => setOpen(true)}
+        className={sheetFieldClass}
+      >
+        <span className={`min-w-0 flex-1 truncate ${value ? "" : "text-muted"}`}>
+          {value || "Choisir une marque"}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+      </button>
+      <span className="text-xs text-muted">
+        Une marque absente de la liste peut être saisie librement.
+      </span>
+      <BottomSheet isOpen={open} onOpenChange={setOpen} title="Marque">
+        <div className="grid gap-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Rechercher ou saisir une marque"
+            aria-label="Rechercher une marque"
+            enterKeyHint="done"
+            className="h-11 w-full rounded-full bg-surface-secondary px-4 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          />
+          <div
+            role="listbox"
+            aria-label="Marques"
+            data-sheet-scroll
+            className="grid max-h-[55dvh] gap-0.5 overflow-y-auto overscroll-contain"
+          >
+            {q && !exact && (
+              <SheetOption icon={Plus} onPress={() => choose(query.trim())}>
+                Utiliser « {query.trim()} »
+              </SheetOption>
+            )}
+            {matches.map((brand) => (
+              <SheetOption
+                key={brand.slug}
+                selected={brand.name.toLowerCase() === value.toLowerCase()}
+                onPress={() => choose(brand.name)}
+              >
+                {brand.name}
+              </SheetOption>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
   );
 }
