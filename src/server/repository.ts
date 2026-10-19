@@ -1,5 +1,5 @@
 import "@tanstack/react-start/server-only";
-import { formatKm, type Car } from "@/lib/cars";
+import { formatKm, slugify, type Car } from "@/lib/cars";
 import type { CarInput, Lead } from "@/features/catalog/types";
 import {
   CONTENT_BY_KEY,
@@ -7,15 +7,17 @@ import {
   validateContentValue,
 } from "@/features/content/definition";
 import { getRequest } from "@tanstack/react-start/server";
-import type { SocialPlatform } from "@/features/catalog/social";
+import { buildSocialCaption, type SocialPlatform } from "@/features/catalog/social";
 import { adminClient, callEdgeFunction, checkOrigin } from "./auth";
 import { env } from "./env";
 import { requestSiteOrigin } from "./origin";
 import { failure, publicClient, type Db } from "./supabase";
+import { parseListing, type ParsedListing } from "@/features/catalog/facebook-listing";
 import {
   deleteObjects,
   keyFromUrl,
   newKey,
+  putObject,
   presignUpload,
   publicUrl,
   UPLOAD_RULES,
@@ -191,6 +193,11 @@ export async function setCarSold(id: string, sold: boolean) {
   const supabase = await adminClient({ write: true });
   const { error } = await supabase.from("cars").update({ sold }).eq("id", id);
   if (error) failure(error, "Mise à jour impossible.");
+  // Best effort: "VENDU" on the vehicle's Facebook post (posts made by the site).
+  if (sold)
+    await callEdgeFunction("social-publish", { action: "mark-sold", carId: id }).catch(
+      (problem: unknown) => console.error(problem),
+    );
   return { ok: true };
 }
 
@@ -397,7 +404,7 @@ async function shareCar(supabase: Db, id: string): Promise<ShareResult | null> {
     return (await callEdgeFunction("social-publish", {
       action: "publish",
       carId: id,
-      caption: car.social_caption?.trim() || `${car.brand} ${car.name} — ${car.year}\n${url}`,
+      caption: car.social_caption?.trim() || buildSocialCaption(car, { url }),
       url,
       images: car.images.filter((src) => src.startsWith("https://")),
       targets: car.social_targets,
@@ -410,6 +417,23 @@ async function shareCar(supabase: Db, id: string): Promise<ShareResult | null> {
       error: error instanceof Error ? error.message : "Publication sur les réseaux impossible.",
     };
   }
+}
+
+/**
+ * "Publier sur Facebook / Instagram" for vehicles already on the site: sets the
+ * networks, then shares each one (a network where it is already posted is skipped).
+ */
+export async function shareCars(ids: string[], targets: SocialPlatform[]) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase.from("cars").update({ social_targets: targets }).in("id", ids);
+  if (error) failure(error, "Mise à jour impossible.");
+  const results = await Promise.all(ids.map((id) => shareCar(supabase, id)));
+  return {
+    started: results.reduce((n, r) => n + (r?.started.length ?? 0), 0),
+    skipped: results.flatMap((r) => r?.skipped ?? []),
+    notOnSale: results.filter((r) => r === null).length,
+    error: results.find((r) => r?.error)?.error ?? null,
+  };
 }
 
 /** Retry: same as publishing again (failed posts are not "already published"). */
@@ -488,6 +512,8 @@ export type SocialStatus = {
   loginConfigId?: string | null;
   facebook: { pageId: string; name: string; picture: string | null } | null;
   instagram: { username: string | null; picture: string | null } | null;
+  /** Last read of the Page's posts (Import Facebook). */
+  lastSyncedAt?: string | null;
   /** The Edge Function could not be reached (not deployed, migration missing…). */
   error?: string;
 };
@@ -762,4 +788,195 @@ export async function saveBrandSettings(settings: BrandSetting[]) {
     );
   if (error) failure(error, "Enregistrement de la marque impossible.");
   return { ok: true };
+}
+
+/* ------------------------------------------------------------------ Facebook → website */
+
+export type InboxStatus = "new" | "imported" | "dismissed";
+export type InboxItem = {
+  postId: string;
+  postedAt: string;
+  message: string;
+  permalink: string | null;
+  photos: string[];
+  status: InboxStatus;
+  carId: string | null;
+  parsed: ParsedListing;
+};
+
+const inboxMissing = (code?: string) => code === "42P01" || code === "PGRST205";
+const INBOX_MIGRATION =
+  "L’import Facebook n’est pas encore installé : exécutez la migration 20261019220000_facebook_inbox.sql dans Supabase.";
+
+/** Page posts read by the last syncs, newest first, with the vehicle read from their text. */
+export async function facebookInbox(): Promise<{ items: InboxItem[]; installed: boolean }> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("facebook_inbox")
+    .select("post_id, posted_at, message, permalink, photos, status, car_id")
+    .order("posted_at", { ascending: false })
+    .limit(300);
+  if (inboxMissing(error?.code)) return { items: [], installed: false };
+  if (error) failure(error, "Chargement des publications impossible.");
+  return {
+    installed: true,
+    items: (data ?? []).map((row) => ({
+      postId: row.post_id as string,
+      postedAt: row.posted_at as string,
+      message: row.message as string,
+      permalink: (row.permalink as string | null) ?? null,
+      photos: (row.photos as string[]) ?? [],
+      status: row.status as InboxStatus,
+      carId: (row.car_id as string | null) ?? null,
+      parsed: parseListing(row.message as string),
+    })),
+  };
+}
+
+/** Reads the Page's recent posts into the inbox (social-publish Edge Function). */
+export async function syncFacebook() {
+  return (await callEdgeFunction("social-publish", { action: "sync" })) as {
+    read: number;
+    lastSyncedAt: string;
+  };
+}
+
+export async function decideFacebookPost(
+  postId: string,
+  status: InboxStatus,
+  carId: string | null = null,
+) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase.rpc("facebook_inbox_decide", {
+    p_post_id: postId,
+    p_status: status,
+    p_car_id: carId,
+  });
+  if (inboxMissing(error?.code) || error?.code === "PGRST202") throw new Error(INBOX_MIGRATION);
+  if (error) failure(error, "Mise à jour impossible.");
+  return { ok: true };
+}
+
+export type FacebookImport = {
+  postId: string;
+  brand: string;
+  model: string;
+  version: string;
+  year: number;
+  km_value: number;
+  fuel: string;
+  gearbox: string;
+  body: string;
+  country: string;
+  fiscal_power: number | null;
+  /** 0 = "Contactez-nous" on the site. */
+  price: number;
+  description: string;
+  /** Chosen photos, in order (from the post's photos). */
+  photos: string[];
+  publish: boolean;
+};
+
+const FALLBACK_FB_HOST = "scontent.xx.fbcdn.net";
+
+/** Downloads a Facebook photo (JPEG/WebP only); regional CDN hosts fall back to the main one. */
+async function fetchFacebookPhoto(url: string) {
+  const get = (target: string | URL) =>
+    fetch(target, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(15_000),
+    });
+  let response: Response;
+  try {
+    response = await get(url);
+  } catch {
+    const fallback = new URL(url);
+    fallback.host = FALLBACK_FB_HOST;
+    response = await get(fallback);
+  }
+  if ([403, 404, 410].includes(response.status))
+    throw new Error("Lien de photo Facebook expiré : relancez la synchronisation puis réessayez.");
+  if (!response.ok) throw new Error(`Photo Facebook indisponible (${response.status}).`);
+  const data = new Uint8Array(await response.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+  const jpeg = data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  const webp =
+    String.fromCharCode(...data.subarray(0, 4)) === "RIFF" &&
+    String.fromCharCode(...data.subarray(8, 12)) === "WEBP";
+  if (!jpeg && !webp) throw new Error("Une photo Facebook n’est ni JPEG ni WebP.");
+  if (data.length > UPLOAD_RULES.vehicle.maxBytes) throw new Error("Photo Facebook trop lourde.");
+  return { data, type: jpeg ? "image/jpeg" : "image/webp" };
+}
+
+/**
+ * Creates a vehicle from a Page post: copies the chosen photos to R2, saves the
+ * vehicle (first in the list), then marks the post imported and records it as the
+ * vehicle's Facebook post (so it is never shared on the Page again).
+ */
+export async function importFacebookPost(input: FacebookImport) {
+  const supabase = await adminClient({ write: true });
+  const { data: row, error } = await supabase
+    .from("facebook_inbox")
+    .select("post_id, photos, status, posted_at")
+    .eq("post_id", input.postId)
+    .maybeSingle();
+  if (inboxMissing(error?.code)) throw new Error(INBOX_MIGRATION);
+  if (error) failure(error, "Publication introuvable.");
+  if (!row) throw new Error("Publication introuvable.");
+  if (row.status !== "new") throw new Error("Cette publication a déjà été traitée.");
+  const allowed = new Set((row.photos as string[]) ?? []);
+  const photos = input.photos.filter((url) => allowed.has(url)).slice(0, 40);
+
+  // Photos first: nothing is saved if one can't be copied.
+  const keys: string[] = new Array(photos.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(6, photos.length) }, async () => {
+      while (next < photos.length) {
+        const index = next++;
+        const photo = await fetchFacebookPhoto(photos[index]!);
+        const key = newKey("vehicle", photo.type);
+        await putObject(key, photo.data, photo.type);
+        keys[index] = key;
+      }
+    }),
+  ).catch(async (problem: unknown) => {
+    await deleteObjects(keys.filter(Boolean));
+    throw problem;
+  });
+
+  const name = [input.model.trim(), input.version.trim()].filter(Boolean).join(" ") || input.model;
+  const slugBase = [input.brand, name, input.year].join(" ");
+  const car = {
+    slug: `${slugify(slugBase)}-${input.postId.split("_").at(-1)!.slice(-12, -6) || "fb"}`,
+    name,
+    brand: input.brand.trim(),
+    model: input.model.trim(),
+    version: input.version.trim(),
+    country: input.country,
+    year: input.year,
+    price: input.price,
+    price_on_request: input.price <= 0,
+    km_value: input.km_value,
+    fuel: input.fuel,
+    gearbox: input.gearbox,
+    body: input.body,
+    state: "Occasion",
+    transmission: "",
+    doors: null,
+    seats: null,
+    fiscal_power: input.fiscal_power,
+    description: input.description,
+    published: input.publish,
+    sold: false,
+    discount_price: null,
+  };
+  const { data: saved, error: saveError } = await supabase
+    .rpc("save_car", { p_car: car, p_image_keys: keys })
+    .single<{ car_id: string }>();
+  if (saveError) {
+    await deleteObjects(keys);
+    failure(saveError, "Enregistrement du véhicule impossible.");
+  }
+  await decideFacebookPost(input.postId, "imported", saved.car_id);
+  return { carId: saved.car_id, photos: keys.length };
 }

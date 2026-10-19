@@ -108,6 +108,17 @@ export const completeCars = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => (await repository()).completeCars(data.updates));
+export const shareCars = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      ids: z.array(idSchema).min(1).max(100),
+      targets: z
+        .array(z.enum(["facebook", "instagram"]))
+        .min(1)
+        .max(2),
+    }),
+  )
+  .handler(async ({ data }) => (await repository()).shareCars(data.ids, data.targets));
 export const setVitrine = createServerFn({ method: "POST" })
   .validator(z.object({ ids: z.array(idSchema).max(100) }))
   .handler(async ({ data }) => (await repository()).setVitrine(data.ids));
@@ -180,3 +191,44 @@ const submitLead = createServerFn({ method: "POST" })
   .validator(leadSchema)
   .handler(async ({ data }) => (await repository()).createLead(data));
 export const createLead = (data: z.input<typeof leadSchema>) => submitLead({ data });
+
+/* Facebook → website (import inbox). */
+const postIdSchema = z.string().regex(/^[0-9_]{5,80}$/);
+export const listFacebookInbox = createServerFn({ method: "GET" }).handler(async () =>
+  (await repository()).facebookInbox(),
+);
+export const syncFacebook = createServerFn({ method: "POST" }).handler(async () =>
+  (await repository()).syncFacebook(),
+);
+export const decideFacebookPost = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      postId: postIdSchema,
+      status: z.enum(["new", "imported", "dismissed"]),
+      carId: idSchema.nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) =>
+    (await repository()).decideFacebookPost(data.postId, data.status, data.carId ?? null),
+  );
+export const importFacebookPost = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      postId: postIdSchema,
+      brand: z.string().trim().min(1).max(200),
+      model: z.string().trim().min(1).max(200),
+      version: z.string().trim().max(200),
+      year: z.number().int().min(1950).max(2100),
+      km_value: z.number().int().min(0).max(1e8),
+      fuel: z.string().trim().min(1).max(200),
+      gearbox: z.string().trim().min(1).max(200),
+      body: z.string().trim().min(1).max(200),
+      country: z.string().trim().min(1).max(200),
+      fiscal_power: z.number().int().min(0).max(100).nullable(),
+      price: z.number().int().min(0).max(1e9),
+      description: z.string().max(20000),
+      photos: z.array(z.string().url().max(2000)).max(40),
+      publish: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => (await repository()).importFacebookPost(data));

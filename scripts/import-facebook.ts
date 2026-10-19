@@ -66,11 +66,15 @@ const { values: args } = parseArgs({
     /** Print the mapped vehicles and stop (no network, nothing written). */
     preview: { type: "boolean", default: false },
     report: { type: "string", default: "import-facebook-report.json" },
+    /** Only these listings (comma-separated listing ids). */
+    only: { type: "string" },
+    /** Put the new vehicles on the site at once (default: drafts). */
+    publish: { type: "boolean", default: false },
   },
 });
 
 const doc = JSON.parse(readFileSync(args.listings!, "utf8")) as {
-  source: { apify_dataset_id: string };
+  source: { apify_dataset_id?: string; apify_dataset_ids?: string[] };
   listings: Listing[];
 };
 
@@ -105,6 +109,7 @@ const BODIES: [RegExp, string][] = [
   [/^(partner|combo|caddy|berlingo|express)/i, "Utilitaire"],
   [/^(rio|picanto|500|up|polo|qq)/i, "Citadine"],
   [/^(golf|a3|m[ée]gane|classe a)/i, "Compacte"],
+  [/^(2008|3008|5008)/i, "SUV"],
   [/^4\d\di/i, "Coupé"],
   [/^(c \d|e \d|[35]\d\di|a4|elantra|passat)/i, "Berline"],
   [/^(sportage|seltos|tucson|zs|gla|gle|tiggo|h6|rav4|juke|tivoli|tiguan|ateca|jimny)/i, "SUV"],
@@ -153,7 +158,7 @@ function toCar(l: Listing) {
     state: "Occasion",
     fiscal_power: l.fiscal_hp,
     description: description(l),
-    published: false,
+    published: args.publish === true,
     sold: false,
     social_caption: "",
     social_targets: [],
@@ -172,26 +177,32 @@ async function loadPosts(): Promise<Map<string, Post>> {
       throw new Error(
         "Set APIFY_TOKEN in .env, or export the Apify dataset as JSON and pass --dataset-file.",
       );
-    const id = args["dataset-id"] ?? doc.source.apify_dataset_id;
+    const ids = args["dataset-id"]
+      ? args["dataset-id"].split(",")
+      : (doc.source.apify_dataset_ids ?? [doc.source.apify_dataset_id!]);
     items = [];
-    for (let offset = 0; ; offset += 100) {
-      const url = new URL(`https://api.apify.com/v2/datasets/${id}/items`);
-      for (const [k, v] of Object.entries({
-        format: "json",
-        clean: "1",
-        fields: "postId,media",
-        offset: String(offset),
-        limit: "100",
-      }))
-        url.searchParams.set(k, v);
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (response.status === 404)
-        throw new Error(`Apify dataset ${id} no longer exists: re-run the scraper (--dataset-id).`);
-      if (!response.ok) throw new Error(`Apify: HTTP ${response.status} ${await response.text()}`);
-      const page = (await response.json()) as Post[];
-      items.push(...page);
-      if (page.length < 100) break;
-    }
+    for (const id of ids)
+      for (let offset = 0; ; offset += 100) {
+        const url = new URL(`https://api.apify.com/v2/datasets/${id}/items`);
+        for (const [k, v] of Object.entries({
+          format: "json",
+          clean: "1",
+          fields: "postId,media",
+          offset: String(offset),
+          limit: "100",
+        }))
+          url.searchParams.set(k, v);
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (response.status === 404)
+          throw new Error(
+            `Apify dataset ${id} no longer exists: re-run the scraper (--dataset-id).`,
+          );
+        if (!response.ok)
+          throw new Error(`Apify: HTTP ${response.status} ${await response.text()}`);
+        const page = (await response.json()) as Post[];
+        items.push(...page);
+        if (page.length < 100) break;
+      }
   }
   return new Map(items.filter((i) => i.postId).map((i) => [String(i.postId), i]));
 }
@@ -310,7 +321,10 @@ const { data: last } = await supabase
 let order = (last?.[0]?.sort_order ?? 0) + 1;
 
 // Newest posts first in the list.
-const listings = [...doc.listings].sort((a, b) => b.last_posted_on.localeCompare(a.last_posted_on));
+const only = args.only?.split(",");
+const listings = [...doc.listings]
+  .filter((l) => !only || only.includes(l.listing_id))
+  .sort((a, b) => b.last_posted_on.localeCompare(a.last_posted_on));
 const results: Result[] = [];
 
 for (const l of listings) {

@@ -25,6 +25,10 @@ const { values: args } = parseArgs({
     manifest: { type: "string", default: "scripts/data/gallery-manifest.json" },
     "dry-run": { type: "boolean", default: false },
     "link-only": { type: "boolean", default: false },
+    /** Only these listings (comma-separated listing ids). */
+    only: { type: "string" },
+    /** Photo batches no post claims, placed by hand: {"<any photo id of the batch>": "<listing id>"}. */
+    assignments: { type: "string", default: "scripts/data/photo-assignments.json" },
   },
 });
 
@@ -50,7 +54,12 @@ type Post = { postId?: string; media?: Media[] };
 type PagePhoto = { id?: string; url?: string; image?: string };
 
 const doc = JSON.parse(readFileSync(args.listings!, "utf8")) as {
-  source: { apify_dataset_id: string; apify_photos_dataset_id?: string };
+  source: {
+    apify_dataset_id?: string;
+    apify_dataset_ids?: string[];
+    apify_photos_dataset_id?: string;
+    apify_photos_dataset_ids?: string[];
+  };
   listings: Listing[];
 };
 const manifest: Record<string, string[]> = existsSync(args.manifest!)
@@ -148,7 +157,11 @@ const feedUrls = (post: Post | undefined) =>
     .filter((url): url is string => Boolean(url));
 
 /** {postId: photo URLs in the post's order} for posts whose batch checks out. */
-function buildIndex(posts: Map<string, Post>, pagePhotos: PagePhoto[]) {
+function buildIndex(
+  posts: Map<string, Post>,
+  pagePhotos: PagePhoto[],
+  assigned_by_hand: Map<bigint, string> = new Map(),
+) {
   const stream = new Map<bigint, string>();
   for (const photo of pagePhotos) {
     const id = fbidOf(photo);
@@ -170,6 +183,15 @@ function buildIndex(posts: Map<string, Post>, pagePhotos: PagePhoto[]) {
     (b) => new Set(b.flatMap((id) => (ownerOf.has(id) ? [ownerOf.get(id)!] : []))),
   );
   const resolved = claims.map((c) => (c.size === 1 ? [...c][0]! : null));
+  // Batches placed by hand (checked by looking at the photos).
+  batches.forEach((b, i) => {
+    if (claims[i]!.size) return;
+    const owner = b.map((id) => assigned_by_hand.get(id)).find(Boolean);
+    if (owner) {
+      claims[i] = new Set([owner]);
+      resolved[i] = owner;
+    }
+  });
   claims.forEach((c, i) => {
     if (c.size) return;
     const near = new Set<string>();
@@ -272,21 +294,34 @@ async function pool<T>(tasks: (() => Promise<T>)[], size = 6) {
 
 const supabase = serviceClient();
 const storage = r2();
-const scope = doc.listings.filter((l) => l.in_migration_scope);
+const only = args.only?.split(",");
+const scope = doc.listings.filter(
+  (l) => l.in_migration_scope && (!only || only.includes(l.listing_id)),
+);
 console.log(
   `${scope.length} véhicules dans le périmètre (${doc.listings.length - scope.length} anciens ignorés).`,
 );
 
 if (!args["link-only"]) {
-  const photosId = doc.source.apify_photos_dataset_id;
-  if (!photosId) throw new Error("Pas de dataset photos dans le fichier des annonces.");
-  const posts = new Map(
-    (await items<Post>(doc.source.apify_dataset_id, "postId,media"))
-      .filter((p) => p.postId)
-      .map((p) => [String(p.postId), p]),
+  const postIds = doc.source.apify_dataset_ids ?? [doc.source.apify_dataset_id!];
+  const photoIds = doc.source.apify_photos_dataset_ids ?? [doc.source.apify_photos_dataset_id!];
+  if (!photoIds[0]) throw new Error("Pas de dataset photos dans le fichier des annonces.");
+  const posts = new Map<string, Post>();
+  for (const id of postIds)
+    for (const p of await items<Post>(id, "postId,media"))
+      if (p.postId) posts.set(String(p.postId), p);
+  const pagePhotos: PagePhoto[] = [];
+  for (const id of photoIds) pagePhotos.push(...(await items<PagePhoto>(id, "id,url,image")));
+  const byHand = new Map<bigint, string>(
+    existsSync(args.assignments!)
+      ? Object.entries(
+          JSON.parse(readFileSync(args.assignments!, "utf8")) as Record<string, string>,
+        )
+          .filter(([key]) => /^\d+$/.test(key))
+          .map(([key, listing]) => [BigInt(key), listing])
+      : [],
   );
-  const pagePhotos = await items<PagePhoto>(photosId, "id,url,image");
-  const { index, checks } = buildIndex(posts, pagePhotos);
+  const { index, checks } = buildIndex(posts, pagePhotos, byHand);
   console.log(`${posts.size} posts, ${pagePhotos.length} photos de la page.`);
 
   let total = 0;

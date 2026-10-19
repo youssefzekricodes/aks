@@ -65,7 +65,78 @@ const db: SocialDb = {
       igUserId: data.ig_user_id,
       igUsername: data.ig_username,
       igPicture: data.ig_picture,
+      lastSyncedAt: data.last_synced_at ?? null,
     };
+  },
+  async knownPosts() {
+    const [inbox, posts] = await Promise.all([
+      admin.from("facebook_inbox").select("post_id"),
+      admin.from("social_posts").select("external_id").eq("platform", "facebook"),
+    ]);
+    if (inbox.error)
+      throw new Error(
+        "Table facebook_inbox absente : exécutez la migration 20261019220000_facebook_inbox.sql.",
+      );
+    const ids = [
+      ...(inbox.data ?? []).map((r) => r.post_id as string),
+      ...(posts.data ?? []).map((r) => r.external_id as string | null),
+    ].filter((id): id is string => Boolean(id));
+    return new Set(ids.map((id) => id.split("_").at(-1)!));
+  },
+  async saveInbox(found) {
+    if (!found.length) return;
+    const { data: existing } = await admin
+      .from("facebook_inbox")
+      .select("post_id, status")
+      .in(
+        "post_id",
+        found.map((p) => p.postId),
+      );
+    const status = new Map((existing ?? []).map((r) => [r.post_id as string, r.status as string]));
+    const { data: linked } = await admin
+      .from("social_posts")
+      .select("external_id")
+      .eq("platform", "facebook");
+    const onSite = new Set(
+      (linked ?? []).map((r) =>
+        String(r.external_id ?? "")
+          .split("_")
+          .at(-1),
+      ),
+    );
+    const rows = found
+      // Already a vehicle on the site, or decided: leave as is.
+      .filter(
+        (p) => !onSite.has(p.postId.split("_").at(-1)) && (status.get(p.postId) ?? "new") === "new",
+      )
+      .map((p) => ({
+        post_id: p.postId,
+        posted_at: p.postedAt,
+        message: p.message,
+        permalink: p.permalink,
+        photos: p.photos,
+        fetched_at: new Date().toISOString(),
+      }));
+    if (!rows.length) return;
+    const { error } = await admin.from("facebook_inbox").upsert(rows, { onConflict: "post_id" });
+    if (error) throw error;
+  },
+  async publishedPost(carId, platform) {
+    const { data } = await admin
+      .from("social_posts")
+      .select("external_id")
+      .eq("car_id", carId)
+      .eq("platform", platform)
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (data?.external_id as string | null | undefined) ?? null;
+  },
+  async markSynced() {
+    const at = new Date().toISOString();
+    await admin.from("social_connection").update({ last_synced_at: at }).eq("id", true);
+    return at;
   },
   async saveConnection(c, userId) {
     const { error } = await admin.from("social_connection").upsert({

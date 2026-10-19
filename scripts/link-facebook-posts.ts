@@ -10,6 +10,8 @@ const { values: args } = parseArgs({
   options: {
     listings: { type: "string", default: "scripts/data/facebook-listings.json" },
     "dry-run": { type: "boolean", default: false },
+    /** Only these listings (comma-separated listing ids). */
+    only: { type: "string" },
   },
 });
 
@@ -23,7 +25,7 @@ type Listing = {
   source_post_ids: string[];
 };
 const doc = JSON.parse(readFileSync(args.listings!, "utf8")) as {
-  source: { apify_dataset_id: string };
+  source: { apify_dataset_id?: string; apify_dataset_ids?: string[] };
   listings: Listing[];
 };
 
@@ -43,21 +45,23 @@ const slugOf = (l: Listing) => {
 
 const token = process.env["APIFY_TOKEN"];
 if (!token) throw new Error("APIFY_TOKEN manquant dans .env.");
-const response = await fetch(
-  `https://api.apify.com/v2/datasets/${doc.source.apify_dataset_id}/items?format=json&clean=1&fields=postId,url,topLevelUrl,facebookUrl&limit=1000`,
-  { headers: { Authorization: `Bearer ${token}` } },
-);
-if (!response.ok) throw new Error(`Apify : HTTP ${response.status}`);
-const posts = new Map(
-  ((await response.json()) as { postId?: string; url?: string; topLevelUrl?: string }[])
-    .filter((p) => p.postId)
-    .map((p) => [String(p.postId), p]),
-);
+type ScrapedPost = { postId?: string; url?: string; topLevelUrl?: string };
+const posts = new Map<string, ScrapedPost>();
+for (const id of doc.source.apify_dataset_ids ?? [doc.source.apify_dataset_id!]) {
+  const response = await fetch(
+    `https://api.apify.com/v2/datasets/${id}/items?format=json&clean=1&fields=postId,url,topLevelUrl,facebookUrl&limit=1000`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) throw new Error(`Apify : HTTP ${response.status}`);
+  for (const p of (await response.json()) as ScrapedPost[])
+    if (p.postId) posts.set(String(p.postId), p);
+}
 
 const supabase = serviceClient();
 let linked = 0;
 const skipped: string[] = [];
-for (const l of doc.listings) {
+const only = args.only?.split(",");
+for (const l of doc.listings.filter((l) => !only || only.includes(l.listing_id))) {
   const { data: car } = await supabase
     .from("cars")
     .select("id")

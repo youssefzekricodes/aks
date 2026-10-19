@@ -15,6 +15,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Share2,
   Store,
   Tag,
   Trash2,
@@ -25,6 +26,7 @@ import {
   deleteCar,
   reorderCars,
   setCarDiscount,
+  shareCars,
   setCarPublished,
   setCarSold,
   type CarInput,
@@ -32,6 +34,7 @@ import {
 import type { BulkAction, FacebookSync } from "@/server/repository";
 import { CompleteDetailsDialog } from "./CompleteDetailsDialog";
 import { announceShare } from "./SocialCard";
+import { ShareDialog } from "./ShareDialog";
 import { onSale, showcaseWith, useVitrine } from "./VitrinePage";
 import { BulkDiscountDialog, DiscountDialog } from "./DiscountDialog";
 import { useDialogTarget } from "./hooks";
@@ -127,6 +130,8 @@ export function CarsTab() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [bulkDialog, setBulkDialog] = useState<"discount" | "delete" | null>(null);
   const [completing, setCompleting] = useState(false);
+  /** Vehicles to share on Facebook / Instagram (row or bulk action). */
+  const [sharing, setSharing] = useState<string[] | null>(null);
   const [page, setPage] = useState(1);
   const vitrine = useVitrine();
   const facebook = useQuery(facebookSyncQuery);
@@ -464,6 +469,15 @@ export function CarsTab() {
                   Ajouter à la vitrine
                 </BulkButton>
               )}
+              {selectedCars.some(onSale) && (
+                <BulkButton
+                  icon={Share2}
+                  isDisabled={bulk.isPending}
+                  onPress={() => setSharing(selectedCars.filter(onSale).map((car) => car.id))}
+                >
+                  Facebook / Instagram
+                </BulkButton>
+              )}
               {selectedCars.some((car) => !car.sold) && (
                 <BulkButton
                   icon={BadgeCheck}
@@ -595,6 +609,7 @@ export function CarsTab() {
                       }
                       onToggleSold={() => sell.mutate({ id: car.id, sold: !car.sold })}
                       onDiscount={() => discount.open(car)}
+                      onShare={() => setSharing([car.id])}
                       onToggleShowcase={() =>
                         vitrine.mutate(
                           car.featured_rank != null
@@ -670,6 +685,28 @@ export function CarsTab() {
         </p>
       </ConfirmDialog>
 
+      <ShareDialog
+        count={sharing?.length ?? 0}
+        isOpen={sharing !== null}
+        onOpenChange={(open) => !open && setSharing(null)}
+        onShare={async (targets) => {
+          try {
+            const result = await shareCars({ data: { ids: sharing ?? [], targets } });
+            if (result.error) toast.danger(result.error);
+            else if (result.started)
+              toast.success(
+                `${plural(result.started, "publication lancée", "publications lancées")} : elles apparaissent dans la colonne Facebook dans quelques secondes.`,
+              );
+            else toast.info("Rien à publier : ces véhicules sont déjà sur les réseaux choisis.");
+            setSelected(new Set());
+            await queryClient.invalidateQueries({ queryKey: ["admin-facebook-sync"] });
+          } catch (e) {
+            toast.danger(e instanceof Error ? e.message : "Publication impossible.");
+            throw e;
+          }
+        }}
+      />
+
       <DiscountDialog
         car={discount.target}
         isOpen={discount.isOpen}
@@ -714,6 +751,7 @@ function CarRow({
   onToggleSold,
   onDiscount,
   onToggleShowcase,
+  onShare,
   onDelete,
   facebook,
   facebookLoading,
@@ -729,6 +767,7 @@ function CarRow({
   onToggleSold: () => void;
   onDiscount: () => void;
   onToggleShowcase: () => void;
+  onShare: () => void;
   onDelete: () => void;
   facebook: FacebookSync | undefined;
   facebookLoading: boolean;
@@ -881,6 +920,12 @@ function CarRow({
                 label: inShowcase ? "Retirer de la vitrine" : "Ajouter à la vitrine",
                 icon: Store,
                 onAction: onToggleShowcase,
+              },
+              onSale(car) && {
+                id: "share",
+                label: "Publier sur Facebook / Instagram",
+                icon: Share2,
+                onAction: onShare,
               },
               {
                 id: "sold",

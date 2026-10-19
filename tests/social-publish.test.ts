@@ -3,10 +3,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   handle,
+  postPhotos,
   postToFacebook,
   postToInstagram,
   type Connection,
   type Graph,
+  type InboxPost,
   type Platform,
   type SocialDb,
 } from "../supabase/functions/social-publish/handler.ts";
@@ -38,10 +40,13 @@ function fakeDb(
 ) {
   const claimed = new Set<Platform>();
   const finished: unknown[] = [];
-  const store: { connection: Connection | null; pending: Map<string, string> } = {
-    connection: null,
-    pending: new Map(),
-  };
+  const store: {
+    connection: Connection | null;
+    pending: Map<string, string>;
+    known: string[];
+    inbox: InboxPost[];
+    posts: Map<string, string>;
+  } = { connection: null, pending: new Map(), known: [], inbox: [], posts: new Map() };
   const db: SocialDb = {
     adminUser: async (token) => (token === "admin" ? "user-1" : null),
     connection: async () => store.connection,
@@ -60,6 +65,10 @@ function fakeDb(
       return `row-${platform}`;
     },
     finish: async (row, result) => void finished.push({ row, ...result }),
+    knownPosts: async () => new Set(store.known),
+    saveInbox: async (posts) => void store.inbox.push(...posts),
+    markSynced: async () => "2026-10-19T12:00:00.000Z",
+    publishedPost: async (car, platform) => store.posts.get(`${car}:${platform}`) ?? null,
   };
   return { db, claimed, finished, store };
 }
@@ -197,6 +206,7 @@ test("connector: Facebook login lists the Pages, choosing one stores its token",
     appId: "app",
     loginConfigId: null,
     facebook: { pageId: "123", name: "Auto Kontor Sfax", picture: null },
+    lastSyncedAt: null,
     instagram: { username: "auto_kontor.sfax", picture: null },
   });
   assert.ok(!JSON.stringify(status.body).includes("page-token"));
@@ -221,4 +231,101 @@ test("status with manual secrets (no admin connection)", async () => {
   assert.equal((result.body as { app: boolean }).app, false);
   assert.equal((result.body as { instagram: unknown }).instagram, null);
   assert.ok((result.body as { facebook: unknown }).facebook);
+});
+
+test("sync: reads the Page posts (all pages) with their photos, newest first", async () => {
+  const { db, store } = fakeDb();
+  store.connection = {
+    pageId: "123",
+    pageName: "AKS",
+    pagePicture: null,
+    pageToken: "page-token",
+    igUserId: null,
+    igUsername: null,
+    igPicture: null,
+  };
+  const calls: Record<string, unknown>[] = [];
+  const graph: Graph = async (path, params) => {
+    calls.push({ path, ...params });
+    if (!params["after"])
+      return {
+        data: [
+          {
+            id: "123_2",
+            message: "🚘PEUGEOT 3008🚘",
+            created_time: "2026-10-19T10:00:00+0000",
+            permalink_url: "https://www.facebook.com/123/posts/2",
+            attachments: {
+              data: [
+                {
+                  subattachments: {
+                    data: [
+                      { media: { image: { src: "https://scontent.xx.fbcdn.net/a.jpg" } } },
+                      { media: { image: { src: "https://scontent.xx.fbcdn.net/b.jpg" } } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        paging: { cursors: { after: "next-page" }, next: "https://graph.facebook.com/next" },
+      };
+    return {
+      data: [{ id: "123_1", message: "Bonne fête", created_time: "2026-10-15T10:00:00+0000" }],
+      paging: {},
+    };
+  };
+  const deps = { db, graph, config: {}, app: {}, background: () => {} };
+  const result = await handle("admin", { action: "sync" }, deps);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { read: 2, lastSyncedAt: "2026-10-19T12:00:00.000Z" });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]!["access_token"], "page-token");
+  assert.deepEqual(
+    store.inbox.map((p) => [p.postId, p.photos.length]),
+    [
+      ["123_2", 2],
+      ["123_1", 0],
+    ],
+  );
+});
+
+test("sync: needs a connected Page and an admin", async () => {
+  const { db } = fakeDb();
+  const deps = { db, graph: fakeGraph().graph, config: {}, app: {}, background: () => {} };
+  assert.equal((await handle("admin", { action: "sync" }, deps)).status, 409);
+  assert.equal((await handle("visitor", { action: "sync" }, deps)).status, 403);
+});
+
+test("postPhotos: single photo, album and video cover, without duplicates", () => {
+  const src = (n: string) => ({ media: { image: { src: `https://x.fbcdn.net/${n}.jpg` } } });
+  assert.deepEqual(postPhotos({ attachments: { data: [src("one")] } }).length, 1);
+  assert.deepEqual(
+    postPhotos({
+      attachments: { data: [{ subattachments: { data: [src("a"), src("b"), src("a")] } }] },
+    }).map((u) => u.slice(-5)),
+    ["a.jpg", "b.jpg"],
+  );
+  assert.deepEqual(postPhotos({}), []);
+});
+
+test("mark-sold: adds VENDU once to the vehicle's Facebook post", async () => {
+  const { db, store } = fakeDb();
+  store.posts.set(`${CAR}:facebook`, "123_9");
+  let message = "BMW X5 2021";
+  const graph: Graph = async (_path, params, method = "POST") => {
+    if (method === "GET") return { message };
+    message = String(params["message"]);
+    return { success: true };
+  };
+  const deps = { db, graph, config, app: {}, background: () => {} };
+  const first = await handle("admin", { action: "mark-sold", carId: CAR }, deps);
+  assert.deepEqual(first.body, { updated: true });
+  assert.equal(message, "✅ VENDU\n\nBMW X5 2021");
+  const again = await handle("admin", { action: "mark-sold", carId: CAR }, deps);
+  assert.deepEqual(again.body, { updated: false });
+  store.posts.clear();
+  const none = await handle("admin", { action: "mark-sold", carId: CAR }, deps);
+  assert.deepEqual(none.body, { updated: false });
 });

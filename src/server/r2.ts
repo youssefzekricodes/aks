@@ -82,6 +82,19 @@ export async function presignUpload(key: string, contentType: string, size: numb
   return signed.url;
 }
 
+/** Server-side upload (photos copied from Facebook), checked like a browser upload. */
+export async function putObject(key: string, body: Uint8Array<ArrayBuffer>, contentType: string) {
+  const response = await r2().fetch(objectUrl(key), {
+    method: "PUT",
+    body,
+    headers: {
+      "content-type": contentType,
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
+  if (!response.ok) throw new Error(`Envoi de la photo impossible (R2 ${response.status}).`);
+}
+
 /** HEAD an uploaded object: confirms it exists and matches the allowed type/size. */
 export async function verifyObject(key: string, kind: UploadKind) {
   const response = await r2().fetch(objectUrl(key), { method: "HEAD" });
