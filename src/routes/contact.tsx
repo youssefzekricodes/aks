@@ -1,16 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { buttonVariants } from "@heroui/styles";
-import { Clock, Mail, MapPin, MessageCircle, Phone, X } from "@/components/icons";
+import { X } from "@/components/icons";
 import { resolveContent } from "@/features/content/definition";
 import { publicCarQuery, publicConfigQuery, siteContentQuery } from "@/lib/queries";
-import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
-import { telHref, whatsappHref } from "@/features/content/definition";
+import { useSiteText } from "@/lib/site-content";
 import { carImage, carTitle, formatKm, formatPrice, salePrice, type Car } from "@/lib/cars";
 import { seo } from "@/lib/seo";
 import { dealerJsonLd } from "@/features/seo/structured";
 import { Navbar } from "@/components/aks/Navbar";
-import { SiteFooter, SocialLinks } from "@/components/aks/SiteFooter";
+import { SiteFooter } from "@/components/aks/SiteFooter";
 import { ContactForm } from "@/components/aks/ContactForm";
 
 const searchSchema = z.object({
@@ -72,41 +71,13 @@ function prefill(car: Car | null, objet: "essai" | "offre" | "prix" | undefined)
 /** One screen: details on the left, form on the right (stacked on small screens). */
 function ContactPage() {
   const text = useSiteText();
-  const hours = useSiteCollection("showroom.items");
   const { car } = Route.useLoaderData();
   const { objet } = Route.useSearch();
-  const { phones } = usePhones();
-  const email = text("identity.email", "contact@autokontorsfax.tn");
-
-  const details = [
-    ...phones.map((phone) => ({
-      Icon: Phone,
-      label: phone.label ? `${phone.number} · ${phone.label}` : phone.number,
-      href: telHref(phone.number),
-      external: false,
-    })),
-    ...phones
-      .filter((phone) => phone.whatsapp)
-      .map((phone) => ({
-        Icon: MessageCircle,
-        label:
-          phones.filter((p) => p.whatsapp).length > 1 ? `WhatsApp · ${phone.number}` : "WhatsApp",
-        href: whatsappHref(phone.number),
-        external: true,
-      })),
-    ...(email ? [{ Icon: Mail, label: email, href: `mailto:${email}`, external: false }] : []),
-    {
-      Icon: MapPin,
-      label: text("showroom.text_3", "Route Sidi Mansour, km 5, Sfax 3000, Tunisie"),
-      href: text("showroom.link_1", "https://maps.google.com/?cid=1401009504837379981"),
-      external: true,
-    },
-  ];
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="container-page grid flex-1 content-center gap-8 py-8 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center lg:gap-14">
+      <main className="container-page grid flex-1 content-center gap-8 py-8 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-14 lg:py-12">
         <section>
           <p className="text-sm font-medium text-accent">{text("contact.text_1", "Contact")}</p>
           <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
@@ -119,41 +90,53 @@ function ContactPage() {
             )}
           </p>
 
-          <ul className="mt-6 grid gap-3 text-sm">
-            {details.map(({ Icon, label, href, external }) => (
-              <li key={label}>
-                <a
-                  href={href}
-                  {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  className="group flex items-start gap-3"
-                >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-surface text-accent shadow-sm">
-                    <Icon className="size-4" aria-hidden />
-                  </span>
-                  <span className="min-w-0 self-center break-words group-hover:underline">
-                    {label}
-                  </span>
-                </a>
+          {/* Larger screens only (phones go straight to the form): how a request goes. */}
+          <ol className="mt-8 hidden gap-5 lg:grid">
+            {[
+              [
+                text("contact.step_1_title", "Envoyez votre demande"),
+                text(
+                  "contact.step_1_text",
+                  "Un véhicule, une reprise, un financement : quelques mots suffisent.",
+                ),
+              ],
+              [
+                text("contact.step_2_title", "On vous rappelle"),
+                text(
+                  "contact.step_2_text",
+                  "Un conseiller vous répond rapidement, par téléphone ou WhatsApp.",
+                ),
+              ],
+              [
+                text("contact.step_3_title", "Rendez-vous au showroom"),
+                text(
+                  "contact.step_3_text",
+                  "Essai, estimation de votre véhicule et dossier, au même endroit.",
+                ),
+              ],
+            ].map(([title, body], index) => (
+              <li key={index} className="flex gap-4">
+                <span className="tabular grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="font-medium text-foreground">{title}</p>
+                  <p className="mt-0.5 text-sm text-muted">{body}</p>
+                </div>
               </li>
             ))}
-            {hours.length > 0 && (
-              <li className="flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-surface text-accent shadow-sm">
-                  <Clock className="size-4" aria-hidden />
-                </span>
-                <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 self-center">
-                  {hours.map(({ day, time }, index) => (
-                    <div key={index} className="contents">
-                      <dt className="text-muted">{day}</dt>
-                      <dd className="tabular">{time}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </li>
-            )}
-          </ul>
-
-          <SocialLinks className="mt-6" />
+          </ol>
+          <figure className="relative mt-8 hidden overflow-hidden rounded-2xl lg:block">
+            <img
+              src={text("hero.image_1", "/images/aks-storefront.jpg")}
+              alt={text("contact.photo_alt", "Showroom Auto Kontor Sfax")}
+              loading="lazy"
+              className="aspect-[16/9] w-full object-cover"
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-5 pb-4 pt-10 text-sm font-medium text-white">
+              {text("contact.photo_caption", "Le showroom Auto Kontor Sfax")}
+            </figcaption>
+          </figure>
         </section>
 
         <section className="rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-7">
