@@ -30,6 +30,7 @@ export {
   ArrowUpToLine,
   ArrowUpRight,
   ArrowUpArrowDown as ArrowUpDown,
+  ArrowRightArrowLeft as ArrowLeftRight,
   ArrowUpRightFromSquare as ExternalLink,
   ArrowUturnCcwLeft as CornerDownLeft,
   ArrowRotateLeft as RotateCcw,

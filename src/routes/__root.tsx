@@ -1,5 +1,6 @@
 import { gtagSnippet } from "@/lib/analytics";
 import { WhatsAppButton } from "@/components/aks/WhatsAppButton";
+import { AdminBar } from "@/components/aks/AdminBar";
 import { hideSplash, SPLASH_HTML, SPLASH_ID } from "@/lib/splash";
 import {
   brandLogosQuery,
@@ -177,6 +178,10 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const onAdminPage = useRouterState({
+    select: (state) =>
+      state.location.pathname.startsWith("/admin") || state.location.pathname.startsWith("/auth"),
+  });
 
   // The admin splash only covers the very first load of an admin page: the public
   // site never shows it, and it can never stay stuck (slow network, error).
@@ -202,6 +207,8 @@ function RootComponent() {
           useHref={(href) => router.buildLocation({ to: href }).href}
         >
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          {/* Signed-in admin browsing the public site: strip with a way back. */}
+          {!onAdminPage && <AdminBar />}
           <Outlet />
           <WhatsAppButton />
           <Toast.Provider placement="top" />

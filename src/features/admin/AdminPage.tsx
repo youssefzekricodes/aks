@@ -31,6 +31,7 @@ import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
 import { brandInfo } from "@/features/catalog/brands";
 import { hideSplash } from "@/lib/splash";
+import { markAdminDevice } from "@/components/aks/AdminBar";
 import {
   ADMIN_SECTIONS,
   ROLE_LABELS,
@@ -234,6 +235,9 @@ export function AdminShell({
       showPull(0, true);
     }
   }
+  // This device belongs to an admin: the public site may then show its admin strip.
+  useEffect(() => markAdminDevice(true), []);
+
   // The admin is on screen: the launch splash fades out (next frame, once painted).
   useEffect(() => {
     const frame = requestAnimationFrame(() => hideSplash());
@@ -356,6 +360,7 @@ export function AdminShell({
       toast.danger("Déconnexion impossible. Veuillez réessayer.");
       return;
     }
+    markAdminDevice(false);
     await queryClient.cancelQueries();
     queryClient.clear();
     void navigate({ to: "/auth", replace: true });

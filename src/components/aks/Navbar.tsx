@@ -19,7 +19,7 @@ export function Navbar() {
 
   return (
     // Always dark (like the reference site) so the white-and-red AKS logo keeps its colours.
-    <header className="vt-header dark sticky top-0 z-40 border-b border-separator bg-[oklch(0.17_0.004_286)] text-foreground">
+    <header className="vt-header dark sticky top-[var(--admin-bar-h,0px)] z-40 border-b border-separator bg-[oklch(0.17_0.004_286)] text-foreground">
       <div className="container-page flex h-16 items-center gap-6">
         <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2.5">
           <img src={logo} alt="" width={96} height={32} className="h-8 w-auto" />
