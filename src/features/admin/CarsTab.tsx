@@ -1,13 +1,5 @@
 import { useState, type ReactNode, type SyntheticEvent } from "react";
-import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, SearchField, Spinner, Table, toast, Tooltip } from "@heroui/react";
 import {
@@ -23,6 +15,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Store,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -31,34 +24,31 @@ import {
   bulkCars,
   deleteCar,
   reorderCars,
-  saveCar,
   setCarDiscount,
   setCarPublished,
   setCarSold,
   type CarInput,
 } from "@/lib/data";
-import { CarForm } from "./CarForm";
-import type { BulkAction } from "@/server/repository";
+import type { BulkAction, FacebookSync } from "@/server/repository";
 import { CompleteDetailsDialog } from "./CompleteDetailsDialog";
+import { announceShare } from "./SocialCard";
+import { onSale, showcaseWith, useVitrine } from "./VitrinePage";
 import { BulkDiscountDialog, DiscountDialog } from "./DiscountDialog";
-import { buildSocialCaption, SOCIAL_PLATFORMS } from "@/features/catalog/social";
-import { usePhones } from "@/lib/site-content";
-import { announceShare, socialStatusQuery } from "./SocialCard";
 import { useDialogTarget } from "./hooks";
 import {
   adminCarsQuery,
   adminCarsQueryKey,
   dateFormat,
   emptyCar,
+  facebookSyncQuery,
   fieldsToFill,
   missingFields,
   normalize,
   plural,
-  toDraft,
-  toPayload,
   type AdminCar,
 } from "./model";
-import { DragHandle, frenchAnnouncements, frenchInstructions, useSortSensors } from "./sortable";
+import { FacebookLogo } from "@/components/aks/SocialLogos";
+import { brandInfo } from "@/features/catalog/brands";
 import {
   ConfirmDialog,
   EmptyState,
@@ -98,7 +88,7 @@ const SORT_OPTIONS = [
 ];
 
 const PAGE_SIZE = 25;
-const COLUMNS = ["", "Ordre", "Photo", "Véhicule", "Prix", "Statut", "Mise à jour", ""];
+const COLUMNS = ["", "Photo", "Véhicule", "Prix", "Statut", "Facebook", "Mise à jour", ""];
 const titleOf = (car: Pick<AdminCar, "brand" | "name">) => `${car.brand} ${car.name}`.trim();
 
 function sortCars(cars: AdminCar[], sort: Sort) {
@@ -126,11 +116,8 @@ function sortCars(cars: AdminCar[], sort: Sort) {
   return sorted;
 }
 
-type Editing = { draft: CarInput; original: string };
-
 export function CarsTab() {
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<Editing | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [sort, setSort] = useState<Sort>("order");
@@ -141,41 +128,17 @@ export function CarsTab() {
   const [bulkDialog, setBulkDialog] = useState<"discount" | "delete" | null>(null);
   const [completing, setCompleting] = useState(false);
   const [page, setPage] = useState(1);
-  const sensors = useSortSensors();
+  const vitrine = useVitrine();
+  const facebook = useQuery(facebookSyncQuery);
+  const syncByCar = new Map((facebook.data ?? []).map((row) => [row.carId, row]));
 
   const cars = useQuery(adminCarsQuery);
-  const { primary } = usePhones();
 
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: adminCarsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ["public-cars"] }),
     ]);
-
-  const save = useMutation({
-    mutationFn: (data: CarInput) =>
-      saveCar({
-        data: toPayload(
-          // Networks chosen but no text written: post the suggested one.
-          data.social_targets?.length && !data.social_caption?.trim()
-            ? {
-                ...data,
-                social_caption: buildSocialCaption(data, {
-                  url: `${window.location.origin}/vehicule/${data.slug}`,
-                  phone: primary?.number,
-                }),
-              }
-            : data,
-        ),
-      }),
-    onSuccess: (result) => {
-      toast.success("Véhicule enregistré.");
-      announceShare(result.social);
-      setEditing(null);
-      return invalidate();
-    },
-    onError: (e: Error) => toast.danger(e.message),
-  });
 
   const publish = useMutation({
     mutationFn: (data: { id: string; published: boolean }) => setCarPublished({ data }),
@@ -308,34 +271,11 @@ export function CarsTab() {
     else ids.push(car.id);
     applyOrder(ids);
   };
-  function onDragEnd({ active, over }: DragEndEvent) {
-    if (!over || active.id === over.id) return;
-    const ids = (cars.data ?? []).map((c) => c.id);
-    applyOrder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
-  }
 
-  // Known early so a new vehicle is pre-set to post on the connected networks.
-  const social = useQuery(socialStatusQuery);
-  const open = (car: CarInput) => {
-    const connected = SOCIAL_PLATFORMS.filter((p) => social.data?.[p]);
-    const draft = toDraft(car.id ? car : { ...car, social_targets: connected });
-    setEditing({ draft, original: JSON.stringify(draft) });
-  };
-
-  if (editing) {
-    return (
-      <CarForm
-        value={editing.draft}
-        isDirty={JSON.stringify(editing.draft) !== editing.original}
-        onChange={(update) =>
-          setEditing((current) => current && { ...current, draft: update(current.draft) })
-        }
-        onCancel={() => setEditing(null)}
-        onSave={() => save.mutate(editing.draft)}
-        saving={save.isPending}
-      />
-    );
-  }
+  const navigate = useNavigate();
+  /** Opens the vehicle editor page (or a new vehicle). */
+  const open = (car: CarInput) =>
+    void navigate({ to: "/admin/vehicules/$carId", params: { carId: car.id ?? "nouveau" } });
 
   const all = cars.data ?? [];
   const query = normalize(search.trim());
@@ -502,6 +442,28 @@ export function CarsTab() {
               >
                 Remise
               </BulkButton>
+              {selectedCars.some((car) => car.featured_rank == null && onSale(car)) && (
+                <BulkButton
+                  icon={Store}
+                  isDisabled={vitrine.isPending}
+                  onPress={() => {
+                    const ids = selectedCars
+                      .filter((car) => car.featured_rank == null && onSale(car))
+                      .map((car) => car.id);
+                    return vitrine
+                      .mutateAsync(showcaseWith(all, ids))
+                      .then(() => {
+                        toast.success(
+                          `${plural(ids.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
+                        );
+                        setSelected(new Set());
+                      })
+                      .catch(() => undefined); // reported by the mutation
+                  }}
+                >
+                  Ajouter à la vitrine
+                </BulkButton>
+              )}
               {selectedCars.some((car) => !car.sold) && (
                 <BulkButton
                   icon={BadgeCheck}
@@ -541,131 +503,127 @@ export function CarsTab() {
               </Button>
             </div>
           )}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-            onDragEnd={onDragEnd}
-            accessibility={{
-              announcements: frenchAnnouncements((id) => {
-                const car = all.find((c) => c.id === id);
-                return car ? titleOf(car) : "Véhicule";
-              }),
-              screenReaderInstructions: { draggable: frenchInstructions },
-            }}
-          >
-            <SortableContext
-              items={pageCars.map((car) => car.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <Table>
-                <Table.ScrollContainer>
-                  <Table.Content
-                    aria-label="Véhicules"
-                    className="min-w-[860px]"
-                    keyboardNavigationBehavior="tab"
-                  >
-                    <Table.Header>
-                      <Table.Column className="w-10">
-                        <input
-                          type="checkbox"
-                          aria-label="Sélectionner les véhicules de cette page"
-                          checked={allSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = pageSelected > 0 && !allSelected;
-                          }}
-                          onChange={() =>
-                            setSelected((current) => {
-                              const next = new Set(current);
-                              for (const car of pageCars)
-                                if (allSelected) next.delete(car.id);
-                                else next.add(car.id);
-                              return next;
-                            })
-                          }
-                          className="size-4 cursor-pointer accent-[var(--accent)]"
-                        />
-                      </Table.Column>
-                      <Table.Column className="w-12">
-                        <span className="sr-only">Ordre d’affichage</span>
-                      </Table.Column>
-                      <Table.Column className="w-24">Photo</Table.Column>
-                      <Table.Column isRowHeader>Véhicule</Table.Column>
-                      <Table.Column>Prix</Table.Column>
-                      <Table.Column>Statut</Table.Column>
-                      <Table.Column>Mise à jour</Table.Column>
-                      <Table.Column className="w-14">
-                        <span className="sr-only">Actions</span>
-                      </Table.Column>
-                    </Table.Header>
-                    <Table.Body
-                      renderEmptyState={() =>
-                        all.length ? (
-                          <EmptyState
-                            icon={CarIcon}
-                            title="Aucun véhicule ne correspond."
-                            description="Modifiez la recherche ou le filtre de statut."
-                            action={
-                              filtersActive && (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onPress={() => {
-                                    setSearch("");
-                                    setStatus("all");
-                                  }}
-                                >
-                                  Réinitialiser les filtres
-                                </Button>
-                              )
+          <Table>
+            <Table.ScrollContainer>
+              <Table.Content
+                aria-label="Véhicules"
+                className="min-w-[860px]"
+                keyboardNavigationBehavior="tab"
+              >
+                <Table.Header>
+                  <Table.Column className="w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Sélectionner les véhicules de cette page"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = pageSelected > 0 && !allSelected;
+                      }}
+                      onChange={() =>
+                        setSelected((current) => {
+                          const next = new Set(current);
+                          for (const car of pageCars)
+                            if (allSelected) next.delete(car.id);
+                            else next.add(car.id);
+                          return next;
+                        })
+                      }
+                      className="size-4 cursor-pointer accent-[var(--accent)]"
+                    />
+                  </Table.Column>
+                  <Table.Column className="w-24">Photo</Table.Column>
+                  <Table.Column isRowHeader>Véhicule</Table.Column>
+                  <Table.Column>Prix</Table.Column>
+                  <Table.Column>Statut</Table.Column>
+                  <Table.Column>Facebook</Table.Column>
+                  <Table.Column>Mise à jour</Table.Column>
+                  <Table.Column className="w-14">
+                    <span className="sr-only">Actions</span>
+                  </Table.Column>
+                </Table.Header>
+                <Table.Body
+                  renderEmptyState={() =>
+                    all.length ? (
+                      <EmptyState
+                        icon={CarIcon}
+                        title="Aucun véhicule ne correspond."
+                        description="Modifiez la recherche ou le filtre de statut."
+                        action={
+                          filtersActive && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onPress={() => {
+                                setSearch("");
+                                setStatus("all");
+                              }}
+                            >
+                              Réinitialiser les filtres
+                            </Button>
+                          )
+                        }
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={CarIcon}
+                        title="Aucun véhicule pour le moment."
+                        description="Ajoutez votre premier véhicule pour l’afficher sur le site."
+                        action={
+                          <Button size="sm" onPress={() => open(emptyCar)}>
+                            <Plus className="size-4" aria-hidden />
+                            Ajouter un véhicule
+                          </Button>
+                        }
+                      />
+                    )
+                  }
+                >
+                  {pageCars.map((car, index) => (
+                    <CarRow
+                      key={car.id}
+                      car={car}
+                      selected={selected.has(car.id)}
+                      onSelect={() => toggle(car.id)}
+                      order={
+                        canReorder
+                          ? {
+                              first: current === 1 && index === 0,
+                              last: current === pageCount && index === pageCars.length - 1,
+                              onMove: (to) => move(car, to),
                             }
-                          />
-                        ) : (
-                          <EmptyState
-                            icon={CarIcon}
-                            title="Aucun véhicule pour le moment."
-                            description="Ajoutez votre premier véhicule pour l’afficher sur le site."
-                            action={
-                              <Button size="sm" onPress={() => open(emptyCar)}>
-                                <Plus className="size-4" aria-hidden />
-                                Ajouter un véhicule
-                              </Button>
-                            }
-                          />
+                          : undefined
+                      }
+                      onToggleSold={() => sell.mutate({ id: car.id, sold: !car.sold })}
+                      onDiscount={() => discount.open(car)}
+                      onToggleShowcase={() =>
+                        vitrine.mutate(
+                          car.featured_rank != null
+                            ? showcaseWith(all, [], [car.id])
+                            : showcaseWith(all, [car.id]),
+                          {
+                            onSuccess: () =>
+                              toast.success(
+                                car.featured_rank != null
+                                  ? "Retiré de la vitrine."
+                                  : "Ajouté à la vitrine de l’accueil.",
+                              ),
+                          },
                         )
                       }
-                    >
-                      {pageCars.map((car, index) => (
-                        <CarRow
-                          key={car.id}
-                          car={car}
-                          selected={selected.has(car.id)}
-                          onSelect={() => toggle(car.id)}
-                          order={
-                            canReorder
-                              ? {
-                                  first: current === 1 && index === 0,
-                                  last: current === pageCount && index === pageCars.length - 1,
-                                  onMove: (to) => move(car, to),
-                                }
-                              : undefined
-                          }
-                          onToggleSold={() => sell.mutate({ id: car.id, sold: !car.sold })}
-                          onDiscount={() => discount.open(car)}
-                          publishing={publishing.has(car.id)}
-                          onEdit={() => open(car)}
-                          onTogglePublished={() =>
-                            publish.mutate({ id: car.id, published: !car.published })
-                          }
-                          onDelete={() => deletion.open(car)}
-                        />
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
-            </SortableContext>
-          </DndContext>
+                      publishing={publishing.has(car.id)}
+                      onEdit={() => open(car)}
+                      onTogglePublished={() =>
+                        publish.mutate({ id: car.id, published: !car.published })
+                      }
+                      onDelete={() => deletion.open(car)}
+                      facebook={syncByCar.get(car.id)}
+                      facebookLoading={facebook.isPending}
+                    />
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
           {visible.length > 0 && (
             <ListPagination
               page={current}
@@ -678,9 +636,8 @@ export function CarsTab() {
             />
           )}
           <p className="text-sm text-muted">
-            {canReorder
-              ? "Glissez une ligne par sa poignée pour changer l’ordre d’affichage sur le site. Pour changer de page, utilisez « Afficher en premier / en dernier »."
-              : "Pour changer l’ordre d’affichage sur le site, choisissez « Ordre d’affichage » et retirez les filtres."}
+            Pour changer l’ordre d’affichage sur le site, cliquez sur la marque d’un véhicule : ses
+            véhicules s’affichent en cartes, à glisser-déposer.
           </p>
         </>
       )}
@@ -756,7 +713,10 @@ function CarRow({
   onTogglePublished,
   onToggleSold,
   onDiscount,
+  onToggleShowcase,
   onDelete,
+  facebook,
+  facebookLoading,
 }: {
   car: AdminCar;
   selected: boolean;
@@ -768,29 +728,20 @@ function CarRow({
   onTogglePublished: () => void;
   onToggleSold: () => void;
   onDiscount: () => void;
+  onToggleShowcase: () => void;
   onDelete: () => void;
+  facebook: FacebookSync | undefined;
+  facebookLoading: boolean;
 }) {
   const title = titleOf(car);
   const percent = discountPercent(car);
   const missing = missingFields(car);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: car.id, disabled: !order });
+  const inShowcase = car.featured_rank != null;
   return (
     <Table.Row
       id={car.id}
-      ref={setNodeRef}
       onAction={onEdit}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`cursor-pointer ${car.sold ? "opacity-70" : ""} ${
-        isDragging ? "relative z-10 bg-surface shadow-lg ring-1 ring-border" : ""
-      }`}
+      className={`cursor-pointer ${car.sold ? "opacity-70" : ""}`}
     >
       <Table.Cell>
         <input
@@ -803,18 +754,6 @@ function CarRow({
         />
       </Table.Cell>
       <Table.Cell>
-        {order ? (
-          <DragHandle
-            label={`Déplacer ${title}`}
-            attributes={attributes}
-            listeners={listeners}
-            setActivatorNodeRef={setActivatorNodeRef}
-          />
-        ) : (
-          <span className="block w-8" aria-hidden />
-        )}
-      </Table.Cell>
-      <Table.Cell>
         <img
           src={carImage(car)}
           alt=""
@@ -823,6 +762,18 @@ function CarRow({
         />
       </Table.Cell>
       <Table.Cell>
+        {/* The brand opens its ordering page; the name opens the vehicle. */}
+        <Link
+          to="/admin/vehicules/marque/$brand"
+          params={{ brand: brandInfo(car.brand).slug }}
+          onPointerDown={stop}
+          onKeyDown={stop}
+          onClick={stop}
+          title={`Ordre des véhicules ${car.brand}`}
+          className="rounded-sm text-xs font-medium text-muted outline-none hover:text-accent hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {car.brand}
+        </Link>
         <button
           type="button"
           {...isolate}
@@ -830,9 +781,9 @@ function CarRow({
             event.stopPropagation();
             onEdit();
           }}
-          className="rounded-sm text-start font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+          className="block rounded-sm text-start font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
         >
-          {title}
+          {car.name}
         </button>
         <p className="text-sm text-muted">
           {car.year} · {formatKm(car.km_value)}
@@ -872,6 +823,7 @@ function CarRow({
               {car.published ? "En vente" : "Brouillon"}
             </StatusChip>
           )}
+          {inShowcase && onSale(car) && <StatusChip tone="accent">Vitrine</StatusChip>}
           {missing.length > 0 && (
             <Tooltip delay={150}>
               <Tooltip.Trigger>
@@ -895,6 +847,9 @@ function CarRow({
           )}
           {publishing && <Spinner size="sm" aria-label="Mise à jour du statut" />}
         </span>
+      </Table.Cell>
+      <Table.Cell className="whitespace-nowrap text-sm">
+        <FacebookCell sync={facebook} loading={facebookLoading} published={car.published} />
       </Table.Cell>
       <Table.Cell className="whitespace-nowrap text-sm text-muted">
         {car.updated_at ? dateFormat.format(new Date(car.updated_at)) : "—"}
@@ -920,6 +875,13 @@ function CarRow({
                   icon: Tag,
                   onAction: onDiscount,
                 },
+              // Only cars en vente can be added; a featured one can always be removed.
+              (onSale(car) || inShowcase) && {
+                id: "vitrine",
+                label: inShowcase ? "Retirer de la vitrine" : "Ajouter à la vitrine",
+                icon: Store,
+                onAction: onToggleShowcase,
+              },
               {
                 id: "sold",
                 label: car.sold ? "Annuler « vendu »" : "Marquer comme vendu",
@@ -991,5 +953,56 @@ function BulkButton({
       <Icon className="size-4" aria-hidden />
       {children}
     </Button>
+  );
+}
+
+/** Whether the vehicle is on the Facebook Page: link to the post, or why not. */
+function FacebookCell({
+  sync,
+  loading,
+  published,
+}: {
+  sync: FacebookSync | undefined;
+  loading: boolean;
+  published: boolean;
+}) {
+  if (loading) return <span className="text-muted">…</span>;
+  if (sync?.status === "published")
+    return sync.permalink ? (
+      <a
+        href={sync.permalink}
+        target="_blank"
+        rel="noopener noreferrer"
+        onPointerDown={stop}
+        onKeyDown={stop}
+        onClick={stop}
+        className="inline-flex items-center gap-1.5 rounded-sm font-medium text-success outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+        title="Voir la publication Facebook"
+      >
+        <FacebookLogo className="size-4" />
+        Publié
+      </a>
+    ) : (
+      <span className="inline-flex items-center gap-1.5 font-medium text-success">
+        <FacebookLogo className="size-4" />
+        Publié
+      </span>
+    );
+  if (sync?.status === "pending")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-muted">
+        <Spinner size="sm" aria-hidden /> En cours
+      </span>
+    );
+  if (sync?.status === "failed")
+    return (
+      <span className="font-medium text-danger" title={sync.error ?? undefined}>
+        Échec
+      </span>
+    );
+  return (
+    <span className="text-muted" title={published ? "Pas encore partagé sur Facebook" : undefined}>
+      Non publié
+    </span>
   );
 }

@@ -108,9 +108,15 @@ export const completeCars = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => (await repository()).completeCars(data.updates));
+export const setVitrine = createServerFn({ method: "POST" })
+  .validator(z.object({ ids: z.array(idSchema).max(100) }))
+  .handler(async ({ data }) => (await repository()).setVitrine(data.ids));
 export const reorderCars = createServerFn({ method: "POST" })
   .validator(z.object({ ids: z.array(idSchema).min(1).max(2000) }))
   .handler(async ({ data }) => (await repository()).reorderCars(data.ids));
+export const listFacebookSync = createServerFn({ method: "GET" }).handler(async () =>
+  (await repository()).facebookSync(),
+);
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(async () =>
   (await repository()).dashboardStats(),
 );

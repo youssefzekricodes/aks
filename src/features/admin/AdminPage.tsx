@@ -13,6 +13,7 @@ import {
   Plug,
   Menu,
   ShieldCheck,
+  Store,
   Tags,
   UserCog,
   type LucideIcon,
@@ -36,6 +37,7 @@ import { IconButton } from "./ui";
 const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   dashboard: LayoutDashboard,
   cars: Car,
+  showcase: Store,
   brands: Tags,
   content: FileText,
   leads: Inbox,
@@ -102,7 +104,7 @@ export function AdminLayout() {
         Aller au contenu
       </a>
 
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
+      <aside className="vt-sidebar sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
         <Brand />
         <div className="flex-1 overflow-y-auto px-4 py-4">{nav()}</div>
         <div className="border-t border-separator p-4">
@@ -120,7 +122,7 @@ export function AdminLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="dark sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-white/10 bg-[oklch(0.17_0.004_286)] px-4 text-foreground sm:px-6 lg:px-8">
+        <header className="vt-header dark sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-white/10 bg-[oklch(0.17_0.004_286)] px-4 text-foreground sm:px-6 lg:px-8">
           <div className="lg:hidden">
             <IconButton label="Ouvrir le menu" icon={Menu} onPress={() => setMenuOpen(true)} />
           </div>

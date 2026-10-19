@@ -21,7 +21,8 @@ import {
   type ButtonProps,
 } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
-import { MoreHorizontal, type LucideIcon } from "lucide-react";
+import { ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import type { UploadState } from "./hooks";
 import { IMAGE_TYPES, type Option } from "./model";
@@ -647,5 +648,41 @@ export function SwitchField({
         <span className="text-sm">{children}</span>
       </Switch.Content>
     </Switch>
+  );
+}
+
+export type Crumb = { label: string; to?: string; params?: Record<string, string> };
+
+/** Where the page sits in the admin; earlier steps are links back. */
+export function AdminBreadcrumbs({ items }: { items: Crumb[] }) {
+  return (
+    <nav aria-label="Fil d’Ariane" className="text-sm">
+      <ol className="flex flex-wrap items-center gap-1.5 text-muted">
+        {items.map((item, index) => {
+          const last = index === items.length - 1;
+          return (
+            <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
+              {item.to && !last ? (
+                <Link
+                  to={item.to}
+                  {...(item.params ? { params: item.params } : {})}
+                  className="rounded-sm hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <span
+                  className={last ? "truncate font-medium text-foreground" : ""}
+                  {...(last ? { "aria-current": "page" as const } : {})}
+                >
+                  {item.label}
+                </span>
+              )}
+              {!last && <ChevronRight className="size-3.5 shrink-0" aria-hidden />}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

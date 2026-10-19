@@ -19,7 +19,7 @@ export function Navbar() {
 
   return (
     // Always dark (like the reference site) so the white-and-red AKS logo keeps its colours.
-    <header className="dark sticky top-0 z-40 border-b border-separator bg-[oklch(0.17_0.004_286)] text-foreground">
+    <header className="vt-header dark sticky top-0 z-40 border-b border-separator bg-[oklch(0.17_0.004_286)] text-foreground">
       <div className="container-page flex h-16 items-center gap-6">
         <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2.5">
           <img src={logo} alt="" width={96} height={32} className="h-8 w-auto" />
@@ -79,7 +79,7 @@ export function Navbar() {
             isDismissable
             className="dark fixed inset-0 z-50 bg-[oklch(0.17_0.004_286/0.82)] text-foreground backdrop-blur-xl transition-opacity duration-200 data-[entering]:opacity-0 data-[exiting]:opacity-0 lg:hidden"
           >
-            <Modal className="h-full">
+            <Modal className="h-full data-[entering]:animate-in data-[entering]:fade-in-0 data-[entering]:duration-200 data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[exiting]:duration-150 motion-reduce:animate-none data-[entering]:slide-in-from-top-2">
               <Dialog
                 aria-label={text("navbar.text_4", "Menu")}
                 className="container-page flex h-dvh flex-col outline-none"

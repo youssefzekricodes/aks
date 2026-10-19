@@ -77,7 +77,7 @@ export function GlobalSearch() {
         isDismissable
         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-150 data-[entering]:opacity-0 data-[exiting]:opacity-0"
       >
-        <Modal className="mx-auto mt-0 h-dvh w-full max-w-2xl sm:mt-[10vh] sm:h-auto sm:px-4">
+        <Modal className="mx-auto mt-0 h-dvh w-full max-w-2xl sm:mt-[10vh] sm:h-auto sm:px-4 data-[entering]:animate-in data-[entering]:fade-in-0 data-[entering]:duration-200 data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[exiting]:duration-150 motion-reduce:animate-none data-[entering]:slide-in-from-top-4 data-[entering]:zoom-in-95 data-[exiting]:zoom-out-95">
           <Dialog aria-label="Rechercher une voiture" className="outline-none">
             {open && <SearchPanel onClose={() => setOpen(false)} />}
           </Dialog>

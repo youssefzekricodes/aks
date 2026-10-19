@@ -35,6 +35,8 @@ export type Car = {
   social_caption?: string | undefined;
   social_targets?: ("facebook" | "instagram")[] | undefined;
   sort_order: number;
+  /** Position in the home page showcase ("Vitrine"); null/absent when not in it. */
+  featured_rank?: number | null | undefined;
   /** ISO timestamp of the last change (admin lists). */
   updated_at?: string | undefined;
 };

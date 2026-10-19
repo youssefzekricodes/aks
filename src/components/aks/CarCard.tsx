@@ -12,7 +12,16 @@ import { DiscountBadge, Price } from "./Price";
  * Listing card: photo, brand, model, one line of key specs, price.
  * The whole card is the link (title link stretched over the card).
  */
-export function CarCard({ car, priority = false }: { car: Car; priority?: boolean }) {
+export function CarCard({
+  car,
+  priority = false,
+  preview = false,
+}: {
+  car: Car;
+  priority?: boolean;
+  /** Admin preview: no link to the page, no "Contactez-nous" button. */
+  preview?: boolean;
+}) {
   const text = useSiteText();
   const specs = [
     String(car.year),
@@ -53,16 +62,22 @@ export function CarCard({ car, priority = false }: { car: Car; priority?: boolea
           <span>{car.brand}</span>
         </div>
         <h3 className="mt-1.5 line-clamp-1 text-base font-semibold">
-          <Link
-            to="/vehicule/$slug"
-            params={{ slug: car.slug }}
-            className="outline-none after:absolute after:inset-0"
-          >
-            {car.name}
-          </Link>
+          {preview ? (
+            car.name
+          ) : (
+            <Link
+              to="/vehicule/$slug"
+              params={{ slug: car.slug }}
+              className="outline-none after:absolute after:inset-0"
+            >
+              {car.name}
+            </Link>
+          )}
         </h3>
         <p className="tabular mt-1 text-sm text-muted">{specs.join(" · ")}</p>
-        {car.price_on_request ? (
+        {car.price_on_request && preview ? (
+          <p className="mt-auto pt-4 text-sm font-medium text-muted">Prix sur demande</p>
+        ) : car.price_on_request ? (
           // Price hidden by the admin: invite to ask instead. Above the stretched card link.
           <div className="mt-auto pt-4">
             <Link

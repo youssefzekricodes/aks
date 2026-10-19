@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import {
   Button,
@@ -50,6 +50,8 @@ export function CarForm({
   isDirty,
   onChange,
   onCancel,
+  breadcrumbs,
+  backLabel = "Retour à la liste",
   onSave,
   saving,
 }: {
@@ -58,6 +60,9 @@ export function CarForm({
   /** Functional update: photo uploads finish after later edits. */
   onChange: (update: (car: CarInput) => CarInput) => void;
   onCancel: () => void;
+  /** Shown above the title (where the form was opened from). */
+  breadcrumbs?: ReactNode;
+  backLabel?: string;
   onSave: () => void;
   saving: boolean;
 }) {
@@ -110,6 +115,7 @@ export function CarForm({
       }}
       className="grid gap-6"
     >
+      {breadcrumbs}
       <PageHeader
         title={isNew ? "Nouveau véhicule" : `Modifier ${value.brand} ${value.model || value.name}`}
         description="Les champs marqués d’un astérisque sont obligatoires."
@@ -128,7 +134,7 @@ export function CarForm({
             )}
             <Button variant="tertiary" onPress={requestLeave}>
               <ArrowLeft className="size-4" aria-hidden />
-              Retour à la liste
+              {backLabel}
             </Button>
           </>
         }

@@ -196,6 +196,9 @@ function useSwipe(onSwipe: (direction: 1 | -1) => void) {
 const roundControl =
   "grid place-items-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/65 focus-visible:outline-2 focus-visible:outline-white";
 
+/** Thumbnails under the main photo; the last one shows how many more there are. */
+const THUMBS = 5;
+
 function Gallery({ car }: { car: Car }) {
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
@@ -225,12 +228,13 @@ function Gallery({ car }: { car: Car }) {
           className="block w-full cursor-zoom-in"
         >
           <img
+            key={active}
             src={carImage(car, active)}
             alt={`${title} — photo ${active + 1} sur ${count}`}
             width={1600}
             height={1200}
-            fetchPriority="high"
-            className="aspect-[4/3] w-full object-cover"
+            fetchPriority={active === 0 ? "high" : "auto"}
+            className="aspect-[4/3] w-full object-cover animate-in fade-in-0 duration-300 motion-reduce:animate-none"
           />
         </button>
         {count > 1 && (
@@ -277,26 +281,45 @@ function Gallery({ car }: { car: Car }) {
         </div>
       </div>
 
+      {/* First 4 photos, then the 5th with "+N" over it: opens the full gallery there. */}
       {car.images.length > 1 && (
-        <ul className="mt-2 grid grid-cols-5 gap-1.5 sm:mt-3 sm:grid-cols-6 sm:gap-2">
-          {car.images.map((src, i) => (
-            <li key={`${i}-${src.slice(-24)}`}>
-              <button
-                type="button"
-                aria-label={`Afficher la photo ${i + 1}`}
-                aria-current={i === active}
-                onClick={() => setActive(i)}
-                className={cn(
-                  "block w-full overflow-hidden rounded-md border-2 focus-visible:outline-2 focus-visible:outline-focus",
-                  i === active
-                    ? "border-accent"
-                    : "border-transparent opacity-75 hover:opacity-100",
-                )}
-              >
-                <img src={src} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
-              </button>
-            </li>
-          ))}
+        <ul className="mt-2 grid grid-cols-5 gap-1.5 sm:mt-3 sm:gap-2">
+          {car.images.slice(0, THUMBS).map((src, i) => {
+            const more = i === THUMBS - 1 ? car.images.length - THUMBS : 0;
+            const current = i === active || (more > 0 && active >= i);
+            return (
+              <li key={`${i}-${src.slice(-24)}`}>
+                <button
+                  type="button"
+                  aria-label={
+                    more > 0 ? `Voir les ${car.images.length} photos` : `Afficher la photo ${i + 1}`
+                  }
+                  aria-current={current}
+                  onClick={() => {
+                    setActive(i);
+                    if (more > 0) setOpen(true);
+                  }}
+                  className={cn(
+                    "group relative block w-full overflow-hidden rounded-md border-2 transition focus-visible:outline-2 focus-visible:outline-focus",
+                    current ? "border-accent" : "border-transparent opacity-80 hover:opacity-100",
+                  )}
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    loading="lazy"
+                    className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  {more > 0 && (
+                    <span className="absolute inset-0 grid place-items-center bg-black/55 text-sm font-semibold text-white backdrop-blur-[2px] transition-colors group-hover:bg-black/45 sm:text-base">
+                      +{more}
+                      <span className="sr-only"> autres photos</span>
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -325,9 +348,10 @@ function Gallery({ car }: { car: Car }) {
 
               <div className="relative min-h-0 flex-1" {...swipe}>
                 <img
+                  key={active}
                   src={carImage(car, active)}
                   alt={`${title} — photo ${active + 1} sur ${count}`}
-                  className="absolute inset-0 size-full object-contain"
+                  className="absolute inset-0 size-full object-contain animate-in fade-in-0 duration-300 motion-reduce:animate-none"
                 />
                 {count > 1 && (
                   <>
@@ -358,9 +382,17 @@ function Gallery({ car }: { car: Car }) {
               </div>
 
               {count > 1 && (
-                <ul className="flex justify-center gap-2 overflow-x-auto px-4 py-3">
+                <ul className="flex gap-2 overflow-x-auto px-4 py-3">
                   {car.images.map((src, i) => (
-                    <li key={`${i}-${src.slice(-24)}`} className="shrink-0">
+                    <li
+                      key={`${i}-${src.slice(-24)}`}
+                      // Centred when it fits, scrollable from the first photo when not.
+                      className="shrink-0 first:ms-auto last:me-auto"
+                      ref={(el) => {
+                        if (el && i === active)
+                          el.scrollIntoView({ block: "nearest", inline: "center" });
+                      }}
+                    >
                       <button
                         type="button"
                         aria-label={`Afficher la photo ${i + 1}`}

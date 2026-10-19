@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { Reveal } from "@/components/aks/Reveal";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSiteText } from "@/lib/site-content";
 import { resolveContent } from "@/features/content/definition";
@@ -62,9 +63,15 @@ function Index() {
       <main>
         {sections
           .filter(([key]) => show(key))
-          .map(([key, section]) => (
-            <Fragment key={key}>{section}</Fragment>
-          ))}
+          .map(([key, section]) =>
+            // Sections below the hero fade up as they scroll into view; the
+            // showcase reveals its cards one by one instead.
+            key === "hero" || key === "inventory" ? (
+              <Fragment key={key}>{section}</Fragment>
+            ) : (
+              <Reveal key={key}>{section}</Reveal>
+            ),
+          )}
       </main>
       <SiteFooter />
     </div>

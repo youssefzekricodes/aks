@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type SyntheticEvent } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Label, SearchField, Switch, Table, toast } from "@heroui/react";
-import { ArrowDown, ArrowUp, Star, Tags, Trash2, Upload } from "lucide-react";
+import { Button, Label, Modal, SearchField, Switch, Table, toast } from "@heroui/react";
+import { ArrowDown, ArrowUp, Pencil, Star, Tags, Trash2, Upload } from "lucide-react";
 import { BRANDS, brandBySlug, brandInfo, type BrandInfo } from "@/features/catalog/brands";
 import type { BrandDisplay } from "@/features/catalog/search";
 import { BrandLogo } from "@/components/aks/BrandLogo";
@@ -48,6 +49,8 @@ export function BrandsTab() {
   const settings = useQuery(brandSettingsQuery);
   const uploads = useUploads();
   const removal = useDialogTarget<Row>();
+  const [editing, setEditing] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
 
@@ -225,7 +228,9 @@ export function BrandsTab() {
                 <Table.Column>Visible</Table.Column>
                 <Table.Column className="w-40">Favori</Table.Column>
                 <Table.Column>Source du logo</Table.Column>
-                <Table.Column className="w-64 text-end">Actions</Table.Column>
+                <Table.Column className="w-32 text-end">
+                  <span className="sr-only">Actions</span>
+                </Table.Column>
               </Table.Header>
               <Table.Body
                 renderEmptyState={() => (
@@ -244,13 +249,17 @@ export function BrandsTab() {
                       brand={brand}
                       hasUpload={uploaded.has(brand.slug)}
                       upload={uploads.states[brand.slug]}
-                      removing={remove.isPending && remove.variables === brand.slug}
-                      onUpload={(file) => void upload(brand, file)}
-                      onRemove={() => removal.open(brand)}
                       onToggleHidden={(visible) =>
                         save.mutate([{ ...display(brand), hidden: !visible }])
                       }
                       onToggleFavorite={() => toggleFavorite(brand)}
+                      onOpen={() =>
+                        void navigate({
+                          to: "/admin/vehicules/marque/$brand",
+                          params: { brand: brand.slug },
+                        })
+                      }
+                      onEdit={() => setEditing(brand.slug)}
                       {...(position >= 0
                         ? {
                             favorite: {
@@ -269,6 +278,19 @@ export function BrandsTab() {
           </Table.ScrollContainer>
         </Table>
       )}
+
+      <BrandEditDialog
+        brand={rows.find((b) => b.slug === editing) ?? null}
+        hasUpload={editing ? uploaded.has(editing) : false}
+        upload={editing ? uploads.states[editing] : undefined}
+        removing={remove.isPending}
+        onClose={() => setEditing(null)}
+        onUpload={(brand, file) => void upload(brand, file)}
+        onRemove={(brand) => {
+          setEditing(null);
+          removal.open(brand);
+        }}
+      />
 
       <ConfirmDialog
         isOpen={removal.isOpen}
@@ -291,26 +313,28 @@ function BrandRow({
   brand,
   hasUpload,
   upload,
-  removing,
-  onUpload,
-  onRemove,
   onToggleHidden,
   onToggleFavorite,
+  onOpen,
+  onEdit,
   favorite,
 }: {
   brand: Row;
   hasUpload: boolean;
   upload: UploadState | undefined;
-  removing: boolean;
-  onUpload: (file: File) => void;
-  onRemove: () => void;
   onToggleHidden: (visible: boolean) => void;
   onToggleFavorite: () => void;
+  onOpen: () => void;
+  onEdit: () => void;
   favorite?: { position: number; first: boolean; last: boolean; onMove: (by: -1 | 1) => void };
 }) {
   const working = upload?.status === "working";
   return (
-    <Table.Row id={brand.slug} className={brand.hidden ? "opacity-60" : ""}>
+    <Table.Row
+      id={brand.slug}
+      onAction={onOpen}
+      className={`cursor-pointer ${brand.hidden ? "opacity-60" : ""}`}
+    >
       <Table.Cell>
         <div className="flex h-12 w-20 items-center justify-center rounded-lg border border-separator bg-background p-2 text-foreground">
           <BrandLogo brand={brand.name} size={28} />
@@ -321,21 +345,23 @@ function BrandRow({
       </Table.Cell>
       <Table.Cell className="text-sm tabular-nums text-muted">{brand.cars || "—"}</Table.Cell>
       <Table.Cell>
-        <Switch
-          isSelected={!brand.hidden}
-          onChange={onToggleHidden}
-          aria-label={`Afficher ${brand.name} sur le site`}
-        >
-          <Switch.Content>
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-            <span className="text-sm text-muted">{brand.hidden ? "Masquée" : "Visible"}</span>
-          </Switch.Content>
-        </Switch>
+        <div {...isolate} className="w-fit">
+          <Switch
+            isSelected={!brand.hidden}
+            onChange={onToggleHidden}
+            aria-label={`Afficher ${brand.name} sur le site`}
+          >
+            <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+              <span className="text-sm text-muted">{brand.hidden ? "Masquée" : "Visible"}</span>
+            </Switch.Content>
+          </Switch>
+        </div>
       </Table.Cell>
       <Table.Cell>
-        <div className="flex items-center gap-1">
+        <div {...isolate} className="flex w-fit items-center gap-1">
           <IconButton
             label={
               favorite
@@ -369,46 +395,123 @@ function BrandRow({
       </Table.Cell>
       <Table.Cell>
         {hasUpload ? (
-          <StatusChip tone="accent">Importé</StatusChip>
+          <StatusChip tone="accent">Personnalisé</StatusChip>
         ) : brand.logo ? (
           <StatusChip tone="success">Intégré</StatusChip>
         ) : (
           <StatusChip tone="default">Aucun</StatusChip>
         )}
       </Table.Cell>
-      <Table.Cell>
-        <div className="ms-auto grid max-w-64 justify-items-end gap-2">
-          <div className="flex items-center gap-1">
-            <FilePickButton
-              size="sm"
-              accept={LOGO_TYPES}
-              isDisabled={working || removing}
-              onSelect={(files) => files[0] && onUpload(files[0])}
-            >
-              <Upload className="size-4" aria-hidden />
-              {working ? "Envoi…" : hasUpload ? "Remplacer" : "Importer"}
-              <span className="sr-only"> le logo de {brand.name}</span>
-            </FilePickButton>
-            {hasUpload && (
-              <IconButton
-                label={`Retirer le logo de ${brand.name}`}
-                icon={Trash2}
-                variant="danger-soft"
-                isDisabled={working || removing}
-                onPress={onRemove}
-              />
-            )}
-          </div>
-          {upload?.status === "working" && (
-            <UploadProgress state={upload} label={`Envoi du logo de ${brand.name}`} />
-          )}
-          {upload?.status === "error" && (
-            <p role="alert" className="text-end text-xs text-danger">
-              {upload.message}
-            </p>
-          )}
+      <Table.Cell className="text-end">
+        <div {...isolate} className="inline-flex">
+          <Button size="sm" variant="secondary" isPending={working} onPress={onEdit}>
+            <Pencil className="size-4" aria-hidden />
+            Modifier
+            <span className="sr-only"> {brand.name}</span>
+          </Button>
         </div>
       </Table.Cell>
     </Table.Row>
+  );
+}
+
+/** Keeps clicks on controls inside a row from opening the brand page. */
+const stop = (event: SyntheticEvent) => event.stopPropagation();
+const isolate = { onPointerDown: stop, onClick: stop, onKeyDown: stop };
+
+/** Logo of a brand: preview, replace with a file, or go back to the built-in one. */
+function BrandEditDialog({
+  brand,
+  hasUpload,
+  upload,
+  removing,
+  onClose,
+  onUpload,
+  onRemove,
+}: {
+  brand: Row | null;
+  hasUpload: boolean;
+  upload: UploadState | undefined;
+  removing: boolean;
+  onClose: () => void;
+  onUpload: (brand: Row, file: File) => void;
+  onRemove: (brand: Row) => void;
+}) {
+  const working = upload?.status === "working";
+  return (
+    <Modal.Backdrop isOpen={brand !== null} onOpenChange={(open) => !open && !working && onClose()}>
+      <Modal.Container placement="auto">
+        <Modal.Dialog className="sm:max-w-md">
+          {brand && (
+            <>
+              <Modal.CloseTrigger aria-label="Fermer" />
+              <Modal.Header>
+                <Modal.Heading>Modifier {brand.name}</Modal.Heading>
+                <p className="mt-1 text-sm text-muted">
+                  Logo affiché sur le site : PNG ou WebP à fond transparent, proche du carré, 400 Ko
+                  maximum.
+                </p>
+              </Modal.Header>
+              <Modal.Body className="grid gap-4">
+                {/* Logos appear on light pages and on the dark header band: check both. */}
+                <div className="grid grid-cols-2 gap-3">
+                  <figure className="grid gap-1.5">
+                    <div className="grid h-28 place-items-center rounded-xl border border-separator bg-white p-4 text-zinc-900">
+                      <BrandLogo brand={brand.name} size={56} />
+                    </div>
+                    <figcaption className="text-xs text-muted">Fond clair</figcaption>
+                  </figure>
+                  <figure className="grid gap-1.5">
+                    <div className="grid h-28 place-items-center rounded-xl border border-separator bg-[oklch(0.17_0.004_286)] p-4 text-white">
+                      <BrandLogo brand={brand.name} size={56} />
+                    </div>
+                    <figcaption className="text-xs text-muted">Fond sombre</figcaption>
+                  </figure>
+                </div>
+                <p className="text-sm text-muted">
+                  {hasUpload
+                    ? "Logo personnalisé (envoyé depuis l’administration)."
+                    : brand.logo
+                      ? "Logo intégré au site."
+                      : "Aucun logo : le nom de la marque est affiché."}
+                </p>
+                {working && (
+                  <UploadProgress state={upload} label={`Envoi du logo de ${brand.name}`} />
+                )}
+                {upload?.status === "error" && (
+                  <p role="alert" className="text-sm text-danger">
+                    {upload.message}
+                  </p>
+                )}
+              </Modal.Body>
+              <Modal.Footer className="flex-wrap">
+                {hasUpload && (
+                  <Button
+                    variant="danger-soft"
+                    className="me-auto"
+                    isDisabled={working || removing}
+                    onPress={() => onRemove(brand)}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                    Retirer ce logo
+                  </Button>
+                )}
+                <FilePickButton
+                  accept={LOGO_TYPES}
+                  isDisabled={working || removing}
+                  onSelect={(files) => files[0] && onUpload(brand, files[0])}
+                >
+                  <Upload className="size-4" aria-hidden />
+                  {working ? "Envoi…" : "Changer le logo"}
+                </FilePickButton>
+                <Button variant="tertiary" isDisabled={working} onPress={onClose}>
+                  Fermer
+                </Button>
+              </Modal.Footer>
+            </>
+          )}
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

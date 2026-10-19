@@ -166,7 +166,8 @@ function StatTile({
 /** One row per body type (all of them, zero included), bar length = share of the largest. */
 function BodyBreakdown({ cars }: { cars: AdminCar[] }) {
   const counts = new Map<string, number>(CAR_BODIES.map((body) => [body, 0]));
-  for (const car of cars) counts.set(car.body, (counts.get(car.body) ?? 0) + 1);
+  // Only real body types: "À préciser" (imported, not filled in yet) is left out.
+  for (const car of cars) if (counts.has(car.body)) counts.set(car.body, counts.get(car.body)! + 1);
   const rows = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"));
   const max = Math.max(1, ...rows.map(([, count]) => count));
   if (!cars.length)

@@ -49,6 +49,7 @@ type CarRow = {
   published: boolean;
   sold: boolean;
   discount_price: number | string | null;
+  featured_rank?: number | null;
   social_caption?: string;
   social_targets?: ("facebook" | "instagram")[];
   sort_order: number;
@@ -88,6 +89,7 @@ function toCar(row: CarRow): Car {
     published: row.published,
     sold: row.sold ?? false,
     discount_price: row.discount_price == null ? null : Number(row.discount_price),
+    featured_rank: row.featured_rank ?? null,
     social_caption: row.social_caption ?? "",
     social_targets: row.social_targets ?? [],
     sort_order: row.sort_order,
@@ -307,6 +309,18 @@ export async function completeCars(updates: CarCompletion[]): Promise<BulkResult
   return result;
 }
 
+/** The home page showcase: these vehicles, in this order (the others leave it). */
+export async function setVitrine(ids: string[]) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase.rpc("set_vitrine", { p_ids: ids });
+  if (error?.code === "PGRST202" || error?.code === "42883" || error?.code === "42703")
+    throw new Error(
+      "La vitrine n’est pas encore installée : exécutez la migration 20261019210000_vitrine.sql dans Supabase.",
+    );
+  if (error) failure(error, "Mise à jour de la vitrine impossible.");
+  return { ok: true };
+}
+
 /** Counts a page view (published, unsold vehicles only; errors are ignored). */
 export async function recordCarView(slug: string) {
   const { error } = await publicClient().rpc("record_car_view", { p_slug: slug });
@@ -428,6 +442,43 @@ export async function socialPosts(carId: string): Promise<SocialPost[]> {
     error: p.error as string | null,
     createdAt: p.created_at as string,
   }));
+}
+
+export type FacebookSync = {
+  carId: string;
+  status: SocialPost["status"];
+  permalink: string | null;
+  error: string | null;
+};
+
+/** Latest Facebook post of every vehicle (admin list column). */
+export async function facebookSync(): Promise<FacebookSync[]> {
+  const supabase = await adminClient();
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("social_posts")
+      .select("car_id, status, permalink, error, created_at")
+      .eq("platform", "facebook")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, from + 999);
+    if (error) return []; // before the "social" migration
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < 1000) break;
+  }
+  const latest = new Map<string, FacebookSync>();
+  for (const row of rows) {
+    const carId = row["car_id"] as string;
+    if (latest.has(carId)) continue; // newest first
+    latest.set(carId, {
+      carId,
+      status: row["status"] as FacebookSync["status"],
+      permalink: (row["permalink"] as string | null) ?? null,
+      error: (row["error"] as string | null) ?? null,
+    });
+  }
+  return [...latest.values()];
 }
 
 export type SocialStatus = {

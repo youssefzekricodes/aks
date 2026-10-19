@@ -14,6 +14,11 @@ export const getRouter = () => {
     // Hovering a link starts loading that page's code and data.
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    // Smooth page changes (View Transitions API, ignored by older browsers). Only when
+    // the page changes: filters and tabs that only change the query string stay instant.
+    defaultViewTransition: {
+      types: ({ pathChanged }) => (pathChanged ? ["page"] : false),
+    },
   });
 
   return router;

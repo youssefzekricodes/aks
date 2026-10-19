@@ -130,3 +130,58 @@ body {
 html {
   scroll-padding-top: 4rem;
 }
+
+/* ───────── Motion ─────────
+   Page changes cross-fade with a slight rise; the header and admin sidebar stay put.
+   Everything is skipped for visitors who ask for reduced motion. */
+.vt-header {
+  view-transition-name: site-header;
+}
+.vt-sidebar {
+  view-transition-name: admin-sidebar;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: vt-fade-out 160ms ease-in both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-fade-in 320ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+  ::view-transition-group(site-header),
+  ::view-transition-group(admin-sidebar) {
+    animation: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Revealed on scroll (see Reveal): fades up once when it enters the screen. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    transition:
+      opacity 700ms cubic-bezier(0.2, 0, 0, 1),
+      transform 700ms cubic-bezier(0.2, 0, 0, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  [data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}

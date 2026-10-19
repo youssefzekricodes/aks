@@ -7,13 +7,20 @@ import { useSiteText } from "@/lib/site-content";
 import { sortCars } from "@/features/catalog/search";
 import { CarCard, CarGrid } from "./CarCard";
 import { NoResults } from "./NoResults";
+import { Reveal } from "./Reveal";
 import { Section, SectionHeader } from "./Section";
 
-/** Home page selection: the first vehicles in showroom order, with a link to the full stock. */
+/**
+ * Home page selection: the vehicles chosen in the admin "Vitrine", in that order;
+ * without a selection, the first vehicles in showroom order.
+ */
 export function Inventory() {
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
   const text = useSiteText();
-  const featured = sortCars(cars).slice(0, 6);
+  const chosen = cars
+    .filter((car) => car.featured_rank != null)
+    .sort((a, b) => a.featured_rank! - b.featured_rank!);
+  const featured = chosen.length ? chosen.slice(0, 12) : sortCars(cars).slice(0, 6);
   const seeAll = (
     <Link to="/recherche" className={buttonVariants({ variant: "secondary" })}>
       {text("inventory.see_all", "Voir tout le stock")}
@@ -36,7 +43,9 @@ export function Inventory() {
       {featured.length ? (
         <CarGrid>
           {featured.map((car, i) => (
-            <CarCard key={car.id} car={car} priority={i < 3} />
+            <Reveal key={car.id} delay={(i % 3) * 90} className="h-full">
+              <CarCard car={car} priority={i < 3} />
+            </Reveal>
           ))}
         </CarGrid>
       ) : (

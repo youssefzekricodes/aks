@@ -33,6 +33,9 @@ import { Route as AuthenticatedAdminContenuRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDemandesRouteImport } from './routes/_authenticated/admin/demandes'
 import { Route as AuthenticatedAdminMarquesRouteImport } from './routes/_authenticated/admin/marques'
 import { Route as AuthenticatedAdminVehiculesRouteImport } from './routes/_authenticated/admin/vehicules'
+import { Route as AuthenticatedAdminVitrineRouteImport } from './routes/_authenticated/admin/vitrine'
+import { Route as AuthenticatedAdminVehiculesCarIdRouteImport } from './routes/_authenticated/admin/vehicules_.$carId'
+import { Route as AuthenticatedAdminVehiculesMarqueBrandRouteImport } from './routes/_authenticated/admin/vehicules_.marque.$brand'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -159,6 +162,24 @@ const AuthenticatedAdminVehiculesRoute =
     path: '/vehicules',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminVitrineRoute =
+  AuthenticatedAdminVitrineRouteImport.update({
+    id: '/vitrine',
+    path: '/vitrine',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminVehiculesCarIdRoute =
+  AuthenticatedAdminVehiculesCarIdRouteImport.update({
+    id: '/vehicules_/$carId',
+    path: '/vehicules/$carId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminVehiculesMarqueBrandRoute =
+  AuthenticatedAdminVehiculesMarqueBrandRouteImport.update({
+    id: '/vehicules_/marque/$brand',
+    path: '/vehicules/marque/$brand',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -183,7 +204,10 @@ export interface FileRoutesByFullPath {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/vehicules/$carId': typeof AuthenticatedAdminVehiculesCarIdRoute
+  '/admin/vehicules/marque/$brand': typeof AuthenticatedAdminVehiculesMarqueBrandRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -207,7 +231,10 @@ export interface FileRoutesByTo {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/vehicules/$carId': typeof AuthenticatedAdminVehiculesCarIdRoute
+  '/admin/vehicules/marque/$brand': typeof AuthenticatedAdminVehiculesMarqueBrandRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -234,7 +261,10 @@ export interface FileRoutesById {
   '/_authenticated/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/_authenticated/admin/marques': typeof AuthenticatedAdminMarquesRoute
   '/_authenticated/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
+  '/_authenticated/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/vehicules_/$carId': typeof AuthenticatedAdminVehiculesCarIdRoute
+  '/_authenticated/admin/vehicules_/marque/$brand': typeof AuthenticatedAdminVehiculesMarqueBrandRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -261,7 +291,10 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/marques'
     | '/admin/vehicules'
+    | '/admin/vitrine'
     | '/admin/'
+    | '/admin/vehicules/$carId'
+    | '/admin/vehicules/marque/$brand'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -285,7 +318,10 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/marques'
     | '/admin/vehicules'
+    | '/admin/vitrine'
     | '/admin'
+    | '/admin/vehicules/$carId'
+    | '/admin/vehicules/marque/$brand'
   id:
     | '__root__'
     | '/'
@@ -311,7 +347,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/demandes'
     | '/_authenticated/admin/marques'
     | '/_authenticated/admin/vehicules'
+    | '/_authenticated/admin/vitrine'
     | '/_authenticated/admin/'
+    | '/_authenticated/admin/vehicules_/$carId'
+    | '/_authenticated/admin/vehicules_/marque/$brand'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -503,6 +542,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVehiculesRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/vitrine': {
+      id: '/_authenticated/admin/vitrine'
+      path: '/vitrine'
+      fullPath: '/admin/vitrine'
+      preLoaderRoute: typeof AuthenticatedAdminVitrineRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/vehicules_/$carId': {
+      id: '/_authenticated/admin/vehicules_/$carId'
+      path: '/vehicules/$carId'
+      fullPath: '/admin/vehicules/$carId'
+      preLoaderRoute: typeof AuthenticatedAdminVehiculesCarIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/vehicules_/marque/$brand': {
+      id: '/_authenticated/admin/vehicules_/marque/$brand'
+      path: '/vehicules/marque/$brand'
+      fullPath: '/admin/vehicules/marque/$brand'
+      preLoaderRoute: typeof AuthenticatedAdminVehiculesMarqueBrandRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
@@ -513,7 +573,10 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminDemandesRoute: typeof AuthenticatedAdminDemandesRoute
   AuthenticatedAdminMarquesRoute: typeof AuthenticatedAdminMarquesRoute
   AuthenticatedAdminVehiculesRoute: typeof AuthenticatedAdminVehiculesRoute
+  AuthenticatedAdminVitrineRoute: typeof AuthenticatedAdminVitrineRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminVehiculesCarIdRoute: typeof AuthenticatedAdminVehiculesCarIdRoute
+  AuthenticatedAdminVehiculesMarqueBrandRoute: typeof AuthenticatedAdminVehiculesMarqueBrandRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
@@ -525,7 +588,12 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminDemandesRoute: AuthenticatedAdminDemandesRoute,
     AuthenticatedAdminMarquesRoute: AuthenticatedAdminMarquesRoute,
     AuthenticatedAdminVehiculesRoute: AuthenticatedAdminVehiculesRoute,
+    AuthenticatedAdminVitrineRoute: AuthenticatedAdminVitrineRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+    AuthenticatedAdminVehiculesCarIdRoute:
+      AuthenticatedAdminVehiculesCarIdRoute,
+    AuthenticatedAdminVehiculesMarqueBrandRoute:
+      AuthenticatedAdminVehiculesMarqueBrandRoute,
   }
 
 const AuthenticatedAdminRouteRouteWithChildren =

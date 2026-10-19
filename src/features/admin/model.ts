@@ -10,6 +10,7 @@ import {
 } from "@/lib/cars";
 import {
   getDashboardStats,
+  listFacebookSync,
   listAllCars,
   listLeads,
   type CarInput,
@@ -22,6 +23,7 @@ import { getSession, listAdmins } from "@/features/auth/auth.functions";
 export const ADMIN_SECTIONS = [
   "dashboard",
   "cars",
+  "showcase",
   "brands",
   "content",
   "leads",
@@ -35,6 +37,7 @@ export const isAdminSection = (value: unknown): value is AdminSection =>
 export const SECTION_LABELS: Record<AdminSection, string> = {
   dashboard: "Tableau de bord",
   cars: "Véhicules",
+  showcase: "Vitrine",
   brands: "Marques",
   content: "Contenu du site",
   leads: "Demandes",
@@ -46,6 +49,7 @@ export const SECTION_LABELS: Record<AdminSection, string> = {
 export const SECTION_PATHS = {
   dashboard: "/admin",
   cars: "/admin/vehicules",
+  showcase: "/admin/vitrine",
   brands: "/admin/marques",
   content: "/admin/contenu",
   leads: "/admin/demandes",
@@ -53,12 +57,12 @@ export const SECTION_PATHS = {
   admins: "/admin/administrateurs",
 } as const satisfies Record<AdminSection, string>;
 
-/** Section shown at a path (trailing slash tolerated). */
+/** Section shown at a path, sub-pages included (e.g. /admin/vehicules/marque/kia). */
 export function sectionAt(pathname: string): AdminSection {
   const path = pathname.replace(/\/+$/, "") || "/";
-  const found = (Object.entries(SECTION_PATHS) as [AdminSection, string][]).find(
-    ([, value]) => value === path,
-  );
+  const found = (Object.entries(SECTION_PATHS) as [AdminSection, string][])
+    .filter(([, value]) => path === value || (value !== "/admin" && path.startsWith(`${value}/`)))
+    .sort(([, a], [, b]) => b.length - a.length)[0];
   return found?.[0] ?? "dashboard";
 }
 
@@ -72,6 +76,13 @@ export const adminCarsQueryKey = ["admin-cars"] as const;
 export const adminCarsQuery = queryOptions({
   queryKey: adminCarsQueryKey,
   queryFn: () => listAllCars() as Promise<AdminCar[]>,
+});
+
+/** Facebook post status per vehicle ("Facebook" column of the vehicle list). */
+export const facebookSyncQuery = queryOptions({
+  queryKey: ["admin-facebook-sync"],
+  queryFn: () => listFacebookSync(),
+  staleTime: 30_000,
 });
 
 export const dashboardStatsQuery = queryOptions({
