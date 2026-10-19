@@ -506,8 +506,8 @@ export function ContentEditor() {
           </Tabs.Panel>
         ))}
       </Tabs>
-      {/* Phones: sits just above the bottom tab bar. */}
-      <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-separator bg-surface p-3 shadow-lg sm:p-4 lg:bottom-4">
+      {/* Phones: stays clear of the home bar. */}
+      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-separator bg-surface p-3 shadow-lg sm:p-4 lg:bottom-4">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p
             aria-live="polite"

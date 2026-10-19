@@ -439,7 +439,7 @@ export function CarsTab() {
           isIconOnly
           aria-label="Ajouter un véhicule"
           onPress={() => open(emptyCar)}
-          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] end-4 z-30 size-14 rounded-full shadow-lg sm:hidden"
+          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] end-4 z-30 size-14 rounded-full shadow-lg sm:hidden"
         >
           <Plus className="size-6" aria-hidden />
         </Button>
@@ -501,8 +501,8 @@ export function CarsTab() {
             <div
               role="toolbar"
               aria-label="Actions groupées"
-              // Phones: floats above the bottom bar, actions scroll sideways.
-              className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 grid gap-2 rounded-2xl border border-border bg-surface p-2 shadow-xl md:sticky md:inset-x-auto md:top-2 md:bottom-auto md:z-10 md:flex md:flex-wrap md:items-center md:rounded-xl md:shadow-md"
+              // Phones: floats at the bottom of the screen, actions scroll sideways.
+              className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 grid gap-2 rounded-2xl border border-border bg-surface p-2 shadow-xl md:sticky md:inset-x-auto md:top-2 md:bottom-auto md:z-10 md:flex md:flex-wrap md:items-center md:rounded-xl md:shadow-md"
             >
               <div className="flex items-center gap-2 md:contents">
                 <span className="px-2 text-sm font-medium text-foreground">

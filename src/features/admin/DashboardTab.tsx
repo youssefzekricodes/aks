@@ -171,7 +171,8 @@ function StatTile({
 }
 
 /** One row per body type (all of them, zero included), bar length = share of the largest. */
-function BodyBreakdown({ cars }: { cars: AdminCar[] }) {
+/** `bar`: colour of the bars (the phone home screen uses gradients). */
+export function BodyBreakdown({ cars, bar = "bg-accent" }: { cars: AdminCar[]; bar?: string }) {
   const counts = new Map<string, number>(CAR_BODIES.map((body) => [body, 0]));
   // Only real body types: "À préciser" (imported, not filled in yet) is left out.
   for (const car of cars) if (counts.has(car.body)) counts.set(car.body, counts.get(car.body)! + 1);
@@ -196,7 +197,7 @@ function BodyBreakdown({ cars }: { cars: AdminCar[] }) {
           <span className="truncate text-sm text-foreground">{body}</span>
           <span className="h-2.5 overflow-hidden rounded-full bg-surface-secondary" aria-hidden>
             <span
-              className="block h-full rounded-full bg-accent"
+              className={`block h-full rounded-full ${bar}`}
               style={{ width: `${(count / max) * 100}%` }}
             />
           </span>
@@ -210,12 +211,14 @@ function BodyBreakdown({ cars }: { cars: AdminCar[] }) {
   );
 }
 
-function MostViewed({
+export function MostViewed({
   cars,
   views,
+  bar = "bg-accent",
 }: {
   cars: AdminCar[];
   views: { carId: string; last30: number; total: number }[];
+  bar?: string;
 }) {
   const byId = new Map(cars.map((car) => [car.id, car]));
   const rows = views
@@ -263,7 +266,7 @@ function MostViewed({
                   aria-hidden
                 >
                   <span
-                    className="block h-full rounded-full bg-accent"
+                    className={`block h-full rounded-full ${bar}`}
                     style={{ width: `${(row.last30 / max) * 100}%` }}
                   />
                 </span>
@@ -279,7 +282,7 @@ function MostViewed({
   );
 }
 
-function ListSkeleton({ rows }: { rows: number }) {
+export function ListSkeleton({ rows }: { rows: number }) {
   return (
     <div className="grid gap-3" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (

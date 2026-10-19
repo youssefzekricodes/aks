@@ -1,4 +1,5 @@
 import { gtagSnippet } from "@/lib/analytics";
+import { WhatsAppButton } from "@/components/aks/WhatsAppButton";
 import {
   brandLogosQuery,
   brandSettingsQuery,
@@ -179,6 +180,7 @@ function RootComponent() {
         >
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+          <WhatsAppButton />
           <Toast.Provider placement="top" />
         </RouterProvider>
       </I18nProvider>

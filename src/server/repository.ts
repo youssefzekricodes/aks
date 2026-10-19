@@ -582,7 +582,10 @@ export async function createUpload(
   scope = "",
 ) {
   checkOrigin();
-  await adminClient();
+  const supabase = await adminClient();
+  // A profile photo always goes in its owner's folder, whatever the browser sent.
+  if (kind === "avatar") scope = (await supabase.auth.getClaims()).data?.claims.sub ?? "";
+  if (kind === "avatar" && !/^[0-9a-f-]{36}$/.test(scope)) throw new Error("Session invalide.");
   const rule = UPLOAD_RULES[kind];
   if (!(rule.types as readonly string[]).includes(contentType))
     throw new Error("Format non autorisé.");

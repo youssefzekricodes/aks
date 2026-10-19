@@ -477,11 +477,7 @@ function LeadCard({
   const long = message.length > 140 || message.includes("\n");
   const action = buttonVariants({ variant: "secondary", size: "sm" });
   return (
-    <li
-      className={`grid gap-3 rounded-2xl border bg-surface p-4 ${
-        lead.handled ? "border-separator" : "border-accent/40"
-      }`}
-    >
+    <li className="grid gap-3 rounded-2xl border border-separator bg-surface p-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2">
@@ -545,7 +541,7 @@ function LeadCard({
         </a>
       )}
       <div className="grid grid-cols-3 gap-2">
-        <a href={telOf(lead)} className={`${action} h-11`}>
+        <a href={telOf(lead)} className={`${action} h-11 w-full min-w-0 px-2`}>
           <Phone className="size-4" aria-hidden />
           Appeler
         </a>
@@ -553,7 +549,7 @@ function LeadCard({
           href={whatsappUrl(lead.phone)}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${action} h-11`}
+          className={`${action} h-11 w-full min-w-0 px-2`}
         >
           <MessageCircle className="size-4" aria-hidden />
           WhatsApp
@@ -561,7 +557,7 @@ function LeadCard({
         <Button
           size="sm"
           variant={lead.handled ? "tertiary" : "primary"}
-          className="h-11"
+          className="h-11 w-full min-w-0 px-2"
           isDisabled={pending}
           onPress={onToggle}
         >

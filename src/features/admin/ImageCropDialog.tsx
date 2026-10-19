@@ -64,6 +64,13 @@ export const CROP_PRESETS = {
     type: "keep",
     allowMargins: true,
   },
+  avatar: {
+    title: "Recadrer votre photo",
+    formats: [{ id: "1:1", label: "Carré", aspect: 1 }],
+    maxWidth: 320,
+    type: "image/jpeg",
+    hint: "Votre visage au centre : la photo s’affiche dans un cercle.",
+  },
   favicon: {
     title: "Recadrer l’icône",
     formats: [{ id: "1:1", label: "Carré", aspect: 1 }],

@@ -711,3 +711,31 @@ export function AdminBreadcrumbs({ items }: { items: Crumb[] }) {
     </nav>
   );
 }
+
+/* ───────── Account ───────── */
+
+/** Administrator's photo in a circle, or the first letter of their e-mail. */
+export function AdminAvatar({
+  email,
+  url,
+  className = "size-6 text-xs",
+}: {
+  email: string;
+  url: string | null | undefined;
+  className?: string;
+}) {
+  return url ? (
+    <img
+      src={url}
+      alt=""
+      className={`shrink-0 rounded-full bg-surface-secondary object-cover ${className}`}
+    />
+  ) : (
+    <span
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold uppercase text-accent ${className}`}
+    >
+      {email.charAt(0) || "A"}
+    </span>
+  );
+}

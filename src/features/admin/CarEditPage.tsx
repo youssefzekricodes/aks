@@ -14,7 +14,8 @@ import { Car as CarIcon } from "@/components/icons";
 
 /**
  * Where the editor was opened from, so saving or leaving goes back there:
- * the vehicle list (default), a brand's ordering page ("marque:kia") or the showcase.
+ * the vehicle list (default), a brand's ordering page ("marque:kia"), the showcase,
+ * or the phone home screen ("accueil").
  */
 export type EditOrigin = string | undefined;
 
@@ -34,6 +35,12 @@ function originOf(from: EditOrigin) {
       backLabel: `Retour à ${brandInfo(brand).name}`,
     };
   }
+  if (from === "accueil")
+    return {
+      brand: null,
+      crumbs: [{ label: "Accueil", to: "/admin" }] satisfies Crumb[],
+      backLabel: "Retour à l’accueil",
+    };
   if (from === "vitrine")
     return {
       brand: null,
@@ -96,6 +103,7 @@ function Editor({ initial, from }: { initial: CarInput; from: EditOrigin }) {
     if (origin.brand)
       void navigate({ to: "/admin/vehicules/marque/$brand", params: { brand: origin.brand } });
     else if (from === "vitrine") void navigate({ to: "/admin/vitrine" });
+    else if (from === "accueil") void navigate({ to: "/admin" });
     else void navigate({ to: "/admin/vehicules" });
   }, [navigate, origin.brand, from]);
 

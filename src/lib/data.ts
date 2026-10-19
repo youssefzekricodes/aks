@@ -3,7 +3,7 @@ export * from "@/features/catalog/catalog.functions";
 export type { CarInput, Lead } from "@/features/catalog/types";
 import { createUploadUrl } from "@/features/catalog/catalog.functions";
 
-type UploadKind = "vehicle" | "brand" | "site";
+type UploadKind = "vehicle" | "brand" | "site" | "avatar";
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 /** Limits on the file the user picks (before resizing). */

@@ -1,17 +1,25 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Link, Outlet, getRouteApi, useLocation, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Link,
+  Outlet,
+  getRouteApi,
+  useLocation,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Drawer, Dropdown, Header, Label, Separator, toast } from "@heroui/react";
+import { Button, Dropdown, Header, Label, Separator, toast } from "@heroui/react";
 import {
   Car,
   ChevronDown,
+  ChevronLeft,
   LayoutDashboard,
   ExternalLink,
+  ImagePlus,
   FileText,
   Inbox,
   LogOut,
   Plug,
-  Menu,
   ShieldCheck,
   RefreshCw,
   Store,
@@ -21,6 +29,7 @@ import {
 } from "@/components/icons";
 import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
+import { brandInfo } from "@/features/catalog/brands";
 import {
   ADMIN_SECTIONS,
   ROLE_LABELS,
@@ -34,6 +43,8 @@ import {
   type AdminSection,
   type Session,
 } from "./model";
+import { AvatarDialog } from "./AvatarDialog";
+import { AdminAvatar } from "./ui";
 
 const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -63,12 +74,43 @@ export function AdminLayout() {
   );
 }
 
-/** Pages opened from a list (vehicle editor): full screen on phones, no bottom bar. */
-const isDetailPage = (path: string) => /^\/admin\/vehicules\/(?!marque\/)[^/]+\/?$/.test(path);
+/** Where "back" leads on a phone (back arrow and swipe from the left edge). */
+function parentOf(pathname: string, from: unknown): { href: string; label: string } | null {
+  if (/^\/admin\/vehicules\/marque\//.test(pathname))
+    return { href: "/admin/vehicules", label: "Véhicules" };
+  if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) {
+    if (typeof from === "string" && from.startsWith("marque:")) {
+      const brand = from.slice("marque:".length);
+      return { href: `/admin/vehicules/marque/${brand}`, label: brandInfo(brand).name };
+    }
+    if (from === "vitrine") return { href: "/admin/vitrine", label: "Vitrine" };
+    if (from === "accueil") return { href: "/admin", label: "Accueil" };
+    return { href: "/admin/vehicules", label: "Véhicules" };
+  }
+  return pathname.replace(/\/$/, "") === "/admin" ? null : { href: "/admin", label: "Accueil" };
+}
+
+/** Title of the phone top bar. */
+function pageTitle(pathname: string, section: AdminSection) {
+  if (/^\/admin\/vehicules\/marque\//.test(pathname)) return "Ordre des véhicules";
+  if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) return "Fiche véhicule";
+  return SECTION_LABELS[section];
+}
+
+const homeDate = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/** A swipe that starts this close to the left edge (px) and goes this far goes back. */
+const EDGE = 28;
+const SWIPE_BACK = 90;
 
 /**
- * Desktop: sidebar + top bar. Phone (installed "AKS Admin" app too): top bar and a
- * bottom tab bar with the main sections, the rest in the "Menu" drawer.
+ * Computer: sidebar + top bar (unchanged). Phone and the installed "AKS Admin" app:
+ * a home screen of tiles (/admin); each section opens full screen with a back arrow,
+ * and a swipe from the left edge returns to where it was opened from.
  */
 export function AdminShell({
   session: initialSession,
@@ -78,16 +120,21 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const [menuOpen, setMenuOpen] = useState(false);
   const session = useQuery({ ...sessionQuery, initialData: initialSession });
   const isSuperAdmin = session.data?.role === "super_admin";
   const sections = ADMIN_SECTIONS.filter(
     (id) => isSuperAdmin || !SUPER_ADMIN_SECTIONS.includes(id),
   );
-  const pathname = useLocation({ select: (location) => location.pathname });
+  const { pathname, from } = useLocation({
+    select: (location) => ({
+      pathname: location.pathname,
+      from: (location.search as Record<string, unknown>)["from"],
+    }),
+  });
   const section = sectionAt(pathname);
-  const tabBar = !isDetailPage(pathname);
+  const parent = parentOf(pathname, from);
 
   // Signed out elsewhere, or 2FA no longer satisfied (password reset, factor removed).
   const lost = session.isSuccess && (!session.data || session.data.mfa !== "ok");
@@ -103,6 +150,78 @@ export function AdminShell({
   const openLeads = (leads.data ?? []).filter((lead) => !lead.handled).length;
   if (openLeads > 0) counts.leads = { value: openLeads, label: "à traiter", highlight: true };
 
+  // Back: to the previous page when that is the parent (keeps the history tidy),
+  // otherwise straight to the parent.
+  const previous = useRef<string | null>(null);
+  const current = useRef(pathname);
+  const [direction, setDirection] = useState<"forward" | "back">("forward");
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  useEffect(() => {
+    if (current.current === pathname) return;
+    previous.current = current.current;
+    current.current = pathname;
+  }, [pathname]);
+  const goBack = useCallback(() => {
+    if (!parent) return;
+    setDirection("back");
+    if (previous.current === parent.href) router.history.back();
+    else void navigate({ href: parent.href });
+  }, [parent, navigate, router]);
+  useEffect(() => {
+    // The next page opened slides in from the right again.
+    if (direction !== "back") return undefined;
+    const id = window.setTimeout(() => setDirection("forward"), 400);
+    return () => window.clearTimeout(id);
+  }, [direction, pathname]);
+
+  // Swipe from the left edge (phones): the page follows the finger, and goes back
+  // when released far enough.
+  const page = useRef<HTMLDivElement>(null);
+  const swipe = useRef<{ x: number; y: number; dx: number; active: boolean } | null>(null);
+  const setShift = (dx: number, animate: boolean) => {
+    const el = page.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 200ms cubic-bezier(0.2, 0, 0, 1)" : "none";
+    el.style.transform = dx ? `translateX(${dx}px)` : "";
+    el.style.boxShadow = dx ? "-12px 0 24px rgb(0 0 0 / 0.12)" : "";
+  };
+  const touch = {
+    onTouchStart: (event: React.TouchEvent) => {
+      const t = event.touches[0];
+      if (!parent || !t || window.innerWidth >= 1024 || t.clientX > EDGE) return;
+      swipe.current = { x: t.clientX, y: t.clientY, dx: 0, active: false };
+    },
+    onTouchMove: (event: React.TouchEvent) => {
+      const s = swipe.current;
+      const t = event.touches[0];
+      if (!s || !t) return;
+      const dx = t.clientX - s.x;
+      const dy = t.clientY - s.y;
+      if (!s.active) {
+        if (Math.abs(dy) > Math.abs(dx)) {
+          swipe.current = null; // vertical scroll
+          return;
+        }
+        if (dx > 8) s.active = true;
+      }
+      if (s.active) {
+        s.dx = Math.max(0, dx);
+        setShift(s.dx, false);
+      }
+    },
+    onTouchEnd: () => {
+      const s = swipe.current;
+      swipe.current = null;
+      if (!s?.active) return;
+      if (s.dx < SWIPE_BACK) return setShift(0, true);
+      setShift(window.innerWidth, true);
+      window.setTimeout(() => {
+        goBack();
+        setShift(0, false);
+      }, 180);
+    },
+  };
+
   async function signOut() {
     try {
       await clearSession();
@@ -116,13 +235,78 @@ export function AdminShell({
   }
 
   const email = session.data?.email ?? "";
-  const logo = useSiteText()("identity.logo", "/images/aks-logo.png");
-  const nav = (onNavigate?: () => void) => (
-    <SectionNav section={section} sections={sections} counts={counts} onNavigate={onNavigate} />
+
+  const avatarUrl = session.data?.avatarUrl ?? null;
+  /** Account button and menu; `large`: the bigger photo of the phone home screen. */
+  const accountMenu = (large = false) => (
+    <Dropdown>
+      <Button
+        variant="ghost"
+        size={large ? "md" : "sm"}
+        className={large ? "h-auto rounded-full p-0.5" : ""}
+        aria-label={`Compte ${email}`.trim()}
+      >
+        <AdminAvatar
+          email={email}
+          url={avatarUrl}
+          className={
+            large
+              ? "size-12 text-lg ring-[3px] ring-surface shadow-[0_4px_12px_-4px_rgb(15_23_42/0.25)]"
+              : "size-7 text-xs"
+          }
+        />
+        <span className="hidden max-w-56 truncate lg:inline">{email || "Compte"}</span>
+        <ChevronDown className="size-4 text-muted max-lg:hidden" aria-hidden />
+      </Button>
+      <Dropdown.Popover placement="bottom end" className="min-w-60">
+        <Dropdown.Menu
+          aria-label="Compte"
+          onAction={(key) => {
+            if (key === "logout") void signOut();
+            if (key === "avatar") setAvatarOpen(true);
+            if (key === "security")
+              void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
+          }}
+        >
+          <Dropdown.Section>
+            <Header>
+              <span className="block text-xs text-muted">Connecté en tant que</span>
+              <span className="block truncate text-sm text-foreground">
+                {email || "Administrateur"}
+              </span>
+              {session.data && (
+                <span className="mt-0.5 block text-xs text-muted">
+                  {ROLE_LABELS[session.data.role]}
+                </span>
+              )}
+            </Header>
+            <Dropdown.Item id="avatar" textValue="Ma photo">
+              <ImagePlus className="size-4 shrink-0 text-muted" aria-hidden />
+              <Label>{avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}</Label>
+            </Dropdown.Item>
+            {isSuperAdmin ? (
+              <Dropdown.Item id="security" textValue="Ma sécurité">
+                <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
+                <Label>Ma sécurité</Label>
+              </Dropdown.Item>
+            ) : null}
+            <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
+              <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
+              <Label>Voir le site</Label>
+            </Dropdown.Item>
+          </Dropdown.Section>
+          <Separator />
+          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
+            <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
+            <Label>Déconnexion</Label>
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 
   return (
-    <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+    <div className="admin-app min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <a
         href="#admin-main"
         className="sr-only z-50 rounded-lg bg-surface px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -132,7 +316,9 @@ export function AdminShell({
 
       <aside className="vt-sidebar sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
         <Brand />
-        <div className="flex-1 overflow-y-auto px-4 py-4">{nav()}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <SectionNav section={section} sections={sections} counts={counts} />
+        </div>
         <div className="border-t border-separator p-4">
           <a
             href="/"
@@ -147,163 +333,99 @@ export function AdminShell({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-col">
-        <header className="vt-header dark sticky top-0 z-30 border-b border-white/10 bg-[oklch(0.17_0.004_286)] pt-[env(safe-area-inset-top)] text-foreground">
-          <div className="flex h-14 items-center gap-2 px-4 sm:px-6 lg:h-16 lg:px-8">
-            {/* Phone: the logo stands in for the sidebar; the menu is in the bottom bar. */}
-            <Link to="/admin" className="shrink-0 lg:hidden" aria-label="Tableau de bord">
-              <img src={logo} alt="" width={72} height={24} className="h-6 w-auto" />
-            </Link>
+      <div className="flex min-w-0 flex-col overflow-x-clip">
+        {/* Computer top bar (unchanged). */}
+        <header className="vt-header dark sticky top-0 z-30 hidden border-b border-white/10 bg-[oklch(0.17_0.004_286)] text-foreground lg:block">
+          <div className="flex h-16 items-center gap-2 px-8">
             <p className="min-w-0 flex-1 truncate text-sm">
-              <span className="hidden text-muted sm:inline">Administration / </span>
+              <span className="text-muted">Administration / </span>
               <span className="font-semibold text-foreground">{SECTION_LABELS[section]}</span>
             </p>
-            <Dropdown>
-              <Button variant="ghost" size="sm" aria-label={`Compte ${email}`.trim()}>
-                <span
-                  aria-hidden
-                  className="flex size-6 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold uppercase text-accent"
-                >
-                  {email.charAt(0) || "A"}
-                </span>
-                <span className="hidden max-w-56 truncate sm:inline">{email || "Compte"}</span>
-                <ChevronDown className="size-4 text-muted" aria-hidden />
-              </Button>
-              <Dropdown.Popover placement="bottom end" className="min-w-60">
-                <Dropdown.Menu
-                  aria-label="Compte"
-                  onAction={(key) => {
-                    if (key === "logout") void signOut();
-                    if (key === "security")
-                      void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
-                  }}
-                >
-                  <Dropdown.Section>
-                    <Header>
-                      <span className="block text-xs text-muted">Connecté en tant que</span>
-                      <span className="block truncate text-sm text-foreground">
-                        {email || "Administrateur"}
-                      </span>
-                      {session.data && (
-                        <span className="mt-0.5 block text-xs text-muted">
-                          {ROLE_LABELS[session.data.role]}
-                        </span>
-                      )}
-                    </Header>
-                    {isSuperAdmin ? (
-                      <Dropdown.Item id="security" textValue="Ma sécurité">
-                        <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
-                        <Label>Ma sécurité</Label>
-                      </Dropdown.Item>
-                    ) : null}
-                    <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
-                      <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
-                      <Label>Voir le site</Label>
-                    </Dropdown.Item>
-                  </Dropdown.Section>
-                  <Separator />
-                  <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
-                    <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
-                    <Label>Déconnexion</Label>
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown>
+            {accountMenu()}
           </div>
         </header>
 
-        <main
-          id="admin-main"
-          tabIndex={-1}
-          className={`mx-auto w-full max-w-6xl flex-1 px-4 py-5 outline-none sm:px-6 lg:px-8 lg:py-8 ${
-            tabBar ? "pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8" : ""
-          }`}
-        >
-          {children}
-        </main>
+        {/* Phone: light bar with a round back button and the page title. */}
+        {parent && (
+          <header className="sticky top-0 z-30 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:hidden">
+            <div className="flex h-14 items-center gap-3 px-4">
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={`Retour : ${parent.label}`}
+                className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-foreground shadow-[0_1px_2px_rgb(15_23_42/0.08)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                <ChevronLeft className="size-5" aria-hidden />
+              </button>
+              <p className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
+                {pageTitle(pathname, section)}
+              </p>
+              <span className="grid size-10 shrink-0 place-items-center">{accountMenu()}</span>
+            </div>
+          </header>
+        )}
+
+        {/* Phone home screen: greeting and the account photo, no bar. */}
+        {!parent && (
+          <div className="pt-[env(safe-area-inset-top)] lg:hidden">
+            <div className="flex items-center justify-between gap-4 px-4 pt-6 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-sm text-muted first-letter:uppercase">
+                  {homeDate.format(new Date())}
+                </p>
+                <h1 className="mt-0.5 text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
+                  Bonjour !
+                </h1>
+              </div>
+              {accountMenu(true)}
+            </div>
+          </div>
+        )}
+        <div ref={page} {...touch} onTouchCancel={touch.onTouchEnd} className="flex-1">
+          <main
+            id="admin-main"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-6xl px-4 py-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:py-8"
+          >
+            {/* Phones: each page slides in (from the left when going back). */}
+            <div
+              key={pathname}
+              className={`max-lg:animate-in max-lg:fade-in-0 max-lg:duration-300 ${
+                direction === "back"
+                  ? "max-lg:slide-in-from-left-8"
+                  : "max-lg:slide-in-from-right-8"
+              }`}
+            >
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
 
-      {tabBar && (
-        <TabBar
-          section={section}
-          sections={sections}
-          leads={openLeads}
-          menuOpen={menuOpen}
-          onMenu={() => setMenuOpen(true)}
-        />
-      )}
-
-      <Drawer.Backdrop isOpen={menuOpen} onOpenChange={setMenuOpen}>
-        <Drawer.Content placement="left">
-          <Drawer.Dialog className="w-72 max-w-[85vw] pb-[env(safe-area-inset-bottom)]">
-            <Brand inDrawer>
-              <Drawer.CloseTrigger aria-label="Fermer le menu" />
-            </Brand>
-            <Drawer.Body className="grid content-start gap-4">
-              {nav(() => setMenuOpen(false))}
-              <Separator />
-              <a
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <ExternalLink className="size-4" aria-hidden />
-                Voir le site
-                <span className="sr-only">(nouvel onglet)</span>
-              </a>
-              <div className="grid gap-1 border-t border-separator pt-3 lg:hidden">
-                <p className="truncate px-3 text-xs text-muted">{email}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    void signOut();
-                  }}
-                  className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-danger outline-none hover:bg-danger-soft focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  <LogOut className="size-4" aria-hidden />
-                  Déconnexion
-                </button>
-              </div>
-            </Drawer.Body>
-          </Drawer.Dialog>
-        </Drawer.Content>
-      </Drawer.Backdrop>
+      <AvatarDialog
+        email={email}
+        url={avatarUrl}
+        isOpen={avatarOpen}
+        onOpenChange={setAvatarOpen}
+      />
     </div>
   );
 }
 
-/**
- * Site logo on a dark band, like the public header, so the white-and-red logo
- * keeps its colours. In the drawer the name is the dialog's heading.
- */
-function Brand({ inDrawer = false, children }: { inDrawer?: boolean; children?: ReactNode }) {
+/** Site logo on a dark band, like the public header, so the white-and-red logo keeps its colours. */
+function Brand() {
   const text = useSiteText();
   const logo = text("identity.logo", "/images/aks-logo.png");
-  const Title = inDrawer ? Drawer.Heading : "p";
   return (
-    <div
-      className={`dark relative flex h-16 shrink-0 items-center gap-3 bg-[oklch(0.17_0.004_286)] px-5 text-foreground ${
-        inDrawer ? "pe-14" : ""
-      }`}
-    >
+    <div className="dark relative flex h-16 shrink-0 items-center gap-3 bg-[oklch(0.17_0.004_286)] px-5 text-foreground">
       <img src={logo} alt="" width={96} height={32} className="h-8 w-auto shrink-0" />
       <div className="min-w-0">
-        {inDrawer ? (
-          // Narrow drawer: the logo alone; the heading is for screen readers.
-          <Title className="sr-only">Menu de l’administration</Title>
-        ) : (
-          <>
-            <Title className="truncate text-sm font-semibold">
-              {text("identity.brand", "Auto Kontor")}{" "}
-              <span className="text-accent">{text("identity.brand_suffix", "Sfax")}</span>
-            </Title>
-            <p className="text-xs text-muted">Administration</p>
-          </>
-        )}
+        <p className="truncate text-sm font-semibold">
+          {text("identity.brand", "Auto Kontor")}{" "}
+          <span className="text-accent">{text("identity.brand_suffix", "Sfax")}</span>
+        </p>
+        <p className="text-xs text-muted">Administration</p>
       </div>
-      {children}
     </div>
   );
 }
@@ -355,79 +477,6 @@ function SectionNav({
             </li>
           );
         })}
-      </ul>
-    </nav>
-  );
-}
-
-/** Sections always one tap away on a phone; everything else is under "Menu". */
-const TAB_SECTIONS: { id: AdminSection; label: string }[] = [
-  { id: "dashboard", label: "Accueil" },
-  { id: "cars", label: "Véhicules" },
-  { id: "leads", label: "Demandes" },
-  { id: "showcase", label: "Vitrine" },
-];
-
-function TabBar({
-  section,
-  sections,
-  leads,
-  menuOpen,
-  onMenu,
-}: {
-  section: AdminSection;
-  sections: readonly AdminSection[];
-  leads: number;
-  menuOpen: boolean;
-  onMenu: () => void;
-}) {
-  const tabs = TAB_SECTIONS.filter((tab) => sections.includes(tab.id));
-  const inMenu = !tabs.some((tab) => tab.id === section);
-  const item =
-    "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
-  return (
-    <nav
-      aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-separator bg-surface/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] backdrop-blur lg:hidden"
-    >
-      <ul className="mx-auto flex max-w-lg">
-        {tabs.map((tab) => {
-          const Icon = SECTION_ICONS[tab.id];
-          const active = tab.id === section;
-          return (
-            <li key={tab.id} className="flex flex-1">
-              <Link
-                to={SECTION_PATHS[tab.id]}
-                preload="intent"
-                aria-current={active ? "page" : undefined}
-                className={`${item} ${active ? "text-accent" : "text-muted"}`}
-              >
-                <span className="relative">
-                  <Icon className="size-[22px]" aria-hidden />
-                  {tab.id === "leads" && leads > 0 && (
-                    <span className="absolute -end-2.5 -top-1.5 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-accent-foreground tabular-nums">
-                      {leads > 99 ? "99+" : leads}
-                      <span className="sr-only"> à traiter</span>
-                    </span>
-                  )}
-                </span>
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-        <li className="flex flex-1">
-          <button
-            type="button"
-            onClick={onMenu}
-            aria-haspopup="dialog"
-            aria-expanded={menuOpen}
-            className={`${item} ${inMenu ? "text-accent" : "text-muted"}`}
-          >
-            <Menu className="size-[22px]" aria-hidden />
-            Menu
-          </button>
-        </li>
       </ul>
     </nav>
   );

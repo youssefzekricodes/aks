@@ -24,6 +24,11 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () =>
   (await auth()).currentAdmin(),
 );
 
+/** Profile photo of the signed-in admin (an uploaded "avatar" file), or null to remove it. */
+export const setAvatar = createServerFn({ method: "POST" })
+  .validator(z.object({ url: z.string().url().max(500).nullable() }))
+  .handler(async ({ data }) => (await auth()).setAvatar(data.url));
+
 /* Two-factor authentication (Supabase MFA: SMS or authenticator app). */
 const factorId = z.string().uuid();
 export const mfaEnroll = createServerFn({ method: "POST" })

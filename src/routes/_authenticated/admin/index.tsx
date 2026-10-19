@@ -1,6 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { DashboardTab } from "@/features/admin/DashboardTab";
+import { MobileHome } from "@/features/admin/MobileHome";
 import {
+  ADMIN_SECTIONS,
+  SUPER_ADMIN_SECTIONS,
   isAdminSection,
   SECTION_PATHS,
   adminCarsQuery,
@@ -23,5 +26,23 @@ export const Route = createFileRoute("/_authenticated/admin/")({
     void context.queryClient.prefetchQuery(leadsQueryOptions);
   },
   head: () => ({ meta: [{ title: "Tableau de bord — Administration" }] }),
-  component: DashboardTab,
+  component: AdminHome,
 });
+
+/** Phones and the installed app: the home screen of tiles. Computers: the dashboard. */
+function AdminHome() {
+  const { session } = Route.useRouteContext();
+  const sections = ADMIN_SECTIONS.filter(
+    (id) => session.role === "super_admin" || !SUPER_ADMIN_SECTIONS.includes(id),
+  );
+  return (
+    <>
+      <div className="lg:hidden">
+        <MobileHome sections={sections} />
+      </div>
+      <div className="hidden lg:block">
+        <DashboardTab />
+      </div>
+    </>
+  );
+}

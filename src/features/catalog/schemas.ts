@@ -68,7 +68,7 @@ export const brandSettingsSchema = z
   .min(1)
   .max(200);
 export const uploadSchema = z.object({
-  kind: z.enum(["vehicle", "brand", "site"]),
+  kind: z.enum(["vehicle", "brand", "site", "avatar"]),
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
   size: z.number().int().positive().max(5_000_000),
   scope: z

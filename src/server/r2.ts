@@ -16,6 +16,8 @@ export const UPLOAD_RULES = {
   vehicle: { types: ["image/jpeg", "image/webp"], maxBytes: 4_000_000 },
   brand: { types: ["image/png", "image/webp"], maxBytes: 400_000 },
   site: { types: ["image/jpeg", "image/png", "image/webp"], maxBytes: 3_000_000 },
+  /** Administrator profile photo (square, resized in the browser). */
+  avatar: { types: ["image/jpeg", "image/webp"], maxBytes: 500_000 },
 } as const;
 export type UploadKind = keyof typeof UPLOAD_RULES;
 
@@ -28,6 +30,7 @@ export const KEY_PATTERNS: Record<UploadKind, RegExp> = {
   vehicle: /^vehicles\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
   brand: /^brands\/[a-z0-9-]+\/[0-9a-f-]{36}\.(png|webp)$/,
   site: /^site\/[a-z0-9_.-]+\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
+  avatar: /^avatars\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|webp)$/,
 };
 
 let client: AwsClient | undefined;
@@ -65,6 +68,7 @@ export function newKey(kind: UploadKind, contentType: string, scope = "") {
     const month = String(now.getUTCMonth() + 1).padStart(2, "0");
     return `vehicles/${now.getUTCFullYear()}/${month}/${id}.${ext}`;
   }
+  if (kind === "avatar") return `avatars/${scope}/${id}.${ext}`; // scope: the admin's id
   return `${kind === "brand" ? "brands" : "site"}/${scope}/${id}.${ext}`;
 }
 

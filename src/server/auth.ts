@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "./env";
 import { isAllowedOrigin } from "./origin";
+import { deleteObjects, keyFromUrl } from "./r2";
 import { isolatedClient, sessionClient, type Db } from "./supabase";
 
 /** Mutations must come from the site itself (CSRF defence in addition to SameSite cookies). */
@@ -39,7 +40,23 @@ const maskEmail = (email: string) =>
     (_, first: string, rest: string, domain: string) =>
       `${first}${"•".repeat(Math.min(rest.length, 6))}${domain}`,
   );
-export type Admin = { id: string; email: string; role: Role; mfa: MfaState; factors: Factor[] };
+export type Admin = {
+  id: string;
+  email: string;
+  role: Role;
+  mfa: MfaState;
+  factors: Factor[];
+  /** Profile photo (only one of ours, in this admin's folder); null: their initial. */
+  avatarUrl: string | null;
+};
+
+/** The photo saved on the account, if it is a valid file of this admin's. */
+function avatarOf(id: string, metadata: unknown) {
+  const url = (metadata as Record<string, unknown> | null | undefined)?.["avatar_url"];
+  if (typeof url !== "string") return null;
+  const key = keyFromUrl(url, "avatar");
+  return key?.startsWith(`avatars/${id}/`) ? url : null;
+}
 
 const roleOf = (user: { app_metadata?: Record<string, unknown> } | null | undefined) => {
   const role = user?.app_metadata?.["role"];
@@ -108,7 +125,14 @@ export async function currentAdmin(
         ...(await factorsOf(supabase)),
       ];
   }
-  return { id: claims.sub, email, role, mfa, factors };
+  return {
+    id: claims.sub,
+    email,
+    role,
+    mfa,
+    factors,
+    avatarUrl: avatarOf(claims.sub, claims.user_metadata),
+  };
 }
 
 /** Session client for an admin request; throws unless fully signed in (incl. 2FA). */
@@ -119,6 +143,29 @@ export async function adminClient({ write = false } = {}) {
   if (!admin) throw new Error("Connexion administrateur requise.");
   if (admin.mfa !== "ok") throw new Error("Validez la double authentification pour continuer.");
   return supabase;
+}
+
+/**
+ * Sets (or removes, with null) the signed-in admin's profile photo: saved on their
+ * account, the previous file deleted. The session is refreshed so the new photo is
+ * in the token right away.
+ */
+export async function setAvatar(url: string | null) {
+  const supabase = await adminClient({ write: true });
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (userError || !user) throw new Error("Connexion administrateur requise.");
+  if (url !== null && avatarOf(user.id, { avatar_url: url }) === null)
+    throw new Error("Photo invalide.");
+  const previous = avatarOf(user.id, user.user_metadata);
+  const { error } = await supabase.auth.updateUser({ data: { avatar_url: url } });
+  if (error) throw new Error("Enregistrement de la photo impossible.");
+  await supabase.auth.refreshSession();
+  if (previous && previous !== url) {
+    const key = keyFromUrl(previous, "avatar");
+    if (key) await deleteObjects([key]).catch(() => undefined);
+  }
+  return { avatarUrl: url };
 }
 
 export async function login(email: string, password: string) {

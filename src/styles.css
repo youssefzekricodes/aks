@@ -241,3 +241,39 @@ html {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/*
+ * Admin app on phones (and the installed "AKS Admin" app): a soft, app-like
+ * design system. Lighter cool background, white cards with large radii and soft
+ * shadows instead of hairlines, rounder fields. Computers (>= 64rem) keep the
+ * regular admin look; `.admin-app` is the admin shell's root.
+ */
+@media (width < 64rem) {
+  .admin-app {
+    --background: oklch(0.968 0.006 285);
+    --surface-secondary: oklch(0.972 0.007 285);
+    --separator: oklch(0.935 0.006 285);
+    --border: oklch(0.915 0.007 285);
+    --field-border: oklch(0.905 0.008 285);
+    --radius: 0.75rem;
+    --field-radius: 0.875rem;
+  }
+  /* Every card of the admin (rounded-2xl + hairline): rounder, borderless, soft shadow. */
+  .admin-app .rounded-2xl.border-separator,
+  .admin-app .rounded-2xl.border-border {
+    border-color: transparent;
+    border-radius: 1.5rem;
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 10px 24px -14px rgb(15 23 42 / 0.14);
+  }
+}
+
+/* Soft card of the phone admin screens. */
+@utility admin-card {
+  border-radius: 1.5rem;
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 10px 24px -14px rgb(15 23 42 / 0.14);
+}

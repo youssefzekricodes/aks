@@ -311,7 +311,8 @@ function Gallery({ car }: { car: Car }) {
                     className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {more > 0 && (
-                    <span className="absolute inset-0 grid place-items-center bg-black/55 text-sm font-semibold text-white backdrop-blur-[2px] transition-colors group-hover:bg-black/45 sm:text-base">
+                    // The photo stays fully visible; a small badge says how many more.
+                    <span className="absolute bottom-1 end-1 rounded-full bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-foreground shadow-sm sm:bottom-1.5 sm:end-1.5 sm:px-2 sm:py-1 sm:text-xs">
                       +{more}
                       <span className="sr-only"> autres photos</span>
                     </span>

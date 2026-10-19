@@ -40,8 +40,13 @@ try {
   ]);
 
   const objects = await listKeys();
+  // Profile photos live on the admin accounts, not in these tables: never touched here
+  // (the app deletes the previous photo when an admin changes it).
   const orphans = objects.filter(
-    (o) => !used.has(o.key) && Date.now() - o.lastModified.getTime() > GRACE_MS,
+    (o) =>
+      !o.key.startsWith("avatars/") &&
+      !used.has(o.key) &&
+      Date.now() - o.lastModified.getTime() > GRACE_MS,
   );
   console.log(
     `${objects.length} objects, ${used.size} referenced, ${orphans.length} orphaned (>24 h).`,

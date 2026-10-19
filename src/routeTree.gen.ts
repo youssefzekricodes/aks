@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminContenuRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDemandesRouteImport } from './routes/_authenticated/admin/demandes'
 import { Route as AuthenticatedAdminImportFacebookRouteImport } from './routes/_authenticated/admin/import-facebook'
 import { Route as AuthenticatedAdminMarquesRouteImport } from './routes/_authenticated/admin/marques'
+import { Route as AuthenticatedAdminTableauDeBordRouteImport } from './routes/_authenticated/admin/tableau-de-bord'
 import { Route as AuthenticatedAdminVehiculesRouteImport } from './routes/_authenticated/admin/vehicules'
 import { Route as AuthenticatedAdminVitrineRouteImport } from './routes/_authenticated/admin/vitrine'
 import { Route as AuthenticatedAdminVehiculesCarIdRouteImport } from './routes/_authenticated/admin/vehicules_.$carId'
@@ -163,6 +164,12 @@ const AuthenticatedAdminMarquesRoute =
     path: '/marques',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminTableauDeBordRoute =
+  AuthenticatedAdminTableauDeBordRouteImport.update({
+    id: '/tableau-de-bord',
+    path: '/tableau-de-bord',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminVehiculesRoute =
   AuthenticatedAdminVehiculesRouteImport.update({
     id: '/vehicules',
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
   '/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesByTo {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
   '/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -270,6 +279,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/_authenticated/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/_authenticated/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/_authenticated/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/_authenticated/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
   '/_authenticated/admin/vitrine': typeof AuthenticatedAdminVitrineRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/import-facebook'
     | '/admin/marques'
+    | '/admin/tableau-de-bord'
     | '/admin/vehicules'
     | '/admin/vitrine'
     | '/admin/'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/import-facebook'
     | '/admin/marques'
+    | '/admin/tableau-de-bord'
     | '/admin/vehicules'
     | '/admin/vitrine'
     | '/admin'
@@ -359,6 +371,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/demandes'
     | '/_authenticated/admin/import-facebook'
     | '/_authenticated/admin/marques'
+    | '/_authenticated/admin/tableau-de-bord'
     | '/_authenticated/admin/vehicules'
     | '/_authenticated/admin/vitrine'
     | '/_authenticated/admin/'
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMarquesRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/tableau-de-bord': {
+      id: '/_authenticated/admin/tableau-de-bord'
+      path: '/tableau-de-bord'
+      fullPath: '/admin/tableau-de-bord'
+      preLoaderRoute: typeof AuthenticatedAdminTableauDeBordRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/vehicules': {
       id: '/_authenticated/admin/vehicules'
       path: '/vehicules'
@@ -593,6 +613,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminDemandesRoute: typeof AuthenticatedAdminDemandesRoute
   AuthenticatedAdminImportFacebookRoute: typeof AuthenticatedAdminImportFacebookRoute
   AuthenticatedAdminMarquesRoute: typeof AuthenticatedAdminMarquesRoute
+  AuthenticatedAdminTableauDeBordRoute: typeof AuthenticatedAdminTableauDeBordRoute
   AuthenticatedAdminVehiculesRoute: typeof AuthenticatedAdminVehiculesRoute
   AuthenticatedAdminVitrineRoute: typeof AuthenticatedAdminVitrineRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -610,6 +631,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminImportFacebookRoute:
       AuthenticatedAdminImportFacebookRoute,
     AuthenticatedAdminMarquesRoute: AuthenticatedAdminMarquesRoute,
+    AuthenticatedAdminTableauDeBordRoute: AuthenticatedAdminTableauDeBordRoute,
     AuthenticatedAdminVehiculesRoute: AuthenticatedAdminVehiculesRoute,
     AuthenticatedAdminVitrineRoute: AuthenticatedAdminVitrineRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,

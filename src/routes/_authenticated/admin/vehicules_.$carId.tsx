@@ -5,7 +5,8 @@ import { adminCarsQuery } from "@/features/admin/model";
 /** Vehicle editor: /admin/vehicules/<id>, or /admin/vehicules/nouveau. `from` = where to go back. */
 export const Route = createFileRoute("/_authenticated/admin/vehicules_/$carId")({
   validateSearch: (search: Record<string, unknown>): { from?: string } =>
-    typeof search["from"] === "string" && /^(marque:[a-z0-9-]+|vitrine)$/.test(search["from"])
+    typeof search["from"] === "string" &&
+    /^(marque:[a-z0-9-]+|vitrine|accueil)$/.test(search["from"])
       ? { from: search["from"] }
       : {},
   loader: ({ context }) => {
