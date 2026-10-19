@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Quote, Star } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Quote, StarFill } from "@/components/icons";
+import { buttonVariants } from "@heroui/styles";
+import { GoogleLogo } from "./SocialLogos";
 import { useSiteCollection, useSiteText } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Eyebrow, sectionTitle } from "./Section";
@@ -12,22 +14,41 @@ const initials = (name: string) =>
     .map((part) => part[0]!.toUpperCase())
     .join("");
 
-function Stars({ value, className }: { value: number; className?: string }) {
+/** Five stars filled to the value (4,8 → the fifth star 80 % filled). */
+export function Stars({
+  value,
+  className,
+  size = "size-4",
+  color = "text-accent",
+}: {
+  value: number;
+  className?: string;
+  size?: string;
+  color?: string;
+}) {
+  const label = value.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
   return (
-    <span className={cn("flex gap-0.5", className)} role="img" aria-label={`${value} sur 5`}>
-      {Array.from({ length: 5 }, (_, s) => (
-        <Star
-          key={s}
-          aria-hidden
-          className={cn(
-            "size-4",
-            s < Math.round(value) ? "fill-accent text-accent" : "text-border",
-          )}
-        />
-      ))}
+    <span className={cn("flex gap-0.5", className)} role="img" aria-label={`${label} sur 5`}>
+      {Array.from({ length: 5 }, (_, s) => {
+        const fill = Math.max(0, Math.min(1, value - s));
+        return (
+          <span key={s} className={cn("relative", size)} aria-hidden>
+            <StarFill className={cn("absolute inset-0 text-border", size)} />
+            <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+              <StarFill className={cn(color, size)} />
+            </span>
+          </span>
+        );
+      })}
     </span>
   );
 }
+
+/** "4,8" or "4.8" → 4.8; anything else → null. */
+const toRating = (value: string) => {
+  const n = Number(value.replace(",", ".").trim());
+  return value.trim() && n > 0 && n <= 5 ? n : null;
+};
 
 /**
  * Customer reviews in a swipeable row (CSS scroll snap): one card on phones,
@@ -61,8 +82,13 @@ export function Testimonials() {
     };
   }, [reviews.length]);
 
-  if (!reviews.length) return null;
-  const average = reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length;
+  // Google rating set in Contenu du site → Contact → Avis Google; otherwise the testimonials'.
+  const googleRating = toRating(text("reviews.google_rating", ""));
+  const googleCount = Number(text("reviews.google_count", "").replace(/\D/g, "")) || null;
+  const mapsLink = text("showroom.link_1", "");
+  const reviewLink = text("reviews.google_review_link", "") || mapsLink;
+  if (!reviews.length && !googleRating) return null;
+  const average = googleRating ?? reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length;
 
   const goTo = (target: number) => {
     const element = track.current;
@@ -86,13 +112,46 @@ export function Testimonials() {
             <h2 className={sectionTitle}>
               {text("testimonials.text_2", "Ils nous font confiance")}
             </h2>
-            <p className="mt-3 flex items-center gap-2 text-sm text-muted">
-              <Stars value={average} />
-              <span className="tabular font-semibold text-foreground">
-                {average.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/5
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+              {googleRating && <GoogleLogo className="size-6" title="Google" />}
+              <span className="tabular text-2xl font-semibold text-foreground">
+                {average.toLocaleString("fr-FR", {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}
               </span>
-              · {reviews.length} avis
-            </p>
+              <Stars value={average} size="size-5" color="text-[#FBBC04]" />
+              <span className="text-sm text-muted">
+                {googleRating
+                  ? googleCount
+                    ? `${googleCount.toLocaleString("fr-FR")} avis Google`
+                    : "Avis Google"
+                  : `${reviews.length} avis`}
+              </span>
+            </div>
+            {reviewLink && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a
+                  href={reviewLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants({ size: "sm" })}
+                >
+                  <GoogleLogo className="size-4 rounded-full bg-white p-px" />
+                  {text("reviews.cta", "Laisser un avis sur Google")}
+                </a>
+                {mapsLink && googleRating && (
+                  <a
+                    href={mapsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonVariants({ size: "sm", variant: "secondary" })}
+                  >
+                    {text("reviews.see_all", "Voir les avis")}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           {pages > 1 && (
             <div className="flex gap-2">

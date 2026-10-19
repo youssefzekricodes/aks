@@ -392,6 +392,27 @@
     "value": "Suivant"
   },
   {
+    "key": "reviews.google_rating",
+    "group": "testimonials",
+    "label": "Note Google (sur 5)",
+    "type": "text",
+    "value": ""
+  },
+  {
+    "key": "reviews.google_count",
+    "group": "testimonials",
+    "label": "Nombre d’avis Google",
+    "type": "text",
+    "value": ""
+  },
+  {
+    "key": "reviews.google_review_link",
+    "group": "testimonials",
+    "label": "Lien « Laisser un avis » Google",
+    "type": "link",
+    "value": ""
+  },
+  {
     "key": "showroom.items",
     "group": "showroom",
     "label": "Horaires",

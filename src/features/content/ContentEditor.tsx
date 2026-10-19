@@ -184,6 +184,24 @@ const RUBRICS: Rubric[] = [
         ],
       },
       {
+        title: "Avis Google",
+        description:
+          "Affichés dans la section « Ils nous font confiance » : la note en étoiles et un bouton pour laisser un avis. Laissez la note vide pour utiliser celle des témoignages.",
+        fields: [
+          {
+            key: "reviews.google_rating",
+            label: "Note Google",
+            help: "Par exemple 4,8 (visible sur votre fiche Google).",
+          },
+          { key: "reviews.google_count", label: "Nombre d’avis", help: "Par exemple 37." },
+          {
+            key: "reviews.google_review_link",
+            label: "Lien « Laisser un avis »",
+            help: "Google Business Profile → « Demander des avis » → copiez le lien. Vide : le bouton ouvre votre fiche Google Maps.",
+          },
+        ],
+      },
+      {
         title: "Réseaux sociaux",
         description: "Laissez vide pour masquer l’icône.",
         fields: [
