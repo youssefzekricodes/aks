@@ -6,6 +6,7 @@ import { buttonVariants } from "@heroui/styles";
 import { ArrowUpRight, Clock, Menu, MessageCircle, Phone, X } from "lucide-react";
 import { contactHref, usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { telHref, whatsappHref } from "@/features/content/definition";
+import { GlobalSearch } from "./GlobalSearch";
 
 export function Navbar() {
   const text = useSiteText();
@@ -30,7 +31,7 @@ export function Navbar() {
 
         <nav
           aria-label="Navigation principale"
-          className="hidden flex-1 items-center gap-1 lg:flex"
+          className="hidden min-w-0 items-center gap-0.5 lg:flex"
         >
           {links.map((l, index) => (
             <a
@@ -43,13 +44,17 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <GlobalSearch />
+          {/* Number in full on very wide screens, a phone button otherwise; never wraps. */}
           <a
             href={telHref(primary?.number ?? "")}
-            className="hidden items-center gap-2 px-2 text-sm font-medium text-muted hover:text-foreground xl:flex"
+            aria-label={`Appeler le ${primary?.number ?? ""}`}
+            title={primary?.number}
+            className="hidden h-9 items-center gap-2 whitespace-nowrap rounded-full px-2.5 text-sm font-medium text-muted transition-colors hover:bg-white/10 hover:text-foreground lg:flex"
           >
-            <Phone className="size-4" />
-            {primary?.number}
+            <Phone className="size-4 shrink-0" aria-hidden />
+            <span className="hidden 2xl:inline">{primary?.number}</span>
           </a>
           <a
             href={contactHref(text("navbar.link_2", "/contact"))}

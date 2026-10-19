@@ -4,7 +4,7 @@
     "group": "navbar",
     "label": "Liens du menu",
     "type": "collection",
-    "value": "[{\"href\":\"/recherche\",\"label\":\"Véhicules\"},{\"href\":\"/marques\",\"label\":\"Marques\"},{\"href\":\"/#services\",\"label\":\"Services\"},{\"href\":\"/#showroom\",\"label\":\"Showroom\"},{\"href\":\"/#avis\",\"label\":\"Avis\"}]"
+    "value": "[{\"href\": \"/recherche\", \"label\": \"Véhicules\"}, {\"href\": \"/marques\", \"label\": \"Marques\"}, {\"href\": \"/#showroom\", \"label\": \"Showroom\"}]"
   },
   {
     "key": "navbar.link_1",

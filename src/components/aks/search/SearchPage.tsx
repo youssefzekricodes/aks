@@ -1,18 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Breadcrumbs,
-  Button,
-  Drawer,
-  Label,
-  ListBox,
-  Pagination,
-  SearchField,
-  Select,
-} from "@heroui/react";
+import { Breadcrumbs, Button, Drawer, Label, ListBox, Pagination, Select } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { publicCarsQuery } from "@/lib/queries";
 import {
   activeFilterCount,
@@ -59,7 +50,6 @@ export function SearchPage({
 }) {
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
   const [drawer, setDrawer] = useState(false);
-  const [query, setQuery] = useState(filters.q ?? "");
 
   const results = useMemo(() => sortCars(filterCars(cars, filters), filters.tri), [cars, filters]);
   const { items, page, pages } = paginate(results, filters.page);
@@ -67,7 +57,6 @@ export function SearchPage({
 
   const change: FilterChange = (patch) => onNavigate({ ...filters, ...patch, page: undefined });
   const reset = () => {
-    setQuery("");
     onNavigate(lockedBrand ? { marque: filters.marque } : {});
   };
   const goTo = (p: number) => {
@@ -112,30 +101,9 @@ export function SearchPage({
         </aside>
 
         <div className="min-w-0">
-          <div className="flex flex-wrap items-end gap-3">
-            <form
-              role="search"
-              className="min-w-48 flex-1"
-              onSubmit={(event) => {
-                event.preventDefault();
-                change({ q: query.trim() || undefined });
-              }}
-            >
-              <SearchField
-                value={query}
-                onChange={setQuery}
-                onClear={() => change({ q: undefined })}
-                aria-label="Rechercher un véhicule"
-              >
-                <SearchField.Group>
-                  <SearchField.SearchIcon />
-                  <SearchField.Input placeholder="Marque, modèle, année…" />
-                  <SearchField.ClearButton />
-                </SearchField.Group>
-              </SearchField>
-            </form>
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <Select
-              className="w-52"
+              className="w-60"
               value={filters.tri ?? "recent"}
               onChange={(key) =>
                 change({
@@ -145,7 +113,9 @@ export function SearchPage({
             >
               <Label className="sr-only">Trier par</Label>
               <Select.Trigger>
-                <Select.Value />
+                <ArrowUpDown className="size-4 shrink-0 text-muted" aria-hidden />
+                <span className="shrink-0 text-muted">Trier :</span>
+                <Select.Value className="min-w-0 truncate font-medium" />
                 <Select.Indicator />
               </Select.Trigger>
               <Select.Popover>

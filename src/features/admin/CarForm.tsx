@@ -212,25 +212,36 @@ export function CarForm({
           <IntegerField
             label="Prix (DT)"
             value={value.price}
-            onChange={(price) => set("price", price ?? 0)}
+            onChange={(price) =>
+              onChange((car) => ({
+                ...car,
+                price: price ?? 0,
+                // A discount must stay below the price: drop it if the price goes under.
+                discount_price:
+                  car.discount_price != null && car.discount_price >= (price ?? 0)
+                    ? null
+                    : car.discount_price,
+              }))
+            }
             minValue={0}
             maxValue={1_000_000_000}
             isDisabled={value.price_on_request === true}
             isRequired={!value.price_on_request}
           />
-          <IntegerField
-            label="Prix remisé (DT)"
-            value={value.discount_price ?? null}
-            onChange={(discount) => set("discount_price", discount ?? null)}
-            minValue={0}
-            maxValue={Math.max(0, value.price - 1)}
-            isDisabled={value.price_on_request === true || value.price <= 0}
-            description={
-              discountPercent(value)
-                ? `Remise de ${discountPercent(value)} % : le site affiche ${formatPrice(value.price)} barré.`
-                : "Facultatif. Laissez vide pour aucune remise."
-            }
-          />
+          <div className="grid gap-1 self-center text-sm text-muted">
+            {discountPercent(value) ? (
+              <p>
+                Remise active :{" "}
+                <span className="tabular font-medium text-foreground">
+                  {formatPrice(value.discount_price ?? 0)}
+                </span>{" "}
+                (−{discountPercent(value)} %).
+              </p>
+            ) : (
+              <p>Aucune remise.</p>
+            )}
+            <p>Ajoutez ou modifiez la remise depuis la liste des véhicules (menu « … »).</p>
+          </div>
           <div className="sm:col-span-2">
             <SwitchField
               isSelected={value.price_on_request === true}

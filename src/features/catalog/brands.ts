@@ -105,6 +105,15 @@ const ALIASES: Record<string, string> = {
 
 const BY_SLUG = new Map(BRANDS.map((b) => [b.slug, b]));
 
+/** Words a brand can be searched by: its name, slug and other spellings ("vw"…). */
+export function brandSearchTerms(slug: string) {
+  const brand = BY_SLUG.get(slug);
+  const aliases = Object.entries(ALIASES)
+    .filter(([, target]) => target === slug)
+    .map(([alias]) => alias);
+  return slugify([brand?.name ?? slug, slug, ...aliases].join(" "));
+}
+
 /** Registry entry for a stored brand name; unknown brands get a derived entry. */
 export function brandInfo(name: string): BrandInfo {
   const slug = slugify(name);

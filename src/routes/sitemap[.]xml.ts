@@ -36,6 +36,8 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/recherche", lastmod: latest },
           { path: "/marques", lastmod: latest },
           { path: "/contact" },
+          { path: "/voitures-occasion-sfax", lastmod: latest },
+          { path: "/faq" },
           { path: "/confidentialite" },
           { path: "/suppression-des-donnees" },
           // Brand pages: in stock, or searched brands (indexed with an "on request" text).

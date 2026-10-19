@@ -73,6 +73,14 @@ export const CROP_PRESETS = {
   },
 } satisfies Record<string, CropOptions>;
 
+/**
+ * The photo grid loads saved photos without CORS, and browsers reuse that cached
+ * copy (no CORS headers) for a CORS request, which then fails. A distinct URL
+ * gives the editor its own CORS-enabled copy.
+ */
+const corsUrl = (url: string) =>
+  /^https?:/.test(url) ? `${url}${url.includes("?") ? "&" : "?"}cors=1` : url;
+
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -157,7 +165,7 @@ export function ImageCropDialog({
     setZoom(1);
     setError(null);
     if (!source) return setSrc(null);
-    if (typeof source === "string") return setSrc(source);
+    if (typeof source === "string") return setSrc(corsUrl(source));
     const url = URL.createObjectURL(source);
     setSrc(url);
     return () => URL.revokeObjectURL(url);

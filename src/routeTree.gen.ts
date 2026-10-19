@@ -14,11 +14,14 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as MetaCallbackRouteImport } from './routes/meta-callback'
 import { Route as RechercheRouteImport } from './routes/recherche'
+import { Route as RechercherRouteImport } from './routes/rechercher'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SuppressionDesDonneesRouteImport } from './routes/suppression-des-donnees'
+import { Route as VoituresOccasionSfaxRouteImport } from './routes/voitures-occasion-sfax'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as MarquesIndexRouteImport } from './routes/marques.index'
 import { Route as MarquesBrandRouteImport } from './routes/marques.$brand'
@@ -55,6 +58,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MetaCallbackRoute = MetaCallbackRouteImport.update({
   id: '/meta-callback',
   path: '/meta-callback',
@@ -63,6 +71,11 @@ const MetaCallbackRoute = MetaCallbackRouteImport.update({
 const RechercheRoute = RechercheRouteImport.update({
   id: '/recherche',
   path: '/recherche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RechercherRoute = RechercherRouteImport.update({
+  id: '/rechercher',
+  path: '/rechercher',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
@@ -78,6 +91,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SuppressionDesDonneesRoute = SuppressionDesDonneesRouteImport.update({
   id: '/suppression-des-donnees',
   path: '/suppression-des-donnees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoituresOccasionSfaxRoute = VoituresOccasionSfaxRouteImport.update({
+  id: '/voitures-occasion-sfax',
+  path: '/voitures-occasion-sfax',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
@@ -147,11 +165,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
+  '/rechercher': typeof RechercherRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
@@ -169,11 +190,14 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
+  '/rechercher': typeof RechercherRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
   '/marques': typeof MarquesIndexRoute
@@ -192,11 +216,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/meta-callback': typeof MetaCallbackRoute
   '/recherche': typeof RechercheRoute
+  '/rechercher': typeof RechercherRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
@@ -216,11 +243,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/confidentialite'
     | '/contact'
+    | '/faq'
     | '/meta-callback'
     | '/recherche'
+    | '/rechercher'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/voitures-occasion-sfax'
     | '/admin'
     | '/marques/$brand'
     | '/vehicule/$slug'
@@ -238,11 +268,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/confidentialite'
     | '/contact'
+    | '/faq'
     | '/meta-callback'
     | '/recherche'
+    | '/rechercher'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/voitures-occasion-sfax'
     | '/marques/$brand'
     | '/vehicule/$slug'
     | '/marques'
@@ -260,11 +293,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/confidentialite'
     | '/contact'
+    | '/faq'
     | '/meta-callback'
     | '/recherche'
+    | '/rechercher'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/voitures-occasion-sfax'
     | '/_authenticated/admin'
     | '/marques/$brand'
     | '/vehicule/$slug'
@@ -284,11 +320,14 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfidentialiteRoute: typeof ConfidentialiteRoute
   ContactRoute: typeof ContactRoute
+  FaqRoute: typeof FaqRoute
   MetaCallbackRoute: typeof MetaCallbackRoute
   RechercheRoute: typeof RechercheRoute
+  RechercherRoute: typeof RechercherRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SuppressionDesDonneesRoute: typeof SuppressionDesDonneesRoute
+  VoituresOccasionSfaxRoute: typeof VoituresOccasionSfaxRoute
   MarquesBrandRoute: typeof MarquesBrandRoute
   VehiculeSlugRoute: typeof VehiculeSlugRoute
   MarquesIndexRoute: typeof MarquesIndexRoute
@@ -331,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/meta-callback': {
       id: '/meta-callback'
       path: '/meta-callback'
@@ -343,6 +389,13 @@ declare module '@tanstack/react-router' {
       path: '/recherche'
       fullPath: '/recherche'
       preLoaderRoute: typeof RechercheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rechercher': {
+      id: '/rechercher'
+      path: '/rechercher'
+      fullPath: '/rechercher'
+      preLoaderRoute: typeof RechercherRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/robots.txt': {
@@ -364,6 +417,13 @@ declare module '@tanstack/react-router' {
       path: '/suppression-des-donnees'
       fullPath: '/suppression-des-donnees'
       preLoaderRoute: typeof SuppressionDesDonneesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voitures-occasion-sfax': {
+      id: '/voitures-occasion-sfax'
+      path: '/voitures-occasion-sfax'
+      fullPath: '/voitures-occasion-sfax'
+      preLoaderRoute: typeof VoituresOccasionSfaxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -490,11 +550,14 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfidentialiteRoute: ConfidentialiteRoute,
   ContactRoute: ContactRoute,
+  FaqRoute: FaqRoute,
   MetaCallbackRoute: MetaCallbackRoute,
   RechercheRoute: RechercheRoute,
+  RechercherRoute: RechercherRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SuppressionDesDonneesRoute: SuppressionDesDonneesRoute,
+  VoituresOccasionSfaxRoute: VoituresOccasionSfaxRoute,
   MarquesBrandRoute: MarquesBrandRoute,
   VehiculeSlugRoute: VehiculeSlugRoute,
   MarquesIndexRoute: MarquesIndexRoute,

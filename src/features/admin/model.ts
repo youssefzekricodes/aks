@@ -1,5 +1,13 @@
 import { queryOptions } from "@tanstack/react-query";
-import { formatKm, slugify, type Car } from "@/lib/cars";
+import {
+  CAR_BODIES,
+  CAR_COUNTRIES,
+  CAR_FUELS,
+  CAR_GEARBOXES,
+  formatKm,
+  slugify,
+  type Car,
+} from "@/lib/cars";
 import {
   getDashboardStats,
   listAllCars,
@@ -197,7 +205,7 @@ export const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium"
 export const plural = (count: number, one: string, many: string) =>
   `${count.toLocaleString("fr-FR")} ${count > 1 ? many : one}`;
 
-export const MAX_PHOTOS = 12;
+export const MAX_PHOTOS = 40;
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const LOGO_TYPES = ["image/png", "image/webp"];
 
@@ -247,3 +255,27 @@ export const autoSlug = (car: Pick<CarInput, "brand" | "model" | "version">) =>
 
 /** Photos prepared and sent at the same time. */
 export const UPLOAD_CONCURRENCY = 3;
+
+const isOneOf = (values: readonly string[], value: string | undefined) =>
+  Boolean(value && values.includes(value));
+
+/**
+ * Details a vehicle still lacks (labels as in the form). Imported vehicles store
+ * "À préciser" or the year 1900 where the source didn't say, which counts as missing.
+ */
+export function missingFields(car: CarInput): string[] {
+  const missing: [boolean, string][] = [
+    [car.images.length === 0, "Photos"],
+    [!car.model?.trim() || car.name === "Modèle à préciser", "Modèle"],
+    [car.year <= 1900, "Année"],
+    [!car.price_on_request && car.price <= 0, "Prix"],
+    [car.state === "Occasion" && car.km_value <= 0, "Kilométrage"],
+    [!isOneOf(CAR_FUELS, car.fuel), "Carburant"],
+    [!isOneOf(CAR_GEARBOXES, car.gearbox), "Boîte de vitesses"],
+    [!isOneOf(CAR_BODIES, car.body), "Carrosserie"],
+    [!isOneOf(CAR_COUNTRIES, car.country), "Origine"],
+    [car.fiscal_power == null, "Puissance fiscale"],
+    [!car.description.trim(), "Description"],
+  ];
+  return missing.filter(([isMissing]) => isMissing).map(([, label]) => label);
+}

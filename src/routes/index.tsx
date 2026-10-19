@@ -11,9 +11,7 @@ import { About } from "@/components/aks/About";
 import { Services } from "@/components/aks/Services";
 import { Testimonials } from "@/components/aks/Testimonials";
 import { Showroom } from "@/components/aks/Showroom";
-import { HomeSeo } from "@/components/aks/HomeSeo";
-import { homeFaq } from "@/features/seo/faq";
-import { dealerJsonLd, faqJsonLd, websiteJsonLd } from "@/features/seo/structured";
+import { dealerJsonLd, websiteJsonLd } from "@/features/seo/structured";
 import { SiteFooter } from "@/components/aks/SiteFooter";
 import { publicCarsQuery, publicConfigQuery, siteContentQuery } from "@/lib/queries";
 import { seo } from "@/lib/seo";
@@ -38,11 +36,7 @@ export const Route = createFileRoute("/")({
       origin,
       path: "/",
       image: get("hero.image_1"),
-      jsonLd: [
-        dealerJsonLd(content, origin),
-        websiteJsonLd(content, origin),
-        faqJsonLd(homeFaq(content)),
-      ],
+      jsonLd: [dealerJsonLd(content, origin), websiteJsonLd(content, origin)],
     });
   },
   component: Index,
@@ -60,7 +54,6 @@ function Index() {
     ["about", <About />],
     ["services", <Services />],
     ["testimonials", <Testimonials />],
-    ["seo", <HomeSeo />],
     ["showroom", <Showroom />],
   ];
   return (

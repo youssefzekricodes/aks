@@ -88,6 +88,16 @@ export function SiteFooter() {
                 Contact
               </Link>
             </li>
+            <li>
+              <Link to="/voitures-occasion-sfax" className="text-muted hover:text-foreground">
+                Voitures d’occasion à Sfax
+              </Link>
+            </li>
+            <li>
+              <Link to="/faq" className="text-muted hover:text-foreground">
+                Questions fréquentes
+              </Link>
+            </li>
             {quickLinks.map((l, index) => (
               <li key={index}>
                 <a href={contactHref(l.href)} className="text-muted hover:text-foreground">

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Car } from "../src/lib/cars.ts";
 import {
+  quickSearch,
   arrangeBrands,
   relatedCars,
   bodyOptions,
@@ -271,4 +272,28 @@ test("related cars favour the same brand, body and price range, never the car it
   assert.ok(!related.includes("base"));
   assert.ok(!related.includes("far"), "the least related car is left out");
   assert.equal(relatedCars(base, [base, cars[3]!], 3).length, 1, "fills in with other stock");
+});
+
+test("header search: nicknames, every word must match, brands with stock first", () => {
+  const cars = [
+    car({ slug: "golf", brand: "Volkswagen", model: "Golf", name: "Golf 8", year: 2020 }),
+    car({ slug: "x5", brand: "BMW", model: "X5", name: "X5", body: "SUV", year: 2019 }),
+  ];
+  assert.deepEqual(
+    quickSearch(cars, "vw").cars.map((c) => c.slug),
+    ["golf"],
+    "VW = Volkswagen",
+  );
+  assert.deepEqual(
+    quickSearch(cars, "golf 2020").cars.map((c) => c.slug),
+    ["golf"],
+  );
+  assert.deepEqual(quickSearch(cars, "golf 2019").cars, [], "every word must match");
+  assert.deepEqual(
+    quickSearch(cars, "suv").cars.map((c) => c.slug),
+    ["x5"],
+  );
+  assert.equal(quickSearch(cars, "merc").brands[0]?.value, "mercedes-benz");
+  assert.equal(quickSearch(cars, "b").brands[0]?.value, "bmw", "brand in stock first");
+  assert.deepEqual(quickSearch(cars, "  "), { cars: [], brands: [] });
 });

@@ -192,6 +192,121 @@ export async function setCarSold(id: string, sold: boolean) {
   return { ok: true };
 }
 
+/** Sets or removes (null) the discounted price; it must stay below the price. */
+export async function setCarDiscount(id: string, discountPrice: number | null) {
+  const supabase = await adminClient({ write: true });
+  const { error } = await supabase
+    .from("cars")
+    .update({ discount_price: discountPrice })
+    .eq("id", id);
+  if (error?.code === "23514") throw new Error("Le prix remisé doit être inférieur au prix.");
+  if (error) failure(error, "Mise à jour de la remise impossible.");
+  return { ok: true };
+}
+
+export type BulkAction = "publish" | "unpublish" | "sold" | "unsold" | "delete" | "discount";
+export type BulkResult = { done: number; failed: { id: string; error: string }[] };
+
+/**
+ * One action on several vehicles, reusing the single-vehicle functions so the
+ * rules stay the same (Facebook/Instagram on publish, R2 cleanup on delete…).
+ * `percent` is the discount (0 removes it); hidden prices are skipped.
+ */
+export async function bulkCars(
+  ids: string[],
+  action: BulkAction,
+  percent = 0,
+): Promise<BulkResult> {
+  const result: BulkResult = { done: 0, failed: [] };
+  let prices = new Map<string, { price: number; onRequest: boolean }>();
+  if (action === "discount") {
+    const supabase = await adminClient();
+    const { data, error } = await supabase
+      .from("cars")
+      .select("id, price, price_on_request")
+      .in("id", ids);
+    if (error) failure(error, "Chargement des véhicules impossible.");
+    prices = new Map(
+      (data ?? []).map((row) => [
+        row.id as string,
+        { price: Number(row.price), onRequest: row.price_on_request as boolean },
+      ]),
+    );
+  }
+  for (const id of ids) {
+    try {
+      if (action === "publish" || action === "unpublish")
+        await publishCar(id, action === "publish");
+      else if (action === "sold" || action === "unsold") await setCarSold(id, action === "sold");
+      else if (action === "delete") await deleteCar(id);
+      else {
+        const car = prices.get(id);
+        if (!car) throw new Error("Véhicule introuvable.");
+        if (percent > 0 && (car.onRequest || car.price <= 0))
+          throw new Error("Prix masqué ou absent : remise impossible.");
+        await setCarDiscount(
+          id,
+          percent > 0 ? Math.round((car.price * (100 - percent)) / 100) : null,
+        );
+      }
+      result.done += 1;
+    } catch (error) {
+      result.failed.push({
+        id,
+        error: error instanceof Error ? error.message : "Erreur inconnue.",
+      });
+    }
+  }
+  return result;
+}
+
+type CompletionField =
+  | "name"
+  | "model"
+  | "version"
+  | "year"
+  | "price"
+  | "price_on_request"
+  | "km_value"
+  | "fuel"
+  | "gearbox"
+  | "body"
+  | "country"
+  | "fiscal_power"
+  | "description";
+export type CarCompletion = {
+  id: string;
+  fields: { [K in CompletionField]?: CarInput[K] | undefined };
+};
+
+/** Saves the details filled in "Compléter les informations" (only the fields sent). */
+export async function completeCars(updates: CarCompletion[]): Promise<BulkResult> {
+  const supabase = await adminClient({ write: true });
+  const result: BulkResult = { done: 0, failed: [] };
+  for (const { id, fields } of updates) {
+    try {
+      const patch: Record<string, unknown> = Object.fromEntries(
+        Object.entries(fields).filter(([, value]) => value !== undefined),
+      );
+      // A discount must stay below the price: drop it when the new price goes under.
+      if (typeof fields.price === "number") {
+        const { data } = await supabase.from("cars").select("discount_price").eq("id", id).single();
+        if (data?.discount_price != null && Number(data.discount_price) >= fields.price)
+          patch["discount_price"] = null;
+      }
+      const { error } = await supabase.from("cars").update(patch).eq("id", id);
+      if (error) failure(error, "Enregistrement impossible.");
+      result.done += 1;
+    } catch (error) {
+      result.failed.push({
+        id,
+        error: error instanceof Error ? error.message : "Erreur inconnue.",
+      });
+    }
+  }
+  return result;
+}
+
 /** Counts a page view (published, unsold vehicles only; errors are ignored). */
 export async function recordCarView(slug: string) {
   const { error } = await publicClient().rpc("record_car_view", { p_slug: slug });

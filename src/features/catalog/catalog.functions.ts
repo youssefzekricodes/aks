@@ -63,6 +63,51 @@ export const setCarPublished = createServerFn({ method: "POST" })
 export const setCarSold = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, sold: z.boolean() }))
   .handler(async ({ data }) => (await repository()).setCarSold(data.id, data.sold));
+export const setCarDiscount = createServerFn({ method: "POST" })
+  .validator(z.object({ id: idSchema, discountPrice: z.number().int().min(0).max(1e9).nullable() }))
+  .handler(async ({ data }) => (await repository()).setCarDiscount(data.id, data.discountPrice));
+const idsSchema = z.array(idSchema).min(1).max(500);
+export const bulkCars = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      ids: idsSchema,
+      action: z.enum(["publish", "unpublish", "sold", "unsold", "delete", "discount"]),
+      percent: z.number().int().min(0).max(90).optional(),
+    }),
+  )
+  .handler(async ({ data }) => (await repository()).bulkCars(data.ids, data.action, data.percent));
+export const completeCars = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      updates: z
+        .array(
+          z.object({
+            id: idSchema,
+            fields: carSchema
+              .pick({
+                name: true,
+                model: true,
+                version: true,
+                year: true,
+                price: true,
+                price_on_request: true,
+                km_value: true,
+                fuel: true,
+                gearbox: true,
+                body: true,
+                country: true,
+                fiscal_power: true,
+                description: true,
+              })
+              .partial()
+              .strict(),
+          }),
+        )
+        .min(1)
+        .max(500),
+    }),
+  )
+  .handler(async ({ data }) => (await repository()).completeCars(data.updates));
 export const reorderCars = createServerFn({ method: "POST" })
   .validator(z.object({ ids: z.array(idSchema).min(1).max(2000) }))
   .handler(async ({ data }) => (await repository()).reorderCars(data.ids));

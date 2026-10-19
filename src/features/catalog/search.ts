@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CAR_BODIES, carModel, salePrice, slugify, type Car } from "../../lib/cars.ts";
-import { BRANDS, brandInfo } from "./brands.ts";
+import { BRANDS, brandInfo, brandSearchTerms } from "./brands.ts";
 
 /**
  * One filter model for the home search, /recherche and the brand pages.
@@ -104,7 +104,7 @@ function matches(car: Car, f: SearchFilters, ignore?: FilterKey) {
   if (ignore !== "km_max" && f.km_max !== undefined && car.km_value > f.km_max) return false;
   if (ignore !== "annee_min" && f.annee_min !== undefined && car.year < f.annee_min) return false;
   if (ignore !== "q" && f.q) {
-    const haystack = slugify(`${car.brand} ${car.name} ${car.body} ${car.fuel} ${car.year}`);
+    const haystack = carSearchText(car);
     if (
       !slugify(f.q)
         .split("-")
@@ -288,4 +288,61 @@ export function relatedCars(car: Car, cars: Car[], size = 3): Car[] {
     .sort((a, b) => b.points - a.points || a.other.sort_order - b.other.sort_order)
     .slice(0, size)
     .map(({ other }) => other);
+}
+
+/** Everything a car can be found by (brand and its other spellings, model, specs…). */
+export function carSearchText(car: Car) {
+  return slugify(
+    [
+      brandSearchTerms(brandInfo(car.brand).slug),
+      car.brand,
+      car.model ?? "",
+      car.version ?? "",
+      car.name,
+      car.body,
+      car.fuel,
+      car.gearbox === "Auto" ? "automatique auto" : car.gearbox,
+      car.state,
+      car.year,
+    ].join(" "),
+  );
+}
+
+const words = (query: string) => slugify(query).split("-").filter(Boolean);
+
+/**
+ * Instant search of the header: the best matching published cars and brands.
+ * Every word must match (prefix of a brand name, anywhere for cars).
+ */
+export function quickSearch(
+  cars: Car[],
+  query: string,
+  { cars: carLimit = 6, brands: brandLimit = 6 } = {},
+) {
+  const terms = words(query);
+  if (!terms.length) return { cars: [] as Car[], brands: [] as FacetOption[] };
+  const stock = facetOptions(cars, {}, "marque");
+  const count = (slug: string) => stock.find((o) => o.value === slug)?.count ?? 0;
+
+  const brands = BRANDS.filter((brand) => {
+    const text = brandSearchTerms(brand.slug).split("-");
+    return terms.every((term) => text.some((word) => word.startsWith(term)));
+  })
+    .map((brand) => ({ value: brand.slug, label: brand.name, count: count(brand.slug) }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr"))
+    .slice(0, brandLimit);
+
+  const matched = cars
+    .map((car) => ({ car, text: carSearchText(car) }))
+    .filter(({ text }) => terms.every((term) => text.includes(term)))
+    // Cars whose brand or model starts with the first word come first.
+    .map(({ car, text }) => ({
+      car,
+      score: text.startsWith(terms[0]!) || slugify(carModel(car)).startsWith(terms[0]!) ? 0 : 1,
+    }))
+    .sort((a, b) => a.score - b.score || a.car.sort_order - b.car.sort_order)
+    .slice(0, carLimit)
+    .map(({ car }) => car);
+
+  return { cars: matched, brands };
 }

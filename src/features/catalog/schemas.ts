@@ -31,7 +31,7 @@ export const carSchema = z.object({
   doors: optionalCount(9),
   seats: optionalCount(60),
   fiscal_power: optionalCount(100),
-  images: z.array(imageSchema).max(12),
+  images: z.array(imageSchema).max(40),
   description: z.string().max(20000),
   published: z.boolean(),
   sold: z.boolean().optional().default(false),

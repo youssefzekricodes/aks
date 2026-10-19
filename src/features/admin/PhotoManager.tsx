@@ -1,19 +1,15 @@
 import { useState } from "react";
 import { Button, ProgressCircle, toast } from "@heroui/react";
 import { DropZone, isFileDropItem } from "react-aria-components";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Crop,
-  ImagePlus,
-  RotateCw,
-  Trash2,
-} from "lucide-react";
+import { closestCenter, DndContext, DragOverlay, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { AlertCircle, Crop, ImagePlus, RotateCw, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/data";
 import { CROP_PRESETS, ImageCropDialog } from "./ImageCropDialog";
 import type { PhotoUpload, usePhotoQueue } from "./hooks";
 import { IMAGE_TYPES, MAX_PHOTOS, plural } from "./model";
+import { DragHandle, frenchAnnouncements, frenchInstructions, useSortSensors } from "./sortable";
 import { FilePickButton, IconButton, StatusChip } from "./ui";
 
 type Queue = ReturnType<typeof usePhotoQueue>;
@@ -63,12 +59,16 @@ export function PhotoManager({
     queue.add(files.slice(0, remaining));
   }
 
-  const move = (index: number, by: number) =>
-    onImagesChange((current) => {
-      const next = [...current];
-      [next[index], next[index + by]] = [next[index + by]!, next[index]!];
-      return next;
-    });
+  const sensors = useSortSensors();
+  const [dragging, setDragging] = useState<string | null>(null);
+  const photoName = (url: string) => `Photo ${images.indexOf(url) + 1}`;
+  function onDragEnd({ active, over }: DragEndEvent) {
+    setDragging(null);
+    if (!over || active.id === over.id) return;
+    onImagesChange((current) =>
+      arrayMove(current, current.indexOf(String(active.id)), current.indexOf(String(over.id))),
+    );
+  }
 
   return (
     <div className="grid gap-4">
@@ -81,66 +81,49 @@ export function PhotoManager({
       </p>
 
       {used > 0 && (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {images.map((url, index) => (
-            <li
-              key={url}
-              className="overflow-hidden rounded-xl border border-separator bg-background"
-            >
-              <div className="relative">
-                <img
-                  src={url}
-                  alt={`Photo ${index + 1}${index === 0 ? " (couverture)" : ""}`}
-                  className="aspect-[4/3] w-full object-cover"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={({ active }) => setDragging(String(active.id))}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setDragging(null)}
+          accessibility={{
+            announcements: frenchAnnouncements(photoName),
+            screenReaderInstructions: { draggable: frenchInstructions },
+          }}
+        >
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <SortableContext items={images} strategy={rectSortingStrategy}>
+              {images.map((url, index) => (
+                <SortablePhoto
+                  key={url}
+                  url={url}
+                  index={index}
+                  isDisabled={isDisabled}
+                  onCrop={() => setCropping(url)}
+                  onRemove={() => onImagesChange((current) => current.filter((u) => u !== url))}
                 />
-                {index === 0 && (
-                  <span className="absolute left-2 top-2">
-                    <StatusChip tone="accent">Couverture</StatusChip>
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-1 p-2">
-                <div className="flex gap-1">
-                  <IconButton
-                    label={`Déplacer la photo ${index + 1} vers la gauche`}
-                    icon={ArrowLeft}
-                    isDisabled={index === 0 || isDisabled}
-                    onPress={() => move(index, -1)}
-                  />
-                  <IconButton
-                    label={`Déplacer la photo ${index + 1} vers la droite`}
-                    icon={ArrowRight}
-                    isDisabled={index === images.length - 1 || isDisabled}
-                    onPress={() => move(index, 1)}
-                  />
-                </div>
-                <div className="flex gap-1">
-                  <IconButton
-                    label={`Recadrer la photo ${index + 1}`}
-                    icon={Crop}
-                    isDisabled={isDisabled}
-                    onPress={() => setCropping(url)}
-                  />
-                  <IconButton
-                    label={`Retirer la photo ${index + 1}`}
-                    icon={Trash2}
-                    variant="danger-soft"
-                    isDisabled={isDisabled}
-                    onPress={() => onImagesChange((current) => current.filter((u) => u !== url))}
-                  />
-                </div>
-              </div>
-            </li>
-          ))}
-          {queue.items.map((item) => (
-            <PendingTile
-              key={item.id}
-              item={item}
-              onRetry={() => queue.retry(item.id)}
-              onRemove={() => queue.remove(item.id)}
-            />
-          ))}
-        </ul>
+              ))}
+            </SortableContext>
+            {queue.items.map((item) => (
+              <PendingTile
+                key={item.id}
+                item={item}
+                onRetry={() => queue.retry(item.id)}
+                onRemove={() => queue.remove(item.id)}
+              />
+            ))}
+          </ul>
+          <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
+            {dragging && (
+              <img
+                src={dragging}
+                alt=""
+                className="aspect-[4/3] w-full rotate-2 scale-105 rounded-xl object-cover shadow-2xl ring-2 ring-accent"
+              />
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
       <DropZone
@@ -271,6 +254,81 @@ function PendingTile({
           {item.name}
         </p>
       )}
+    </li>
+  );
+}
+
+function SortablePhoto({
+  url,
+  index,
+  isDisabled,
+  onCrop,
+  onRemove,
+}: {
+  url: string;
+  index: number;
+  isDisabled: boolean;
+  onCrop: () => void;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url, disabled: isDisabled });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`overflow-hidden rounded-xl border border-separator bg-background ${
+        isDragging ? "opacity-40" : ""
+      }`}
+    >
+      {/* The whole photo is a drag area (mouse/touch); the grip also works with the keyboard. */}
+      <div
+        className="relative cursor-grab touch-manipulation active:cursor-grabbing"
+        {...listeners}
+      >
+        <img
+          src={url}
+          alt={`Photo ${index + 1}${index === 0 ? " (couverture)" : ""}`}
+          draggable={false}
+          className="aspect-[4/3] w-full select-none object-cover"
+        />
+        {index === 0 && (
+          <span className="absolute left-2 top-2">
+            <StatusChip tone="accent">Couverture</StatusChip>
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-1 p-2">
+        <DragHandle
+          label={`Déplacer la photo ${index + 1}`}
+          attributes={attributes}
+          listeners={listeners}
+          setActivatorNodeRef={setActivatorNodeRef}
+          isDisabled={isDisabled}
+        />
+        <div className="flex gap-1">
+          <IconButton
+            label={`Recadrer la photo ${index + 1}`}
+            icon={Crop}
+            isDisabled={isDisabled}
+            onPress={onCrop}
+          />
+          <IconButton
+            label={`Retirer la photo ${index + 1}`}
+            icon={Trash2}
+            variant="danger-soft"
+            isDisabled={isDisabled}
+            onPress={onRemove}
+          />
+        </div>
+      </div>
     </li>
   );
 }
