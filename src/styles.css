@@ -303,3 +303,16 @@ html {
     padding-right: max(1rem, env(safe-area-inset-right));
   }
 }
+/* Dialog buttons on phones: wrap and share the width instead of overflowing. */
+@media (width < 40rem) {
+  .modal__footer,
+  .alert-dialog__footer {
+    flex-wrap: wrap;
+  }
+  .modal__footer > .button,
+  .alert-dialog__footer > .button {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+  }
+}

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@heroui/react";
 import { closestCenter, DndContext, DragOverlay, type DragEndEvent } from "@dnd-kit/core";
@@ -31,6 +31,31 @@ export function SortableCarGrid({
 }) {
   const sensors = useSortSensors();
   const [dragging, setDragging] = useState<string | null>(null);
+
+  // The order shown right after a drop. Saving takes a moment (and the data layer
+  // updates on its next tick), so without this the cards would flash back to the
+  // old order for a frame, then jump. Dropped once the saved order has arrived,
+  // or after a few seconds (e.g. the save failed and was undone).
+  const [local, setLocal] = useState<string[] | null>(null);
+  const propOrder = cars.map((car) => car.id).join(",");
+  useEffect(() => {
+    if (!local) return;
+    if (local.join(",") === propOrder) {
+      setLocal(null);
+      return;
+    }
+    const timer = window.setTimeout(() => setLocal(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [local, propOrder]);
+  const byId = new Map(cars.map((car) => [car.id, car]));
+  const shown = local
+    ? [
+        ...local.flatMap((id) => byId.get(id) ?? []),
+        // A vehicle added meanwhile goes at the end until the saved order arrives.
+        ...cars.filter((car) => !local.includes(car.id)),
+      ]
+    : cars;
+
   const lastDrop = useRef(0);
   const dropped = () => {
     setDragging(null);
@@ -40,11 +65,13 @@ export function SortableCarGrid({
   function onDragEnd({ active, over }: DragEndEvent) {
     dropped();
     if (!over || active.id === over.id) return;
-    const ids = cars.map((car) => car.id);
-    onReorder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
+    const ids = shown.map((car) => car.id);
+    const next = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+    setLocal(next); // same render as the drop: no flash of the old order
+    onReorder(next);
   }
   const edit = (car: AdminCar) => Date.now() - lastDrop.current > 300 && onEdit(car);
-  const draggedCar = dragging ? cars.find((car) => car.id === dragging) : undefined;
+  const draggedCar = dragging ? byId.get(dragging) : undefined;
 
   return (
     <DndContext
@@ -61,9 +88,9 @@ export function SortableCarGrid({
         screenReaderInstructions: { draggable: frenchInstructions },
       }}
     >
-      <SortableContext items={cars.map((car) => car.id)} strategy={rectSortingStrategy}>
+      <SortableContext items={shown.map((car) => car.id)} strategy={rectSortingStrategy}>
         <CarGrid>
-          {cars.map((car, index) => (
+          {shown.map((car, index) => (
             <SortableCard
               key={car.id}
               car={car}

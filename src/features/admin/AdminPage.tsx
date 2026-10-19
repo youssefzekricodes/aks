@@ -233,6 +233,24 @@ export function AdminShell({
       showPull(0, true);
     }
   }
+  // Every section's code (and data) loads in the background once the app is idle,
+  // so switching screens never waits on the network with the old screen still showing.
+  useEffect(() => {
+    const preload = () => {
+      for (const id of sections)
+        void router.preloadRoute({ to: SECTION_PATHS[id] }).catch(() => undefined);
+      void router.preloadRoute({ to: "/admin/tableau-de-bord" }).catch(() => undefined);
+    };
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1200));
+    const handle = idle(preload);
+    return () => {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+    // Once per admin session (sections only change with the role).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, sections.length]);
+
   // Last time the page scrolled: a pull only starts once it has rested at the top
   // (so the end of a fling up, or a scroll back to the top, never refreshes).
   const lastScroll = useRef(0);

@@ -654,12 +654,18 @@ export function ConfirmDialog({
             <AlertDialog.Heading>{title}</AlertDialog.Heading>
           </AlertDialog.Header>
           <AlertDialog.Body className="text-sm">{children}</AlertDialog.Body>
-          <AlertDialog.Footer>
-            <Button variant="tertiary" isDisabled={pending} onPress={() => onOpenChange(false)}>
+          <AlertDialog.Footer className="flex-col-reverse gap-2 sm:flex-row">
+            <Button
+              variant="tertiary"
+              className="w-full sm:w-auto"
+              isDisabled={pending}
+              onPress={() => onOpenChange(false)}
+            >
               {cancelLabel}
             </Button>
             <Button
               variant={tone === "danger" ? "danger" : "primary"}
+              className="w-full sm:w-auto"
               isPending={pending}
               onPress={confirm}
             >
@@ -698,11 +704,12 @@ export function UnsavedChangesDialog({
             <AlertDialog.Heading>Quitter sans enregistrer ?</AlertDialog.Heading>
           </AlertDialog.Header>
           <AlertDialog.Body className="text-sm">{children}</AlertDialog.Body>
-          <AlertDialog.Footer>
-            <Button variant="tertiary" onPress={onStay}>
+          {/* Phones: stacked full-width buttons, main action on top. */}
+          <AlertDialog.Footer className="flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="tertiary" className="w-full sm:w-auto" onPress={onStay}>
               Continuer l’édition
             </Button>
-            <Button variant="danger" onPress={onLeave}>
+            <Button variant="danger" className="w-full sm:w-auto" onPress={onLeave}>
               Abandonner les modifications
             </Button>
           </AlertDialog.Footer>
