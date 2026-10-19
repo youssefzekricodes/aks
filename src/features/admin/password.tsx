@@ -9,7 +9,7 @@ import {
   Tooltip,
   toast,
 } from "@heroui/react";
-import { Check, Copy, Eye, EyeOff, Wand2 } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Wand2 } from "@/components/icons";
 import {
   PASSWORD_MAX,
   PASSWORD_MIN,

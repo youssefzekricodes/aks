@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Spinner, toast } from "@heroui/react";
-import { ArrowRight, Check, LogOut, RefreshCw } from "lucide-react";
+import { ArrowRight, Check, LogOut, RefreshCw } from "@/components/icons";
 import { FacebookLogo, InstagramLogo } from "@/components/aks/SocialLogos";
 import { connectSocial, disconnectSocial, selectSocialPage } from "@/lib/data";
 import { socialStatusQuery } from "./SocialCard";

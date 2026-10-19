@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Button, Label, Slider } from "@heroui/react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { formatNumber, type Car } from "@/lib/cars";
 import { cn } from "@/lib/utils";
 import { brandSettingsQuery } from "@/lib/queries";
@@ -10,7 +10,9 @@ import {
   arrangeBrands,
   bodyOptions,
   brandOptions,
+  brandsOf,
   facetOptions,
+  toggleBrand,
   type FacetKey,
   type SearchFilters,
 } from "@/features/catalog/search";
@@ -190,6 +192,7 @@ export function FilterPanel({
   const transmissions = options("transmission");
   const models = options("modele");
   const years = useMemo(() => [...new Set(cars.map((c) => c.year))].sort((a, b) => b - a), [cars]);
+  const chosenBrands = brandsOf(filters);
   const shownBrands = allBrands ? brands : brands.slice(0, BRANDS_COLLAPSED);
 
   return (
@@ -217,14 +220,12 @@ export function FilterPanel({
                 <Tile
                   key={b.value}
                   label={`${b.label} (${b.count})`}
-                  pressed={filters.marque === b.value}
+                  pressed={chosenBrands.includes(b.value)}
                   dim={!brandsInStock.has(b.value)}
                   onPress={() =>
-                    brandsInStock.has(b.value) || filters.marque === b.value
-                      ? onChange({
-                          marque: filters.marque === b.value ? undefined : b.value,
-                          modele: undefined,
-                        })
+                    // Several brands can be chosen; a model only goes with one brand.
+                    brandsInStock.has(b.value) || chosenBrands.includes(b.value)
+                      ? onChange({ marque: toggleBrand(filters, b.value), modele: undefined })
                       : setEmpty({ kind: "brand", label: b.label })
                   }
                 >
@@ -256,11 +257,17 @@ export function FilterPanel({
         <FilterSelect
           className="mt-3"
           label="Modèle"
-          allLabel={filters.marque ? "Tous modèles" : "Choisissez d’abord une marque"}
+          allLabel={
+            chosenBrands.length === 1
+              ? "Tous modèles"
+              : chosenBrands.length
+                ? "Une seule marque pour choisir un modèle"
+                : "Choisissez d’abord une marque"
+          }
           value={filters.modele}
           onChange={(modele) => onChange({ modele })}
           options={models}
-          isDisabled={!filters.marque || models.length === 0}
+          isDisabled={chosenBrands.length !== 1 || models.length === 0}
           showCounts
         />
       </Group>
@@ -391,12 +398,16 @@ export function ActiveFilters({
   const chips: { key: string; label: string; clear: Partial<SearchFilters> }[] = [];
   if (filters.q) chips.push({ key: "q", label: `« ${filters.q} »`, clear: { q: undefined } });
   if (filters.marque && !lockedBrand)
-    chips.push({
-      key: "marque",
-      // Brands without stock are not in the facets: use the registry name.
-      label: brandBySlug(filters.marque)?.name ?? labelOf("marque")!,
-      clear: { marque: undefined, modele: undefined },
-    });
+    for (const slug of brandsOf(filters))
+      chips.push({
+        key: `marque-${slug}`,
+        // Brands without stock are not in the facets: use the registry name.
+        label:
+          brandBySlug(slug)?.name ??
+          facetOptions(cars, {}, "marque").find((o) => o.value === slug)?.label ??
+          slug,
+        clear: { marque: toggleBrand(filters, slug), modele: undefined },
+      });
   for (const key of ["modele", "carrosserie", "etat", "energie", "boite", "transmission"] as const)
     if (filters[key]) chips.push({ key, label: labelOf(key)!, clear: { [key]: undefined } });
   if (filters.prix_min !== undefined || filters.prix_max !== undefined)

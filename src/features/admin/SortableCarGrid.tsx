@@ -4,7 +4,7 @@ import { toast } from "@heroui/react";
 import { closestCenter, DndContext, DragOverlay, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Pencil } from "lucide-react";
+import { Pencil } from "@/components/icons";
 import { CarCard, CarGrid } from "@/components/aks/CarCard";
 import { reorderCars } from "@/lib/data";
 import { adminCarsQueryKey, type AdminCar } from "./model";

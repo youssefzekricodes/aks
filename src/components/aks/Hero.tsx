@@ -3,13 +3,13 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight, Phone, Search } from "lucide-react";
+import { ArrowRight, Phone, Search } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
 import { telHref } from "@/features/content/definition";
 import { facetOptions, type SearchFilters } from "@/features/catalog/search";
 import { BrandLogo } from "./BrandLogo";
-import { FilterSelect } from "./FilterSelect";
+import { FilterSelect, MultiFilterSelect } from "./FilterSelect";
 
 export function Hero() {
   const text = useSiteText();
@@ -22,7 +22,8 @@ export function Hero() {
     "hero.textarea_1",
     "Véhicules neufs et d'occasion sélectionnés avec exigence. Financement, reprise et garantie — accompagnés par une équipe qui connaît chaque voiture qu'elle vend.",
   );
-  const [marque, setMarque] = useState<string>();
+  const [marques, setMarques] = useState<string[]>([]);
+  const marque = marques.length ? marques.join(",") : undefined;
   const [modele, setModele] = useState<string>();
   const [budget, setBudget] = useState<string>();
 
@@ -103,17 +104,22 @@ export function Hero() {
           }}
           className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-xl sm:grid-cols-2 sm:p-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end"
         >
-          <FilterSelect
+          <MultiFilterSelect
             label={text("hero.text_28", "Marque")}
             allLabel={text("hero.text_18", "Toutes marques")}
-            value={marque}
-            onChange={(value) => {
-              setMarque(value);
+            values={marques}
+            onChange={(values) => {
+              setMarques(values);
               setModele(undefined);
             }}
             options={brands.map((b) => ({
               ...b,
-              icon: <BrandLogo brand={b.label} wordmark={false} className="h-5 shrink-0" />,
+              // Same box for every logo (equal visual weight); brands without one keep the space.
+              icon: (
+                <span className="grid h-6 w-9 shrink-0 place-items-center" aria-hidden>
+                  <BrandLogo brand={b.label} wordmark={false} size={20} />
+                </span>
+              ),
             }))}
             showCounts
           />
@@ -124,7 +130,7 @@ export function Hero() {
             value={modele}
             onChange={setModele}
             options={models}
-            isDisabled={!marque}
+            isDisabled={marques.length !== 1}
             showCounts
           />
           <FilterSelect

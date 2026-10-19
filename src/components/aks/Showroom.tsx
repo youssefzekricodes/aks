@@ -1,5 +1,5 @@
 import { buttonVariants } from "@heroui/styles";
-import { Clock, MapPin, Navigation, Phone, MessageCircle } from "lucide-react";
+import { Clock, MapPin, Navigation, Phone, MessageCircle } from "@/components/icons";
 import { usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { telHref, whatsappHref } from "@/features/content/definition";
 import { cn } from "@/lib/utils";

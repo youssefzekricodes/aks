@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Label, TextField, toast } from "@heroui/react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/icons";
 import { getSession, signIn, signOut } from "@/features/auth/auth.functions";
 import { MfaEnroll, MfaVerify } from "@/features/admin/mfa";
 import { sessionQueryKey, type Factor } from "@/features/admin/model";

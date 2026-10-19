@@ -13,7 +13,7 @@ import {
   TextField,
 } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "@/components/icons";
 import {
   CAR_BODIES,
   CAR_COUNTRIES,

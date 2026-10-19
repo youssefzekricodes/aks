@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/icons";
 import { brandSettingsQuery, publicCarsQuery } from "@/lib/queries";
 import { useSiteText } from "@/lib/site-content";
 import {
@@ -260,7 +260,8 @@ export function BodiesSection() {
           "SUV, berline, citadine… trouvez le type de véhicule qui vous ressemble.",
         )}
       />
-      <ul className="grid grid-cols-3 gap-x-2 gap-y-1 min-[480px]:grid-cols-4 sm:grid-cols-5 lg:grid-cols-9">
+      {/* Phones: one swipeable row (snaps to each tile); grid from tablets up. */}
+      <ul className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:snap-none sm:grid-cols-5 sm:gap-x-2 sm:gap-y-1 sm:overflow-visible sm:px-0 lg:grid-cols-9">
         {bodies.map((body) => {
           const content = (
             <>
@@ -272,7 +273,7 @@ export function BodiesSection() {
             </>
           );
           return (
-            <li key={body.value}>
+            <li key={body.value} className="w-28 shrink-0 snap-start sm:w-auto">
               {body.count ? (
                 <Link to="/recherche" search={{ carrosserie: body.value }} className={bodyTile}>
                   {content}

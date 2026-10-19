@@ -18,7 +18,7 @@ import {
   Tags,
   UserCog,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
 import {

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Chip, Skeleton } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle } from "@/components/icons";
 
 import { useSiteText } from "@/lib/site-content";
 import { carImage, discountPercent, formatKm, GEARBOX_LABELS, label, type Car } from "@/lib/cars";

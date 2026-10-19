@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight, Banknote, Repeat, Wrench, Ship, ShieldCheck } from "lucide-react";
+import { ArrowRight, Banknote, Repeat, Wrench, Ship, ShieldCheck } from "@/components/icons";
 import { useSiteCollection, useSiteText } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 

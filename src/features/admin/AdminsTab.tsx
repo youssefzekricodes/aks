@@ -26,7 +26,7 @@ import {
   Trash2,
   UserCog,
   UserPlus,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   createAdmin,
   deleteAdmin,

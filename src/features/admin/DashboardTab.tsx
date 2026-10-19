@@ -2,7 +2,14 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@heroui/react";
-import { BadgeCheck, Car as CarIcon, Eye, FileClock, Inbox, type LucideIcon } from "lucide-react";
+import {
+  BadgeCheck,
+  Car as CarIcon,
+  Eye,
+  FileClock,
+  Inbox,
+  type LucideIcon,
+} from "@/components/icons";
 import { CAR_BODIES, carImage } from "@/lib/cars";
 import { BodyIcon } from "@/components/aks/BodyIcon";
 import {

@@ -1,5 +1,5 @@
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/icons";
 import { contactHref, useSiteText } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Eyebrow } from "./Section";

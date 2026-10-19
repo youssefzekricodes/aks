@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button, Modal, Slider } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { Crop, Minus, Plus, RotateCcw } from "lucide-react";
+import { Crop, Minus, Plus, RotateCcw } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /** A crop shape offered to the user; `aspect: null` keeps the picture's own proportions. */

@@ -19,7 +19,7 @@ import {
   Store,
   Tag,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import { carImage, discountPercent, formatKm, formatPrice, salePrice } from "@/lib/cars";
 import {
   bulkCars,
@@ -526,9 +526,16 @@ export function CarsTab() {
               >
                 <Table.Header>
                   <Table.Column className="w-10">
+                    {/* Some or all rows ticked: a click clears them; none: selects the page.
+                        Its clicks are kept from the table header (which would swallow them). */}
                     <input
+                      {...isolate}
                       type="checkbox"
-                      aria-label="Sélectionner les véhicules de cette page"
+                      aria-label={
+                        pageSelected
+                          ? "Désélectionner les véhicules de cette page"
+                          : "Sélectionner les véhicules de cette page"
+                      }
                       checked={allSelected}
                       ref={(el) => {
                         if (el) el.indeterminate = pageSelected > 0 && !allSelected;
@@ -537,7 +544,7 @@ export function CarsTab() {
                         setSelected((current) => {
                           const next = new Set(current);
                           for (const car of pageCars)
-                            if (allSelected) next.delete(car.id);
+                            if (pageSelected > 0) next.delete(car.id);
                             else next.add(car.id);
                           return next;
                         })

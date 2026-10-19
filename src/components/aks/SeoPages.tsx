@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/icons";
 import { brandBySlug } from "@/features/catalog/brands";
 import { filterCars } from "@/features/catalog/search";
 import { homeFaq } from "@/features/seo/faq";

@@ -297,3 +297,44 @@ test("header search: nicknames, every word must match, brands with stock first",
   assert.equal(quickSearch(cars, "b").brands[0]?.value, "bmw", "brand in stock first");
   assert.deepEqual(quickSearch(cars, "  "), { cars: [], brands: [] });
 });
+
+test("several brands: kept from the URL, matched, toggled; a model needs a single brand", async () => {
+  const { validateSearch, filterCars, toggleBrand, brandsOf } =
+    await import("../src/features/catalog/search.ts");
+  const filters = validateSearch({ marque: "kia,mg,kia", modele: "sportage" });
+  assert.equal(filters.marque, "kia,mg");
+  assert.equal(filters.modele, undefined, "model dropped with two brands");
+  assert.deepEqual(brandsOf(filters), ["kia", "mg"]);
+  assert.equal(validateSearch({ marque: "kia", modele: "sportage" }).modele, "sportage");
+  assert.equal(validateSearch({ marque: "kia,<script>" }).marque, undefined);
+
+  const make = (brand: string) =>
+    ({
+      brand,
+      name: "X",
+      model: "X",
+      year: 2020,
+      km_value: 1,
+      price: 1,
+      fuel: "Essence",
+      gearbox: "Auto",
+      body: "SUV",
+      state: "Occasion",
+      country: "",
+      images: [],
+      slug: brand,
+      description: "",
+      published: true,
+      sort_order: 0,
+      id: brand,
+      km: "",
+    }) as never;
+  const cars = [make("Kia"), make("MG"), make("Audi")];
+  assert.deepEqual(
+    filterCars(cars, { marque: "kia,mg" }).map((c: { brand: string }) => c.brand),
+    ["Kia", "MG"],
+  );
+  assert.equal(toggleBrand({ marque: "kia" }, "mg"), "kia,mg");
+  assert.equal(toggleBrand({ marque: "kia,mg" }, "kia"), "mg");
+  assert.equal(toggleBrand({ marque: "kia" }, "kia"), undefined);
+});

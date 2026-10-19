@@ -11,6 +11,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // A new page starts at its top at once (no smooth scroll while the content changes),
+    // e.g. opening a similar vehicle from a vehicle page.
+    scrollRestorationBehavior: "instant",
     // Hovering a link starts loading that page's code and data.
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,

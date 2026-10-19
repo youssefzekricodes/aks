@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Quote, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Quote, Star } from "@/components/icons";
 import { useSiteCollection, useSiteText } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Eyebrow, sectionTitle } from "./Section";

@@ -10,7 +10,7 @@ import { CarForm } from "./CarForm";
 import { adminCarsQuery, adminCarsQueryKey, emptyCar, toDraft, toPayload } from "./model";
 import { announceShare, socialStatusQuery } from "./SocialCard";
 import { AdminBreadcrumbs, EmptyState, type Crumb } from "./ui";
-import { Car as CarIcon } from "lucide-react";
+import { Car as CarIcon } from "@/components/icons";
 
 /**
  * Where the editor was opened from, so saving or leaving goes back there:

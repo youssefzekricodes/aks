@@ -16,10 +16,26 @@ const slug = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   .max(80);
 const amount = z.coerce.number().int().min(0).max(1e9);
+/** One brand ("kia") or several, comma-separated ("kia,mg"). */
+const brands = z
+  .string()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?:,[a-z0-9]+(?:-[a-z0-9]+)*){0,11}$/)
+  .max(400)
+  .transform((value) => [...new Set(value.split(","))].join(","));
+
+/** Brands chosen in the filters (empty = all). */
+export const brandsOf = (filters: Pick<SearchFilters, "marque">) =>
+  filters.marque ? filters.marque.split(",") : [];
+/** Adds or removes one brand; undefined when none is left. */
+export function toggleBrand(filters: Pick<SearchFilters, "marque">, slug: string) {
+  const current = brandsOf(filters);
+  const next = current.includes(slug) ? current.filter((b) => b !== slug) : [...current, slug];
+  return next.length ? next.join(",") : undefined;
+}
 
 export const searchSchema = z.object({
   q: z.string().trim().max(80).optional(),
-  marque: slug.optional(),
+  marque: brands.optional(),
   modele: slug.optional(),
   carrosserie: slug.optional(),
   etat: slug.optional(),
@@ -68,7 +84,9 @@ export function validateSearch(search: Record<string, unknown>): SearchFilters {
     const parsed = (schema as z.ZodTypeAny).safeParse(input[key]);
     if (parsed.success && parsed.data !== undefined) result[key] = parsed.data;
   }
-  if (result["modele"] && !result["marque"]) delete result["modele"];
+  // A model only makes sense for one brand.
+  if (result["modele"] && (!result["marque"] || String(result["marque"]).includes(",")))
+    delete result["modele"];
   return result as SearchFilters;
 }
 
@@ -92,7 +110,13 @@ function matches(car: Car, f: SearchFilters, ignore?: FilterKey) {
   for (const key of FACET_KEYS) {
     if (key === ignore) continue;
     const wanted = f[key];
-    if (wanted && facetValue[key](car) !== wanted) return false;
+    if (!wanted) continue;
+    if (
+      key === "marque"
+        ? !wanted.split(",").includes(facetValue.marque(car))
+        : facetValue[key](car) !== wanted
+    )
+      return false;
   }
   const hasPriceBound = f.prix_min !== undefined || f.prix_max !== undefined;
   // Cars with a hidden price have no known price: they never match a price bound.
@@ -150,7 +174,8 @@ export type FacetOption = { value: string; label: string; count: number };
 export function facetOptions(cars: Car[], filters: SearchFilters, key: FacetKey): FacetOption[] {
   const counts = new Map<string, FacetOption>();
   for (const car of cars) {
-    if (key === "modele" && filters.marque && facetValue.marque(car) !== filters.marque) continue;
+    if (key === "modele" && filters.marque && !brandsOf(filters).includes(facetValue.marque(car)))
+      continue;
     const value = facetValue[key](car);
     if (!value) continue;
     const option = counts.get(value) ?? { value, label: facetLabel(car, key), count: 0 };
@@ -158,7 +183,11 @@ export function facetOptions(cars: Car[], filters: SearchFilters, key: FacetKey)
     counts.set(value, option);
   }
   return [...counts.values()]
-    .filter((o) => o.count > 0 || filters[key] === o.value)
+    .filter(
+      (o) =>
+        o.count > 0 ||
+        (key === "marque" ? brandsOf(filters).includes(o.value) : filters[key] === o.value),
+    )
     .sort((a, b) => a.label.localeCompare(b.label, "fr"));
 }
 
@@ -172,7 +201,8 @@ export function bodyOptions(cars: Car[], filters: SearchFilters): FacetOption[] 
     const value = slugify(body);
     return inStock.find((o) => o.value === value) ?? { value, label: body, count: 0 };
   });
-  return [...known, ...inStock.filter((o) => !known.some((k) => k.value === o.value))];
+  // Other stored values (e.g. "À préciser" on imported cars not filled in yet) aren't shown.
+  return known;
 }
 
 /**

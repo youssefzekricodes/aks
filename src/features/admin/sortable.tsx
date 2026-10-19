@@ -9,7 +9,7 @@ import {
   type DraggableSyntheticListeners,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { GripVertical } from "lucide-react";
+import { GripVertical } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /**

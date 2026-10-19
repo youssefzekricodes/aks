@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { Alert, Button, Label, Spinner, TextArea, TextField, toast } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, RotateCw, Sparkles } from "lucide-react";
+import { ExternalLink, RotateCw, Sparkles } from "@/components/icons";
 import { FacebookLogo, InstagramLogo } from "@/components/aks/SocialLogos";
 import {
   buildSocialCaption,

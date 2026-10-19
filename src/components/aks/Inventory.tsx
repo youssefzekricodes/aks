@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import { useSiteText } from "@/lib/site-content";
 import { sortCars } from "@/features/catalog/search";

@@ -4,7 +4,7 @@ import { DropZone, isFileDropItem } from "react-aria-components";
 import { closestCenter, DndContext, DragOverlay, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircle, Crop, ImagePlus, RotateCw, Trash2 } from "lucide-react";
+import { AlertCircle, Crop, ImagePlus, RotateCw, Trash2 } from "@/components/icons";
 import { uploadImage } from "@/lib/data";
 import { CROP_PRESETS, ImageCropDialog } from "./ImageCropDialog";
 import type { PhotoUpload, usePhotoQueue } from "./hooks";

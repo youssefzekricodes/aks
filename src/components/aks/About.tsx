@@ -1,5 +1,5 @@
 import { useSiteCollection, useSiteText } from "@/lib/site-content";
-import { Award } from "lucide-react";
+import { Award } from "@/components/icons";
 import { formatNumber } from "@/lib/cars";
 import { cn } from "@/lib/utils";
 import { Eyebrow, Section, sectionTitle } from "./Section";

@@ -2,7 +2,16 @@ import { useState, type SyntheticEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, Modal, SearchField, Switch, Table, toast } from "@heroui/react";
-import { ArrowDown, ArrowUp, Pencil, Star, Tags, Trash2, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Pencil,
+  Star,
+  StarFill,
+  Tags,
+  Trash2,
+  Upload,
+} from "@/components/icons";
 import { BRANDS, brandBySlug, brandInfo, type BrandInfo } from "@/features/catalog/brands";
 import type { BrandDisplay } from "@/features/catalog/search";
 import { BrandLogo } from "@/components/aks/BrandLogo";
@@ -368,9 +377,9 @@ function BrandRow({
                 ? `Retirer ${brand.name} des favorites`
                 : `Ajouter ${brand.name} aux favorites`
             }
-            icon={Star}
+            icon={favorite ? StarFill : Star}
             onPress={onToggleFavorite}
-            className={favorite ? "text-warning [&_svg]:fill-current" : "text-muted"}
+            className={favorite ? "text-warning" : "text-muted"}
           />
           {favorite && (
             <>

@@ -34,7 +34,8 @@ import {
   Star,
   Trash2,
   type LucideIcon,
-} from "lucide-react";
+  StarFill,
+} from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CROP_PRESETS, ImageCropDialog, type CropOptions } from "@/features/admin/ImageCropDialog";
 import { prepareImage, saveSiteContent, uploadImage } from "@/lib/data";
@@ -780,7 +781,7 @@ function PhonesInput({
             </Switch>
             {row.primary ? (
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent">
-                <Star className="size-4 fill-current" aria-hidden />
+                <StarFill className="size-4" aria-hidden />
                 Numéro principal
               </span>
             ) : (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Modal } from "@heroui/react";
-import { Tag } from "lucide-react";
+import { Tag } from "@/components/icons";
 import { discountPercent, formatPrice } from "@/lib/cars";
 import { cn } from "@/lib/utils";
 import type { AdminCar } from "./model";

@@ -185,3 +185,51 @@ html {
     transform: translateY(24px);
   }
 }
+
+/* Secondary buttons (HeroUI "secondary"): white with a visible outline and dark text,
+   so they read as buttons next to the solid red primary ones (was a faint grey). Inside
+   the dark header/footer bands the same tokens give a dark outlined button. */
+.button--secondary {
+  --button-bg: var(--surface);
+  --button-bg-hover: var(--surface-secondary);
+  --button-bg-pressed: var(--surface-secondary);
+  --button-fg: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.button--secondary:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 25%, var(--border));
+}
+
+/* Sort control on the search page: round icon button, same style as "Filtres". */
+.sort-select .select__trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.sort-select .select__trigger:hover {
+  background: var(--surface-secondary);
+}
+
+/* iPhone: no zoom on double-tap (pinch-to-zoom still works), no text resizing on
+   rotation, and text fields at 16px on phones so Safari doesn't zoom in when one is
+   focused (it zooms on anything smaller and stays zoomed, cropping the page). */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@media (max-width: 767px) {
+  input:not([type="range"], [type="checkbox"], [type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

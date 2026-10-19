@@ -3,7 +3,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Alert, Button, Input, Label, Spinner, TextArea, TextField, toast } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { Check, ExternalLink, EyeOff, Link2, RefreshCw, RotateCcw } from "lucide-react";
+import { Check, ExternalLink, EyeOff, Link2, RefreshCw, RotateCcw } from "@/components/icons";
 import { FacebookLogo } from "@/components/aks/SocialLogos";
 import { brandInfo } from "@/features/catalog/brands";
 import {

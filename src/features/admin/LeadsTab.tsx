@@ -12,7 +12,15 @@ import {
   toast,
 } from "@heroui/react";
 import { getLocalTimeZone, toCalendarDate, today, type DateValue } from "@internationalized/date";
-import { Car, CheckCircle2, Inbox, MessageCircle, Phone, RotateCcw, Trash2 } from "lucide-react";
+import {
+  Car,
+  CheckCircle2,
+  Inbox,
+  MessageCircle,
+  Phone,
+  RotateCcw,
+  Trash2,
+} from "@/components/icons";
 import { deleteLead, setLeadHandled, type Lead } from "@/lib/data";
 import { useDialogTarget } from "./hooks";
 import { dateTimeFormat, leadsQueryOptions, normalize, plural } from "./model";

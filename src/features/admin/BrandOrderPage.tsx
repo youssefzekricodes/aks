@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Car as CarIcon } from "lucide-react";
+import { Car as CarIcon } from "@/components/icons";
 import { BrandLogo } from "@/components/aks/BrandLogo";
 import { brandInfo } from "@/features/catalog/brands";
 import { adminCarsQuery, plural } from "./model";

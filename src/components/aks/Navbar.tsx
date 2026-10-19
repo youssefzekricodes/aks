@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@heroui/react";
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowUpRight, Clock, Menu, MessageCircle, Phone, X } from "lucide-react";
+import { ArrowUpRight, Clock, Menu, MessageCircle, Phone, X } from "@/components/icons";
 import { contactHref, usePhones, useSiteCollection, useSiteText } from "@/lib/site-content";
 import { telHref, whatsappHref } from "@/features/content/definition";
 import { GlobalSearch } from "./GlobalSearch";

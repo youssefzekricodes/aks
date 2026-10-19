@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { buttonVariants } from "@heroui/styles";
-import { Clock, Mail, MapPin, MessageCircle, Phone, X } from "lucide-react";
+import { Clock, Mail, MapPin, MessageCircle, Phone, X } from "@/components/icons";
 import { resolveContent } from "@/features/content/definition";
 import { publicCarQuery, publicConfigQuery, siteContentQuery } from "@/lib/queries";
 import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";

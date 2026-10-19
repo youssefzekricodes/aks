@@ -14,7 +14,7 @@ import {
   Spinner,
   TextField,
 } from "@heroui/react";
-import { ArrowLeft, Mail, MessageSquare, Smartphone } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Smartphone } from "@/components/icons";
 import {
   emailCodeSend,
   emailCodeVerify,

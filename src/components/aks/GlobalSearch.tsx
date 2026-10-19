@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
-import { ArrowLeft, ArrowRight, CornerDownLeft, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CornerDownLeft, Search, X } from "@/components/icons";
 import { brandOptions, quickSearch, sortCars } from "@/features/catalog/search";
 import { carImage, formatKm, salePrice, formatPrice, type Car } from "@/lib/cars";
 import { publicCarsQuery } from "@/lib/queries";

@@ -2,8 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Breadcrumbs, Button, Drawer, Label, ListBox, Pagination, Select } from "@heroui/react";
-import { buttonVariants } from "@heroui/styles";
-import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import {
   activeFilterCount,
@@ -101,37 +100,9 @@ export function SearchPage({
         </aside>
 
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Select
-              className="w-60"
-              value={filters.tri ?? "recent"}
-              onChange={(key) =>
-                change({
-                  tri: key === "recent" || key === null ? undefined : (String(key) as Sort),
-                })
-              }
-            >
-              <Label className="sr-only">Trier par</Label>
-              <Select.Trigger>
-                <ArrowUpDown className="size-4 shrink-0 text-muted" aria-hidden />
-                <span className="shrink-0 text-muted">Trier :</span>
-                <Select.Value className="min-w-0 truncate font-medium" />
-                <Select.Indicator />
-              </Select.Trigger>
-              <Select.Popover>
-                <ListBox>
-                  {(Object.keys(SORT_LABELS) as Sort[]).map((sort) => (
-                    <ListBox.Item key={sort} id={sort} textValue={SORT_LABELS[sort]}>
-                      {SORT_LABELS[sort]}
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                  ))}
-                </ListBox>
-              </Select.Popover>
-            </Select>
-
+          <div className="flex items-center gap-2">
             <Drawer isOpen={drawer} onOpenChange={setDrawer}>
-              <Button variant="secondary" className="lg:hidden">
+              <Button variant="secondary" className="h-10 min-w-0 flex-1 lg:hidden">
                 <SlidersHorizontal className="size-4" />
                 Filtres{active > 0 && ` (${active})`}
               </Button>
@@ -156,6 +127,41 @@ export function SearchPage({
                 </Drawer.Content>
               </Drawer.Backdrop>
             </Drawer>
+            {/* Same size and style as "Filtres" (phones); on the right on larger screens. */}
+            <Select
+              className="sort-select ms-auto shrink-0"
+              aria-label="Trier par"
+              value={filters.tri ?? "recent"}
+              onChange={(key) =>
+                change({
+                  tri: key === "recent" || key === null ? undefined : (String(key) as Sort),
+                })
+              }
+            >
+              <Label className="sr-only">Trier par</Label>
+              {/* Icon only (the current sort is read out by screen readers); a dot marks a
+                  sort other than the default. */}
+              <Select.Trigger>
+                <ArrowUpDown className="size-5" aria-hidden />
+                <Select.Value className="sr-only" />
+                {filters.tri && filters.tri !== "recent" && (
+                  <span
+                    aria-hidden
+                    className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent ring-2 ring-[var(--surface)]"
+                  />
+                )}
+              </Select.Trigger>
+              <Select.Popover className="min-w-56" placement="bottom end">
+                <ListBox>
+                  {(Object.keys(SORT_LABELS) as Sort[]).map((sort) => (
+                    <ListBox.Item key={sort} id={sort} textValue={SORT_LABELS[sort]}>
+                      {SORT_LABELS[sort]}
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  ))}
+                </ListBox>
+              </Select.Popover>
+            </Select>
           </div>
 
           <div className="mt-4">

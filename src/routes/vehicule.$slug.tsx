@@ -22,7 +22,7 @@ import {
   X,
   Zap,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { resolveContent, telHref, whatsappHref } from "@/features/content/definition";
 import { relatedCars } from "@/features/catalog/search";
 import { brandInfo } from "@/features/catalog/brands";
@@ -555,7 +555,7 @@ function VehiculePage() {
         {/* Mobile order: photos, price card, details. Desktop: card in a sticky right column. */}
         <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-x-8 lg:gap-y-0">
           <div className="min-w-0">
-            <Gallery car={car} />
+            <Gallery key={car.slug} car={car} />
           </div>
 
           <aside className="lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-fit">

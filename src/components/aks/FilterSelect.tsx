@@ -60,3 +60,54 @@ export function FilterSelect({
     </Select>
   );
 }
+
+/** Same look, several choices ("Kia, MG"); an empty list means no filter. */
+export function MultiFilterSelect({
+  label,
+  values,
+  onChange,
+  options,
+  allLabel,
+  className,
+  showCounts = false,
+}: {
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: SelectOption[];
+  allLabel: string;
+  className?: string;
+  showCounts?: boolean;
+}) {
+  return (
+    <Select
+      {...(className ? { className } : {})}
+      selectionMode="multiple"
+      placeholder={allLabel}
+      value={values}
+      onChange={(keys) => onChange((keys as (string | number)[]).map(String))}
+    >
+      <Label>{label}</Label>
+      <Select.Trigger>
+        <Select.Value className="min-w-0 truncate" />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox selectionMode="multiple">
+          {options.map((option) => (
+            <ListBox.Item key={option.value} id={option.value} textValue={option.label}>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                {option.icon}
+                <span className="truncate">{option.label}</span>
+                {showCounts && option.count !== undefined && (
+                  <span className="tabular ml-auto text-xs text-muted">{option.count}</span>
+                )}
+              </span>
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
+}

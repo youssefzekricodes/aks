@@ -21,7 +21,7 @@ import {
   type ButtonProps,
 } from "@heroui/react";
 import { FileTrigger } from "react-aria-components";
-import { ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
+import { ChevronRight, MoreHorizontal, type LucideIcon } from "@/components/icons";
 import { Link } from "@tanstack/react-router";
 
 import type { UploadState } from "./hooks";

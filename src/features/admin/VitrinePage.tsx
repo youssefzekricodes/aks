@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Button, Label, Modal, SearchField, toast } from "@heroui/react";
-import { Plus, Store, X } from "lucide-react";
+import { Plus, Store, X } from "@/components/icons";
 import { carImage, formatKm } from "@/lib/cars";
 import { setVitrine } from "@/lib/data";
 import { adminCarsQuery, adminCarsQueryKey, normalize, plural, type AdminCar } from "./model";
