@@ -10,17 +10,31 @@ const GRACE_MS = 24 * 60 * 60 * 1000; // never touch uploads that may still be i
 try {
   const supabase = serviceClient();
   const { client, bucketUrl, publicUrl } = r2();
+  // Every row: PostgREST returns at most 1,000 per request, and a missed row
+  // would make a photo in use look orphaned.
+  const all = async (table: string, column: string) => {
+    const rows: Record<string, unknown>[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(column)
+        .order(column)
+        .range(from, from + 999);
+      if (error) throw error;
+      rows.push(...(data as unknown as Record<string, unknown>[]));
+      if (data.length < 1000) return rows;
+    }
+  };
   const [images, logos, content] = await Promise.all([
-    supabase.from("car_images").select("object_key"),
-    supabase.from("brand_logos").select("object_key"),
-    supabase.from("site_content").select("value"),
+    all("car_images", "object_key"),
+    all("brand_logos", "object_key"),
+    all("site_content", "value"),
   ]);
-  for (const result of [images, logos, content]) if (result.error) throw result.error;
   const used = new Set<string>([
-    ...images.data!.map((r) => r.object_key as string),
-    ...logos.data!.map((r) => r.object_key as string),
+    ...images.map((r) => r["object_key"] as string),
+    ...logos.map((r) => r["object_key"] as string),
     ...content
-      .data!.map((r) => r.value as string)
+      .map((r) => r["value"] as string)
       .filter((v) => v.startsWith(`${publicUrl}/`))
       .map((v) => v.slice(publicUrl.length + 1)),
   ]);

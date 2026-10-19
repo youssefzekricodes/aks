@@ -321,8 +321,19 @@ export type DashboardStats = {
 /** Page views per vehicle: last 30 days and all time (vehicle details come from the car list). */
 export async function dashboardStats(): Promise<DashboardStats> {
   const supabase = await adminClient();
-  const { data, error } = await supabase.from("car_views").select("car_id, day, views");
-  if (error) failure(error, "Chargement des statistiques impossible.");
+  // One row per vehicle and day: read every page (PostgREST caps a request at 1,000 rows).
+  const data: { car_id: string; day: string; views: number }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error } = await supabase
+      .from("car_views")
+      .select("car_id, day, views")
+      .order("day")
+      .order("car_id")
+      .range(from, from + 999);
+    if (error) failure(error, "Chargement des statistiques impossible.");
+    data.push(...(page ?? []));
+    if ((page ?? []).length < 1000) break;
+  }
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const byCar = new Map<string, { carId: string; last30: number; total: number }>();
   for (const row of data ?? []) {
