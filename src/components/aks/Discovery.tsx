@@ -26,7 +26,15 @@ const brandTile =
  * (the brand name is the image's alt text) and the stock count. Links to the
  * brand page when in stock; brands without stock open the dialog instead.
  */
-function BrandTile({ brand, onEmpty }: { brand: FacetOption; onEmpty: () => void }) {
+function BrandTile({
+  brand,
+  onEmpty,
+  eager = false,
+}: {
+  brand: FacetOption;
+  onEmpty: () => void;
+  eager?: boolean;
+}) {
   const text = useSiteText();
   const hasLogo = useBrandLogoUrl()(brand.label) !== null;
   const content = (
@@ -36,6 +44,7 @@ function BrandTile({ brand, onEmpty }: { brand: FacetOption; onEmpty: () => void
           <BrandLogo
             brand={brand.label}
             size={42}
+            eager={eager}
             className="transition-transform duration-200 group-hover:scale-105"
           />
         ) : (
@@ -98,11 +107,16 @@ const SPEED = 30;
 /** Below this many brands the row fits on large screens: no loop, no motion. */
 const LOOP_FROM = 9;
 
+/** After the user scrolls (swipe, momentum, wheel), the row waits this long, in ms. */
+const RESUME_AFTER = 1500;
+
 /**
  * Infinite, auto-scrolling row of brands (no library). The list is rendered three
  * times and the scroll position jumps by one copy when it nears either end, so it
- * never runs out. Motion pauses on hover, focus and touch, and is off for users who
- * prefer reduced motion; swiping and scrolling keep working.
+ * never runs out. Motion pauses on hover, focus, touch and while the user's own
+ * scroll (including a phone swipe's momentum) is still moving, and is off for users
+ * who prefer reduced motion. The logos load at once: a jump to another copy must
+ * never show empty tiles.
  */
 export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
   const text = useSiteText();
@@ -125,6 +139,19 @@ export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
     };
     let position = copy();
     element.scrollLeft = position;
+    /** Last position the row set itself; any other scroll comes from the user. */
+    let written = element.scrollLeft;
+    const write = (next: number) => {
+      element.scrollLeft = next;
+      written = element.scrollLeft;
+    };
+    // The user's scroll (and a swipe's momentum after the finger lifts) holds the motion.
+    const onScroll = () => {
+      if (Math.abs(element.scrollLeft - written) > 1) {
+        hold.current.until = performance.now() + RESUME_AFTER;
+      }
+    };
+    element.addEventListener("scroll", onScroll, { passive: true });
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
@@ -138,21 +165,24 @@ export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
         if (Math.abs(element.scrollLeft - position) > 1) position = element.scrollLeft;
         position = wrap(position);
         if (!still.matches) position += SPEED * dt;
-        element.scrollLeft = position;
+        write(position);
       }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
 
-    // Wrap after manual scrolling too (while paused under the pointer).
+    // Wrap after manual scrolling too (while paused under the pointer), once it has
+    // stopped: never during a swipe, where a jump would stutter.
     const settle = () => {
+      if (hold.current.touch) return;
       const next = wrap(element.scrollLeft);
-      if (next !== element.scrollLeft) element.scrollLeft = next;
+      if (next !== element.scrollLeft) write(next);
       position = element.scrollLeft;
     };
     element.addEventListener("scrollend", settle);
     return () => {
       cancelAnimationFrame(frame);
+      element.removeEventListener("scroll", onScroll);
       element.removeEventListener("scrollend", settle);
     };
   }, [loop, brands]);
@@ -176,7 +206,11 @@ export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
       onTouchStart={() => (hold.current.touch = true)}
       onTouchEnd={() => {
         hold.current.touch = false;
-        hold.current.until = performance.now() + 2000;
+        hold.current.until = performance.now() + RESUME_AFTER;
+      }}
+      onTouchCancel={() => {
+        hold.current.touch = false;
+        hold.current.until = performance.now() + RESUME_AFTER;
       }}
     >
       <ul
@@ -194,6 +228,7 @@ export function BrandCarousel({ brands }: { brands: FacetOption[] }) {
             >
               <BrandTile
                 brand={brand}
+                eager
                 onEmpty={() => setEmpty({ kind: "brand", label: brand.label })}
               />
             </li>

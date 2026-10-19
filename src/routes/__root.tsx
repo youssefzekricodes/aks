@@ -103,6 +103,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "author", content: resolveContent(content, "seo.site_name") },
         { name: "theme-color", content: "#1c1c1f" },
         { name: "color-scheme", content: "light" },
+        // Installable app (PWA): home-screen name and status bar on iPhone.
+        { name: "application-name", content: "AKS" },
+        { name: "apple-mobile-web-app-title", content: "AKS" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "black" },
         // Local search: the showroom is in Sfax (region TN-61).
         { name: "geo.region", content: "TN-61" },
         { name: "geo.placename", content: "Sfax" },
@@ -112,6 +118,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "icon", type: "image/png", href: faviconHref },
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
       ],
       scripts: [{ children: gtagSnippet }],
     };
@@ -141,6 +149,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+
+  // Installable app (PWA): the service worker only runs on the built site, so the
+  // dev server never serves cached files.
+  useEffect(() => {
+    if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

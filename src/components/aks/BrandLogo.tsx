@@ -37,6 +37,7 @@ export function BrandLogo({
   className,
   wordmark = true,
   size,
+  eager = false,
 }: {
   brand: string;
   className?: string;
@@ -44,6 +45,8 @@ export function BrandLogo({
   wordmark?: boolean;
   /** Equal-area sizing (px of the equivalent square); otherwise sized by `className`. */
   size?: number;
+  /** Load at once (e.g. the looping brand row, whose copies scroll in suddenly). */
+  eager?: boolean;
 }) {
   const url = useBrandLogoUrl()(brand);
   const info = brandInfo(brand);
@@ -69,8 +72,8 @@ export function BrandLogo({
     <img
       src={url}
       alt={info.name}
-      loading="lazy"
-      decoding="async"
+      loading={eager ? "eager" : "lazy"}
+      decoding={eager ? "sync" : "async"}
       {...(box ? { width: box.width, height: box.height, style: box } : {})}
       onLoad={(event) => {
         const { naturalWidth: w, naturalHeight: h } = event.currentTarget;

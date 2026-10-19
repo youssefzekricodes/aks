@@ -36,3 +36,21 @@
   to = "https://autokontorsfax.com/:splat"
   status = 301
   force = true
+
+# Installable app (PWA): the service worker must always be fresh so updates reach users.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    cache-control = "no-cache"
+    service-worker-allowed = "/"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    content-type = "application/manifest+json"
+    cache-control = "public, max-age=3600"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    cache-control = "public, max-age=604800"

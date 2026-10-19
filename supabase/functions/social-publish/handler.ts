@@ -208,7 +208,7 @@ export async function syncPage(
   const known = await db.knownPosts();
   const since = Math.floor(Date.now() / 1000) - days * 86_400;
   const found: InboxPost[] = [];
-  let path = `${config.pageId}/posts`;
+  const path = `${config.pageId}/posts`;
   let params: Record<string, unknown> = {
     fields: POST_FIELDS,
     since,

@@ -7,10 +7,18 @@ export const getRouter = () => {
   // Saving anything invalidates the affected lists right away.
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
 
+  let firstRender = true;
   const router = createRouter({
     routeTree,
     context: { queryClient },
-    scrollRestoration: true,
+    // Back/forward restores the position; a new page starts at the top. Except on the
+    // very first load: if the visitor already scrolled the page before the app finished
+    // starting (slow phone), it must not jump them back to the top.
+    scrollRestoration: () => {
+      if (!firstRender) return true;
+      firstRender = false;
+      return window.scrollY === 0;
+    },
     // A new page starts at its top at once (no smooth scroll while the content changes),
     // e.g. opening a similar vehicle from a vehicle page.
     scrollRestorationBehavior: "instant",
