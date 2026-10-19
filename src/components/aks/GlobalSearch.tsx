@@ -134,12 +134,16 @@ export function SearchPanel({
 
   function go(item: Item | undefined) {
     if (!item) return;
-    onClose();
+    // Full-page search (phones): the result replaces the search page in the history.
+    // Closing it first would go "back" after the navigation and return to the old page.
+    const page = variant === "page";
+    if (!page) onClose();
+    const replace = page;
     if (item.kind === "car")
-      void navigate({ to: "/vehicule/$slug", params: { slug: item.car.slug } });
+      void navigate({ to: "/vehicule/$slug", params: { slug: item.car.slug }, replace });
     else if (item.kind === "brand")
-      void navigate({ to: "/marques/$brand", params: { brand: item.slug } });
-    else void navigate({ to: "/recherche", search: { q: item.query } });
+      void navigate({ to: "/marques/$brand", params: { brand: item.slug }, replace });
+    else void navigate({ to: "/recherche", search: { q: item.query }, replace });
   }
 
   const optionId = (index: number) => `${listId}-${index}`;
