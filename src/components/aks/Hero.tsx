@@ -3,11 +3,11 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight, Phone, Search } from "@/components/icons";
+import { ArrowRight, Phone, Search, Sparkles } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
-import { useSiteCollection, useSiteText, usePhones } from "@/lib/site-content";
+import { useSiteText, usePhones } from "@/lib/site-content";
 import { telHref } from "@/features/content/definition";
-import { facetOptions, type SearchFilters } from "@/features/catalog/search";
+import { bodyOptions, facetOptions, type SearchFilters } from "@/features/catalog/search";
 import { BrandLogo } from "./BrandLogo";
 import { FilterSelect, MultiFilterSelect } from "./FilterSelect";
 
@@ -15,7 +15,6 @@ export function Hero() {
   const text = useSiteText();
   const navigate = useNavigate();
   const { data: cars } = useSuspenseQuery(publicCarsQuery);
-  const budgets = useSiteCollection("inventory.budgets");
   const { primary } = usePhones();
   const mobileImage = text("hero.image_mobile", "");
   const intro = text(
@@ -25,11 +24,13 @@ export function Hero() {
   const [marques, setMarques] = useState<string[]>([]);
   const marque = marques.length ? marques.join(",") : undefined;
   const [modele, setModele] = useState<string>();
-  const [budget, setBudget] = useState<string>();
+  const [carrosserie, setCarrosserie] = useState<string>();
 
   const filters: SearchFilters = { marque };
   const brands = useMemo(() => facetOptions(cars, {}, "marque"), [cars]);
   const models = facetOptions(cars, filters, "modele");
+  // Type of car rather than budget: most cars show no price, a budget would hide them.
+  const bodies = bodyOptions(cars, { marque }).filter((o) => o.count > 0);
 
   return (
     <>
@@ -96,11 +97,7 @@ export function Hero() {
           aria-label="Recherche rapide"
           onSubmit={(event) => {
             event.preventDefault();
-            const max = budgets.find((b) => String(b.max) === budget)?.max;
-            navigate({
-              to: "/recherche",
-              search: { marque, modele, ...(max ? { prix_max: max } : {}) },
-            });
+            navigate({ to: "/recherche", search: { marque, modele, carrosserie } });
           }}
           className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-xl sm:grid-cols-2 sm:p-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end"
         >
@@ -135,16 +132,32 @@ export function Hero() {
           />
           <FilterSelect
             className="sm:col-span-2 lg:col-span-1"
-            label={text("hero.budget_label", "Budget maximum")}
-            allLabel={text("hero.any_budget", "Tous budgets")}
-            value={budget}
-            onChange={setBudget}
-            options={budgets.map((b) => ({ value: String(b.max), label: b.label }))}
+            label="Type de voiture"
+            allLabel="Tous les types"
+            value={carrosserie}
+            onChange={setCarrosserie}
+            options={bodies}
+            showCounts
           />
           <Button type="submit" size="lg" className="sm:col-span-2 lg:col-span-1">
             <Search className="size-4" />
             {text("hero.text_29", "Rechercher")}
           </Button>
+          {/* For visitors who do not know what to pick. */}
+          <Link
+            to="/trouver-ma-voiture"
+            className="group flex items-center gap-3 rounded-xl bg-accent-soft/60 px-3 py-2.5 text-sm transition-colors hover:bg-accent-soft sm:col-span-2 lg:col-span-4"
+          >
+            <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <strong className="font-semibold">Vous ne savez pas quoi choisir ?</strong>{" "}
+              <span className="text-muted">Trouvez votre voiture en quelques questions.</span>
+            </span>
+            <ArrowRight
+              className="size-4 shrink-0 text-accent transition-transform group-hover:translate-x-0.5"
+              aria-hidden
+            />
+          </Link>
         </form>
       </div>
     </>

@@ -21,6 +21,7 @@ import { Route as RechercherRouteImport } from './routes/rechercher'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SuppressionDesDonneesRouteImport } from './routes/suppression-des-donnees'
+import { Route as TrouverMaVoitureRouteImport } from './routes/trouver-ma-voiture'
 import { Route as VoituresOccasionSfaxRouteImport } from './routes/voitures-occasion-sfax'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as MarquesIndexRouteImport } from './routes/marques.index'
@@ -98,6 +99,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SuppressionDesDonneesRoute = SuppressionDesDonneesRouteImport.update({
   id: '/suppression-des-donnees',
   path: '/suppression-des-donnees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrouverMaVoitureRoute = TrouverMaVoitureRouteImport.update({
+  id: '/trouver-ma-voiture',
+  path: '/trouver-ma-voiture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VoituresOccasionSfaxRoute = VoituresOccasionSfaxRouteImport.update({
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/trouver-ma-voiture': typeof TrouverMaVoitureRoute
   '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/trouver-ma-voiture': typeof TrouverMaVoitureRoute
   '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/marques/$brand': typeof MarquesBrandRoute
   '/vehicule/$slug': typeof VehiculeSlugRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/suppression-des-donnees': typeof SuppressionDesDonneesRoute
+  '/trouver-ma-voiture': typeof TrouverMaVoitureRoute
   '/voitures-occasion-sfax': typeof VoituresOccasionSfaxRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/marques/$brand': typeof MarquesBrandRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/trouver-ma-voiture'
     | '/voitures-occasion-sfax'
     | '/admin'
     | '/marques/$brand'
@@ -352,6 +362,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/trouver-ma-voiture'
     | '/voitures-occasion-sfax'
     | '/marques/$brand'
     | '/vehicule/$slug'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/suppression-des-donnees'
+    | '/trouver-ma-voiture'
     | '/voitures-occasion-sfax'
     | '/_authenticated/admin'
     | '/marques/$brand'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SuppressionDesDonneesRoute: typeof SuppressionDesDonneesRoute
+  TrouverMaVoitureRoute: typeof TrouverMaVoitureRoute
   VoituresOccasionSfaxRoute: typeof VoituresOccasionSfaxRoute
   MarquesBrandRoute: typeof MarquesBrandRoute
   VehiculeSlugRoute: typeof VehiculeSlugRoute
@@ -508,6 +521,13 @@ declare module '@tanstack/react-router' {
       path: '/suppression-des-donnees'
       fullPath: '/suppression-des-donnees'
       preLoaderRoute: typeof SuppressionDesDonneesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trouver-ma-voiture': {
+      id: '/trouver-ma-voiture'
+      path: '/trouver-ma-voiture'
+      fullPath: '/trouver-ma-voiture'
+      preLoaderRoute: typeof TrouverMaVoitureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/voitures-occasion-sfax': {
@@ -714,6 +734,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SuppressionDesDonneesRoute: SuppressionDesDonneesRoute,
+  TrouverMaVoitureRoute: TrouverMaVoitureRoute,
   VoituresOccasionSfaxRoute: VoituresOccasionSfaxRoute,
   MarquesBrandRoute: MarquesBrandRoute,
   VehiculeSlugRoute: VehiculeSlugRoute,

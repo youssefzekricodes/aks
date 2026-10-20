@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Button, Label, Slider } from "@heroui/react";
 import { X } from "@/components/icons";
-import { formatNumber, type Car } from "@/lib/cars";
+import { formatNumber, salePrice, type Car } from "@/lib/cars";
 import { cn } from "@/lib/utils";
 import { brandSettingsQuery } from "@/lib/queries";
 import {
@@ -15,8 +15,10 @@ import {
   toggleBrand,
   type FacetKey,
   type SearchFilters,
+  filterCars,
 } from "@/features/catalog/search";
 import { brandBySlug } from "@/features/catalog/brands";
+import { activeChips } from "@/features/catalog/chips";
 import { BrandLogo, useBrandLogoUrl } from "../BrandLogo";
 import { BodyIcon } from "../BodyIcon";
 import { FilterSelect } from "../FilterSelect";
@@ -399,60 +401,118 @@ export function ActiveFilters({
 }) {
   const labelOf = (key: FacetKey) =>
     facetOptions(cars, {}, key).find((o) => o.value === filters[key])?.label ?? filters[key];
-  const chips: { key: string; label: string; clear: Partial<SearchFilters> }[] = [];
-  if (filters.q) chips.push({ key: "q", label: `« ${filters.q} »`, clear: { q: undefined } });
-  if (filters.marque && !lockedBrand)
-    for (const slug of brandsOf(filters))
-      chips.push({
-        key: `marque-${slug}`,
-        // Brands without stock are not in the facets: use the registry name.
-        label:
-          brandBySlug(slug)?.name ??
-          facetOptions(cars, {}, "marque").find((o) => o.value === slug)?.label ??
-          slug,
-        clear: { marque: toggleBrand(filters, slug), modele: undefined },
-      });
-  for (const key of ["modele", "carrosserie", "etat", "energie", "boite", "transmission"] as const)
-    if (filters[key]) chips.push({ key, label: labelOf(key)!, clear: { [key]: undefined } });
-  if (filters.prix_min !== undefined || filters.prix_max !== undefined)
-    chips.push({
-      key: "prix",
-      label: `${formatNumber(filters.prix_min ?? 0)} – ${
-        filters.prix_max === undefined ? "∞" : formatNumber(filters.prix_max)
-      } DT`,
-      clear: { prix_min: undefined, prix_max: undefined },
-    });
-  if (filters.km_max !== undefined)
-    chips.push({
-      key: "km",
-      label: `≤ ${formatNumber(filters.km_max)} km`,
-      clear: { km_max: undefined },
-    });
-  if (filters.annee_min !== undefined)
-    chips.push({
-      key: "annee",
-      label: `Depuis ${filters.annee_min}`,
-      clear: { annee_min: undefined },
-    });
+  const chips = activeChips(cars, filters, lockedBrand);
   if (!chips.length) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Filtres actifs">
-      {chips.map((chip) => (
-        <button
-          key={chip.key}
-          type="button"
-          onClick={() => onChange(chip.clear)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface py-1 pl-3 pr-2 text-sm hover:border-[color-mix(in_oklab,var(--border)_60%,var(--foreground)_25%)] focus-visible:outline-2 focus-visible:outline-focus"
-          aria-label={`Retirer le filtre ${chip.label}`}
-        >
-          {chip.label}
-          <X className="size-3.5 text-muted" aria-hidden />
-        </button>
-      ))}
-      <Button variant="ghost" size="sm" onPress={onReset}>
-        Réinitialiser
-      </Button>
+    <div className="grid gap-2" aria-label="Filtres actifs">
+      <p className="text-sm text-muted">
+        {chips.length > 1
+          ? "Vous cherchez des voitures qui correspondent à tous ces critères :"
+          : "Votre critère :"}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {chips.map((chip) => (
+          <button
+            key={chip.key}
+            type="button"
+            onClick={() => onChange(chip.clear)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft/50 py-1.5 pl-3 pr-2 text-sm text-foreground transition-colors hover:border-accent/60 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-focus"
+            aria-label={`Retirer le filtre ${chip.name}`}
+          >
+            <span className="text-muted">
+              {chip.group}
+              {chip.group === "ou" ? "" : " :"}
+            </span>
+            <span className="font-medium">{chip.label}</span>
+            <X className="size-3.5 text-muted" aria-hidden />
+          </button>
+        ))}
+        <Button variant="ghost" size="sm" onPress={onReset}>
+          Tout effacer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Few or no results: which filters hold the choice back, with the number of cars
+ * shown without each one ("Sans « Boîte : Automatique » → 16 voitures"). Plus a
+ * note when a budget hides the cars whose price is not shown.
+ */
+export function FilterHelp({
+  cars,
+  filters,
+  shown,
+  onChange,
+  lockedBrand,
+}: {
+  cars: Car[];
+  filters: SearchFilters;
+  /** Number of results now. */
+  shown: number;
+  onChange: FilterChange;
+  lockedBrand?: string;
+}) {
+  const chips = activeChips(cars, filters, lockedBrand);
+  const hasBudget = filters.prix_min !== undefined || filters.prix_max !== undefined;
+  const hiddenPrice = hasBudget
+    ? filterCars(cars, { ...filters, prix_min: undefined, prix_max: undefined }).filter(
+        (car) => car.price_on_request || salePrice(car) <= 0,
+      ).length
+    : 0;
+  const better =
+    shown <= 2 && chips.length > 1
+      ? chips
+          .map((chip) => ({ chip, count: filterCars(cars, { ...filters, ...chip.clear }).length }))
+          .filter((x) => x.count > shown)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 4)
+      : [];
+  if (!better.length && !hiddenPrice) return null;
+  return (
+    <div className="grid gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-950">
+      {hiddenPrice > 0 && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span>
+            <strong>
+              {hiddenPrice} voiture{hiddenPrice > 1 ? "s" : ""}
+            </strong>{" "}
+            n’affiche{hiddenPrice > 1 ? "nt" : ""} pas de prix (sur demande) : le budget ne
+            {hiddenPrice > 1 ? " les" : " la"} montre pas.
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange({ prix_min: undefined, prix_max: undefined })}
+            className="font-semibold underline underline-offset-2"
+          >
+            Retirer le budget
+          </button>
+        </p>
+      )}
+      {better.length > 0 && (
+        <div className="grid gap-2">
+          <p className="font-medium">
+            {shown === 0 ? "Aucune voiture ne réunit tous ces critères." : "Peu de résultats."}{" "}
+            Retirez un critère pour en voir plus :
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {better.map(({ chip, count }) => (
+              <li key={chip.key}>
+                <button
+                  type="button"
+                  onClick={() => onChange(chip.clear)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-medium shadow-sm ring-1 ring-amber-900/10 transition-colors hover:bg-amber-100"
+                >
+                  Sans « {chip.name} »
+                  <span className="rounded-full bg-amber-900/10 px-1.5 tabular-nums">{count}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

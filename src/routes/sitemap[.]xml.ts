@@ -34,6 +34,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         const entries: Entry[] = [
           { path: "/", lastmod: latest },
           { path: "/recherche", lastmod: latest },
+          { path: "/trouver-ma-voiture", lastmod: latest },
           { path: "/marques", lastmod: latest },
           { path: "/contact" },
           { path: "/voitures-occasion-sfax", lastmod: latest },
