@@ -41,6 +41,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { UploadState } from "./hooks";
 import { IMAGE_TYPES, type Option } from "./model";
+import { t } from "./i18n";
 
 /*
  * Admin design system. Type scale: page title text-xl, section title text-base,
@@ -333,10 +334,10 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
       <Alert.Indicator />
       <Alert.Content>
         <Alert.Title>{message}</Alert.Title>
-        <Alert.Description>Vérifiez votre connexion puis réessayez.</Alert.Description>
+        <Alert.Description>{t("Vérifiez votre connexion puis réessayez.")}</Alert.Description>
       </Alert.Content>
       <Button size="sm" variant="danger" onPress={onRetry}>
-        Réessayer
+        {t("Réessayer")}
       </Button>
     </Alert>
   );
@@ -357,7 +358,7 @@ export function TableSkeleton({
   return (
     <Table aria-busy="true">
       <Table.ScrollContainer>
-        <Table.Content aria-label={`${label} (chargement)`} className={minWidth}>
+        <Table.Content aria-label={t("{label} (chargement)", { label })} className={minWidth}>
           <Table.Header>
             {columns.map((column, index) => (
               <Table.Column key={column || index} isRowHeader={index === 0}>
@@ -398,7 +399,7 @@ export function UploadProgress({ state, label }: { state: UploadState; label: st
       {...(percent === null ? { isIndeterminate: true } : { value: percent })}
     >
       <Label className="text-xs text-muted">
-        {percent === null ? "Préparation de l’image…" : "Envoi en cours"}
+        {percent === null ? t("Préparation de l’image…") : t("Envoi en cours")}
       </Label>
       <ProgressBar.Output className="text-xs text-muted" />
       <ProgressBar.Track>
@@ -596,7 +597,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
-  cancelLabel = "Annuler",
+  cancelLabel,
   onConfirm,
   tone = "danger",
 }: {
@@ -643,7 +644,7 @@ export function ConfirmDialog({
               isDisabled={pending}
               onPress={() => onOpenChange(false)}
             >
-              {cancelLabel}
+              {cancelLabel ?? t("Annuler")}
             </Button>
             <Button
               variant={tone === "danger" ? "danger" : "primary"}
@@ -683,16 +684,16 @@ export function UnsavedChangesDialog({
         <AlertDialog.Dialog className="sm:max-w-[440px]">
           <AlertDialog.Header>
             <AlertDialog.Icon status="warning" />
-            <AlertDialog.Heading>Quitter sans enregistrer ?</AlertDialog.Heading>
+            <AlertDialog.Heading>{t("Quitter sans enregistrer ?")}</AlertDialog.Heading>
           </AlertDialog.Header>
           <AlertDialog.Body className="text-sm">{children}</AlertDialog.Body>
           {/* Phones: stacked full-width buttons, main action on top. */}
           <AlertDialog.Footer className="flex-col-reverse gap-2 sm:flex-row">
             <Button variant="tertiary" className="w-full sm:w-auto" onPress={onStay}>
-              Continuer l’édition
+              {t("Continuer l’édition")}
             </Button>
             <Button variant="danger" className="w-full sm:w-auto" onPress={onLeave}>
-              Abandonner les modifications
+              {t("Abandonner les modifications")}
             </Button>
           </AlertDialog.Footer>
         </AlertDialog.Dialog>
@@ -729,7 +730,7 @@ export function ListPagination({
   summary: ReactNode;
 }) {
   return (
-    <Pagination className="flex-wrap justify-between gap-4" aria-label="Pagination">
+    <Pagination className="flex-wrap justify-between gap-4" aria-label={t("Pagination")}>
       <Pagination.Summary className="text-sm text-muted">{summary}</Pagination.Summary>
       {pageCount > 1 && (
         <Pagination.Content>
@@ -737,7 +738,7 @@ export function ListPagination({
             <Pagination.Previous
               isDisabled={page === 1}
               onPress={() => onChange(page - 1)}
-              aria-label="Page précédente"
+              aria-label={t("Page précédente")}
             >
               <Pagination.PreviousIcon />
             </Pagination.Previous>
@@ -752,7 +753,7 @@ export function ListPagination({
                 <Pagination.Link
                   isActive={p === page}
                   onPress={() => onChange(p)}
-                  aria-label={`Page ${p}`}
+                  aria-label={t("Page {page}", { page: p })}
                 >
                   {p}
                 </Pagination.Link>
@@ -763,7 +764,7 @@ export function ListPagination({
             <Pagination.Next
               isDisabled={page === pageCount}
               onPress={() => onChange(page + 1)}
-              aria-label="Page suivante"
+              aria-label={t("Page suivante")}
             >
               <Pagination.NextIcon />
             </Pagination.Next>
@@ -813,7 +814,7 @@ export function SelectField({
           className={`${sheetFieldClass} disabled:opacity-50`}
         >
           <span className="min-w-0 flex-1 truncate">
-            {all.find((o) => o.id === value)?.label ?? "Choisir"}
+            {all.find((o) => o.id === value)?.label ?? t("Choisir")}
           </span>
           <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
         </button>
@@ -959,7 +960,7 @@ export type Crumb = { label: string; to?: string; params?: Record<string, string
 /** Where the page sits in the admin; earlier steps are links back. */
 export function AdminBreadcrumbs({ items }: { items: Crumb[] }) {
   return (
-    <nav aria-label="Fil d’Ariane" className="text-sm">
+    <nav aria-label={t("Fil d’Ariane")} className="text-sm">
       <ol className="flex flex-wrap items-center gap-1.5 text-muted">
         {items.map((item, index) => {
           const last = index === items.length - 1;
@@ -981,7 +982,7 @@ export function AdminBreadcrumbs({ items }: { items: Crumb[] }) {
                   {item.label}
                 </span>
               )}
-              {!last && <ChevronRight className="size-3.5 shrink-0" aria-hidden />}
+              {!last && <ChevronRight className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />}
             </li>
           );
         })}

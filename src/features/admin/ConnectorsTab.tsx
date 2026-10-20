@@ -6,6 +6,7 @@ import { FacebookLogo, InstagramLogo } from "@/components/aks/SocialLogos";
 import { connectSocial, disconnectSocial, selectSocialPage } from "@/lib/data";
 import { socialStatusQuery } from "./SocialCard";
 import { ConfirmDialog, PageHeader, StatusChip } from "./ui";
+import { t } from "./i18n";
 
 /** sessionStorage keys shared with the /meta-callback page. */
 export const META_STATE_KEY = "aks:meta-state";
@@ -68,8 +69,12 @@ export function ConnectorsTab() {
       const ig = (result as { instagram?: { username?: string | null } | null }).instagram;
       toast.success(
         ig
-          ? `Facebook et Instagram${ig.username ? ` (@${ig.username})` : ""} connectés.`
-          : "Page Facebook connectée. Aucun compte Instagram professionnel n’est lié à cette Page.",
+          ? ig.username
+            ? t("Facebook et Instagram (@{username}) connectés.", { username: ig.username })
+            : t("Facebook et Instagram connectés.")
+          : t(
+              "Page Facebook connectée. Aucun compte Instagram professionnel n’est lié à cette Page.",
+            ),
       );
     },
     onError: (e: Error) => setProblem(e.message),
@@ -89,7 +94,7 @@ export function ConnectorsTab() {
     mutationFn: () => disconnectSocial(),
     onSuccess: async () => {
       await refresh();
-      toast.success("Facebook et Instagram déconnectés.");
+      toast.success(t("Facebook et Instagram déconnectés."));
     },
     onError: (e: Error) => toast.danger(e.message),
   });
@@ -116,19 +121,21 @@ export function ConnectorsTab() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Connecteurs"
-        description="Reliez la Page Facebook et le compte Instagram du showroom : chaque véhicule publié peut alors y être partagé automatiquement, avec ses photos."
+        title={t("Connecteurs")}
+        description={t(
+          "Reliez la Page Facebook et le compte Instagram du showroom : chaque véhicule publié peut alors y être partagé automatiquement, avec ses photos.",
+        )}
       />
 
       {problem && (
         <Alert status="danger">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Connexion impossible</Alert.Title>
+            <Alert.Title>{t("Connexion impossible")}</Alert.Title>
             <Alert.Description>{problem}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="ghost" onPress={() => setProblem(null)}>
-            Fermer
+            {t("Fermer")}
           </Button>
         </Alert>
       )}
@@ -138,7 +145,7 @@ export function ConnectorsTab() {
             <Spinner size="sm" />
           </Alert.Indicator>
           <Alert.Content>
-            <Alert.Title>Connexion à Facebook en cours…</Alert.Title>
+            <Alert.Title>{t("Connexion à Facebook en cours…")}</Alert.Title>
           </Alert.Content>
         </Alert>
       )}
@@ -146,12 +153,12 @@ export function ConnectorsTab() {
         <Alert status="danger">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>ID d’app Meta incorrect</Alert.Title>
+            <Alert.Title>{t("ID d’app Meta incorrect")}</Alert.Title>
             <Alert.Description>
-              Le secret META_APP_ID configuré dans Supabase (« {appId || "vide"} ») n’est pas un ID
-              d’app Meta. Copiez l’« ID de l’app » (un nombre d’environ 16 chiffres) depuis
-              developers.facebook.com → votre app → Paramètres de l’app → Général, puis remplacez le
-              secret dans Supabase → Edge Functions → Secrets.
+              {t(
+                "Le secret META_APP_ID configuré dans Supabase (« {appId} ») n’est pas un ID d’app Meta. Copiez l’« ID de l’app » (un nombre d’environ 16 chiffres) depuis developers.facebook.com → votre app → Paramètres de l’app → Général, puis remplacez le secret dans Supabase → Edge Functions → Secrets.",
+                { appId: appId || t("vide") },
+              )}
             </Alert.Description>
           </Alert.Content>
         </Alert>
@@ -160,10 +167,11 @@ export function ConnectorsTab() {
         <Alert status="warning">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Service de publication indisponible</Alert.Title>
+            <Alert.Title>{t("Service de publication indisponible")}</Alert.Title>
             <Alert.Description>
-              La publication sur Facebook et Instagram n’est pas encore installée sur ce site.
-              Contactez la personne qui gère le site.
+              {t(
+                "La publication sur Facebook et Instagram n’est pas encore installée sur ce site. Contactez la personne qui gère le site.",
+              )}
             </Alert.Description>
           </Alert.Content>
         </Alert>
@@ -173,7 +181,7 @@ export function ConnectorsTab() {
         <ConnectorCard
           logo={<FacebookLogo className="size-10" />}
           name="Facebook"
-          subtitle="Page Facebook du showroom"
+          subtitle={t("Page Facebook du showroom")}
           loading={status.isPending}
           connected={
             data?.facebook && <Account picture={data.facebook.picture} name={data.facebook.name} />
@@ -187,11 +195,11 @@ export function ConnectorsTab() {
                 onPress={login}
               >
                 <RefreshCw className="size-4" aria-hidden />
-                Changer de Page
+                {t("Changer de Page")}
               </Button>
               <Button variant="danger-soft" onPress={() => setDisconnecting(true)}>
                 <LogOut className="size-4" aria-hidden />
-                Déconnecter
+                {t("Déconnecter")}
               </Button>
             </div>
           ) : (
@@ -199,8 +207,9 @@ export function ConnectorsTab() {
           )}
           {!status.isPending && !data?.app && (
             <p className="text-sm text-muted">
-              Le connecteur Meta n’est pas encore configuré pour ce site : contactez la personne qui
-              gère le site.
+              {t(
+                "Le connecteur Meta n’est pas encore configuré pour ce site : contactez la personne qui gère le site.",
+              )}
             </p>
           )}
         </ConnectorCard>
@@ -208,27 +217,32 @@ export function ConnectorsTab() {
         <ConnectorCard
           logo={<InstagramLogo className="size-10" />}
           name="Instagram"
-          subtitle="Compte professionnel lié à la Page"
+          subtitle={t("Compte professionnel lié à la Page")}
           loading={status.isPending}
           connected={
             data?.instagram && (
               <Account
                 picture={data.instagram.picture}
-                name={data.instagram.username ? `@${data.instagram.username}` : "Compte Instagram"}
+                name={
+                  data.instagram.username ? `@${data.instagram.username}` : t("Compte Instagram")
+                }
               />
             )
           }
         >
           {data?.instagram ? (
             <p className="text-sm text-muted">
-              Connecté avec la Page Facebook. Pour en changer, changez de Page ou liez un autre
-              compte à la Page, puis reconnectez.
+              {t(
+                "Connecté avec la Page Facebook. Pour en changer, changez de Page ou liez un autre compte à la Page, puis reconnectez.",
+              )}
             </p>
           ) : data?.facebook ? (
             <div className="grid gap-3">
               <p className="text-sm text-muted">
-                Aucun compte Instagram professionnel n’est lié à la Page « {data.facebook.name} ».
-                Liez-le depuis la Page (Paramètres → Comptes liés → Instagram), puis reconnectez.
+                {t(
+                  "Aucun compte Instagram professionnel n’est lié à la Page « {name} ». Liez-le depuis la Page (Paramètres → Comptes liés → Instagram), puis reconnectez.",
+                  { name: data.facebook.name },
+                )}
               </p>
               <div>
                 <Button
@@ -237,14 +251,15 @@ export function ConnectorsTab() {
                   onPress={login}
                 >
                   <RefreshCw className="size-4" aria-hidden />
-                  Reconnecter
+                  {t("Reconnecter")}
                 </Button>
               </div>
             </div>
           ) : (
             <p className="text-sm text-muted">
-              Se connecte automatiquement avec la Page Facebook, si un compte Instagram
-              professionnel y est lié.
+              {t(
+                "Se connecte automatiquement avec la Page Facebook, si un compte Instagram professionnel y est lié.",
+              )}
             </p>
           )}
         </ConnectorCard>
@@ -252,20 +267,22 @@ export function ConnectorsTab() {
 
       {appId && (
         <p className="text-sm text-muted">
-          App Meta utilisée : <span className="tabular font-medium text-foreground">{appId}</span>.
-          Elle doit être identique à l’« ID de l’app » affiché sur developers.facebook.com
-          (Paramètres de l’app → Général).
+          {t("App Meta utilisée :")}{" "}
+          <span className="tabular font-medium text-foreground">{appId}</span>.{" "}
+          {t(
+            "Elle doit être identique à l’« ID de l’app » affiché sur developers.facebook.com (Paramètres de l’app → Général).",
+          )}
         </p>
       )}
 
       <Modal.Backdrop isOpen={pages !== null} onOpenChange={(open) => !open && setPages(null)}>
         <Modal.Container placement="auto" scroll="inside">
           <Modal.Dialog className="sm:max-w-lg">
-            <Modal.CloseTrigger aria-label="Fermer" />
+            <Modal.CloseTrigger aria-label={t("Fermer")} />
             <Modal.Header>
-              <Modal.Heading>Choisissez la Page du showroom</Modal.Heading>
+              <Modal.Heading>{t("Choisissez la Page du showroom")}</Modal.Heading>
               <p className="mt-1 text-sm text-muted">
-                Les véhicules seront publiés sur cette Page et sur son compte Instagram.
+                {t("Les véhicules seront publiés sur cette Page et sur son compte Instagram.")}
               </p>
             </Modal.Header>
             <Modal.Body>
@@ -284,11 +301,11 @@ export function ConnectorsTab() {
                         <span className="flex items-center gap-1.5 text-xs text-muted">
                           <InstagramLogo className="size-3.5" />
                           {page.instagram
-                            ? `@${page.instagram.username ?? "compte lié"}`
-                            : "Pas de compte Instagram lié"}
+                            ? `@${page.instagram.username ?? t("compte lié")}`
+                            : t("Pas de compte Instagram lié")}
                         </span>
                       </span>
-                      <ArrowRight className="size-4 text-muted" aria-hidden />
+                      <ArrowRight className="size-4 text-muted rtl:-scale-x-100" aria-hidden />
                     </button>
                   </li>
                 ))}
@@ -301,11 +318,15 @@ export function ConnectorsTab() {
       <ConfirmDialog
         isOpen={disconnecting}
         onOpenChange={setDisconnecting}
-        title="Déconnecter Facebook et Instagram ?"
-        confirmLabel="Déconnecter"
+        title={t("Déconnecter Facebook et Instagram ?")}
+        confirmLabel={t("Déconnecter")}
         onConfirm={() => disconnect.mutateAsync()}
       >
-        <p>Les véhicules ne seront plus partagés. Les publications déjà faites restent en ligne.</p>
+        <p>
+          {t(
+            "Les véhicules ne seront plus partagés. Les publications déjà faites restent en ligne.",
+          )}
+        </p>
       </ConfirmDialog>
     </div>
   );
@@ -339,10 +360,10 @@ function ConnectorCard({
           </div>
         </div>
         {loading ? (
-          <Spinner size="sm" aria-label="Vérification" />
+          <Spinner size="sm" aria-label={t("Vérification")} />
         ) : (
           <StatusChip tone={connected ? "success" : "default"}>
-            {connected ? "Connecté" : "Non connecté"}
+            {connected ? t("Connecté") : t("Non connecté")}
           </StatusChip>
         )}
       </div>
@@ -382,7 +403,7 @@ function FacebookButton({ isDisabled, onPress }: { isDisabled: boolean; onPress:
       className="inline-flex h-11 items-center justify-center gap-2.5 rounded-full bg-[#0866FF] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#0756d6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0866FF] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <FacebookLogo className="size-5" color="#fff" />
-      Se connecter avec Facebook
+      {t("Se connecter avec Facebook")}
     </button>
   );
 }

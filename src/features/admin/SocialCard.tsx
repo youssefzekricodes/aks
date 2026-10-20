@@ -12,6 +12,7 @@ import {
 } from "@/features/catalog/social";
 import { getSocialStatus, listSocialPosts, retrySocialShare, type CarInput } from "@/lib/data";
 import { usePhones } from "@/lib/site-content";
+import { t } from "./i18n";
 import { dateTimeFormat } from "./model";
 import { SectionCard, StatusChip, SwitchField } from "./ui";
 
@@ -37,13 +38,15 @@ type ShareResult = {
   error?: string;
 } | null;
 
-const names = (platforms: SocialPlatform[]) => platforms.map((p) => SOCIAL_LABELS[p]).join(" et ");
+const names = (platforms: SocialPlatform[]) =>
+  platforms.map((p) => SOCIAL_LABELS[p]).join(t(" et "));
 
 /** Toasts after saving or publishing a vehicle with networks selected. */
 export function announceShare(result: ShareResult | undefined) {
   if (!result) return;
-  if (result.error) toast.warning(`Réseaux sociaux : ${result.error}`);
-  else if (result.started.length) toast.info(`Publication sur ${names(result.started)} en cours…`);
+  if (result.error) toast.warning(t("Réseaux sociaux : {error}", { error: result.error }));
+  else if (result.started.length)
+    toast.info(t("Publication sur {networks} en cours…", { networks: names(result.started) }));
 }
 
 /** Facebook / Instagram post of a vehicle: networks, text and history. */
@@ -86,21 +89,25 @@ export function SocialCard({
 
   return (
     <SectionCard
-      title="Réseaux sociaux"
-      description="À l’enregistrement d’un véhicule publié (et non vendu), une publication est créée sur les réseaux cochés, avec ses photos et le texte ci-dessous. Chaque véhicule n’est publié qu’une fois par réseau."
+      title={t("Réseaux sociaux")}
+      description={t(
+        "À l’enregistrement d’un véhicule publié (et non vendu), une publication est créée sur les réseaux cochés, avec ses photos et le texte ci-dessous. Chaque véhicule n’est publié qu’une fois par réseau.",
+      )}
     >
       <div className="grid gap-5">
         {noneConnected && (
           <Alert status="warning">
             <Alert.Indicator />
             <Alert.Content>
-              <Alert.Title>Facebook et Instagram ne sont pas encore connectés.</Alert.Title>
+              <Alert.Title>{t("Facebook et Instagram ne sont pas encore connectés.")}</Alert.Title>
               <Alert.Description>
-                {status.data?.error
-                  ? "La publication sur Facebook et Instagram n’est pas encore installée sur ce site."
-                  : "Connectez la Page Facebook et le compte Instagram du showroom dans Connecteurs."}{" "}
+                {t(
+                  status.data?.error
+                    ? "La publication sur Facebook et Instagram n’est pas encore installée sur ce site."
+                    : "Connectez la Page Facebook et le compte Instagram du showroom dans Connecteurs.",
+                )}{" "}
                 <Link to="/admin/connecteurs" className="font-medium text-accent hover:underline">
-                  Ouvrir Connecteurs
+                  {t("Ouvrir Connecteurs")}
                 </Link>
               </Alert.Description>
             </Alert.Content>
@@ -122,10 +129,10 @@ export function SocialCard({
                     {SOCIAL_LABELS[platform]}
                   </span>
                   {status.isPending ? (
-                    <Spinner size="sm" aria-label="Vérification de la connexion" />
+                    <Spinner size="sm" aria-label={t("Vérification de la connexion")} />
                   ) : (
                     <StatusChip tone={connected[platform] ? "success" : "default"}>
-                      {connected[platform] ? "Connecté" : "Non connecté"}
+                      {t(connected[platform] ? "Connecté" : "Non connecté")}
                     </StatusChip>
                   )}
                 </div>
@@ -143,11 +150,11 @@ export function SocialCard({
                     }))
                   }
                 >
-                  Publier sur {SOCIAL_LABELS[platform]}
+                  {t("Publier sur {network}", { network: SOCIAL_LABELS[platform] })}
                 </SwitchField>
                 {post?.status === "published" && (
                   <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                    <StatusChip tone="success">Publié</StatusChip>
+                    <StatusChip tone="success">{t("Publié")}</StatusChip>
                     {dateTimeFormat.format(new Date(post.createdAt))}
                     {post.permalink && (
                       <a
@@ -156,20 +163,20 @@ export function SocialCard({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-accent hover:underline"
                       >
-                        Voir <ExternalLink className="size-3.5" aria-hidden />
+                        {t("Voir")} <ExternalLink className="size-3.5" aria-hidden />
                       </a>
                     )}
                   </p>
                 )}
                 {post?.status === "pending" && (
                   <p className="flex items-center gap-2 text-sm text-muted">
-                    <Spinner size="sm" aria-hidden /> Publication en cours…
+                    <Spinner size="sm" aria-hidden /> {t("Publication en cours…")}
                   </p>
                 )}
                 {post?.status === "failed" && (
                   <div className="grid gap-2">
                     <p role="alert" className="text-sm text-danger">
-                      Échec : {post.error}
+                      {t("Échec : {error}", { error: post.error ?? "" })}
                     </p>
                     <Button
                       size="sm"
@@ -180,14 +187,16 @@ export function SocialCard({
                       onPress={() => retry.mutate()}
                     >
                       <RotateCw className="size-4" aria-hidden />
-                      Réessayer
+                      {t("Réessayer")}
                     </Button>
                   </div>
                 )}
                 {platform === "instagram" &&
                   targets.includes("instagram") &&
                   !value.images.length && (
-                    <p className="text-xs text-warning">Instagram exige au moins une photo.</p>
+                    <p className="text-xs text-warning">
+                      {t("Instagram exige au moins une photo.")}
+                    </p>
                   )}
               </div>
             );
@@ -201,17 +210,17 @@ export function SocialCard({
           fullWidth
         >
           <div className="flex flex-wrap items-end justify-between gap-2">
-            <Label>Texte de la publication</Label>
+            <Label>{t("Texte de la publication")}</Label>
             <Button
               size="sm"
               variant="ghost"
               onPress={() => onChange((car) => ({ ...car, social_caption: generate() }))}
             >
               <Sparkles className="size-4" aria-hidden />
-              Générer à partir de la fiche
+              {t("Générer à partir de la fiche")}
             </Button>
           </div>
-          <TextArea rows={9} placeholder="Texte, prix, lien vers la fiche, hashtags…" />
+          <TextArea rows={9} placeholder={t("Texte, prix, lien vers la fiche, hashtags…")} />
           <p className="text-end text-xs tabular-nums text-muted">
             {caption.length} / {SOCIAL_CAPTION_MAX}
           </p>

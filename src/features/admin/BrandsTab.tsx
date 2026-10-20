@@ -24,6 +24,7 @@ import {
   uploadImage,
 } from "@/lib/data";
 import { useDialogTarget, useUploads, type UploadState } from "./hooks";
+import { t } from "./i18n";
 import { BrandCardsSkeleton, fadeIn } from "./skeletons";
 import { LOGO_TYPES, adminCarsQuery, plural } from "./model";
 import {
@@ -70,7 +71,7 @@ export function BrandsTab() {
     mutationFn: (slug: string) => deleteBrandLogo({ data: { slug } }),
     onSuccess: async () => {
       await refresh();
-      toast.success("Logo retiré.");
+      toast.success(t("Logo retiré."));
     },
     onError: (e: Error) => toast.danger(e.message),
   });
@@ -100,7 +101,7 @@ export function BrandsTab() {
       const blob = await prepareImage(file, { logo: true, maxSide: 600 });
       if (blob.size > MAX_LOGO_BYTES)
         throw new Error(
-          "Logo trop lourd : 400 Ko maximum. Réduisez sa taille ou exportez en WebP.",
+          t("Logo trop lourd : 400 Ko maximum. Réduisez sa taille ou exportez en WebP."),
         );
       const publicUrl = await uploadImage("brand", blob, { scope: brand.slug, onProgress: report });
       await saveBrandLogo({ data: { slug: brand.slug, url: publicUrl } });
@@ -108,7 +109,7 @@ export function BrandsTab() {
     });
     if (url) {
       await refresh();
-      toast.success(`Logo de ${brand.name} enregistré.`);
+      toast.success(t("Logo de {name} enregistré.", { name: brand.name }));
     }
   }
 
@@ -211,39 +212,46 @@ export function BrandsTab() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Marques"
-        description={`${plural(all.length, "marque", "marques")} · ${plural(favorites.length, "favorite", "favorites")} · ${plural(hiddenCount, "masquée", "masquées")}. Les favorites ouvrent le carrousel de l’accueil, dans l’ordre choisi ; les marques masquées n’apparaissent ni dans le carrousel ni sur la page Marques.`}
+        title={t("Marques")}
+        description={t(
+          "{brands} · {favorites} · {hidden}. Les favorites ouvrent le carrousel de l’accueil, dans l’ordre choisi ; les marques masquées n’apparaissent ni dans le carrousel ni sur la page Marques.",
+          {
+            brands: plural(all.length, "marque", "marques"),
+            favorites: plural(favorites.length, "favorite", "favorites"),
+            hidden: plural(hiddenCount, "masquée", "masquées"),
+          },
+        )}
       />
 
-      <Toolbar label="Filtrer les marques">
+      <Toolbar label={t("Filtrer les marques")}>
         <SearchField
           value={search}
           onChange={setSearch}
           className="min-w-0 flex-1 basis-64"
           fullWidth
         >
-          <Label>Rechercher</Label>
+          <Label>{t("Rechercher")}</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder="Nom de la marque…" />
+            <SearchField.Input placeholder={t("Nom de la marque…")} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
         <SelectField
-          label="Afficher"
+          label={t("Afficher")}
           value={filter}
-          options={FILTERS}
+          options={FILTERS.map((option) => ({ ...option, label: t(option.label) }))}
           onChange={setFilter}
           className="w-full sm:w-44"
         />
         <p className="max-w-md pb-2 text-xs text-muted">
-          Logo conseillé : PNG ou WebP à fond transparent, proche du carré, 400 Ko maximum.
+          {t("Logo conseillé : PNG ou WebP à fond transparent, proche du carré, 400 Ko maximum.")}
         </p>
       </Toolbar>
 
       {cars.isError || logos.isError || settings.isError ? (
         <LoadError
-          message="Impossible de charger les marques."
+          message={t("Impossible de charger les marques.")}
           onRetry={() => {
             void cars.refetch();
             void logos.refetch();
@@ -254,13 +262,17 @@ export function BrandsTab() {
         <>
           <BrandCardsSkeleton />
           <div className="hidden md:block">
-            <TableSkeleton label="Marques" columns={COLUMNS} minWidth="min-w-[880px]" />
+            <TableSkeleton
+              label={t("Marques")}
+              columns={COLUMNS.map((column) => (column ? t(column) : column))}
+              minWidth="min-w-[880px]"
+            />
           </div>
         </>
       ) : (
         <>
           {/* Phones: one card per brand. */}
-          <ul aria-label="Marques" className={`grid gap-3 md:hidden ${fadeIn}`}>
+          <ul aria-label={t("Marques")} className={`grid gap-3 md:hidden ${fadeIn}`}>
             {rows.map((brand) => (
               <BrandCard key={brand.slug} {...brandProps(brand)} />
             ))}
@@ -268,32 +280,32 @@ export function BrandsTab() {
               <li>
                 <EmptyState
                   icon={Tags}
-                  title="Aucune marque ne correspond."
-                  description="Modifiez la recherche ou le filtre."
+                  title={t("Aucune marque ne correspond.")}
+                  description={t("Modifiez la recherche ou le filtre.")}
                 />
               </li>
             )}
           </ul>
           <Table className="hidden md:block">
             <Table.ScrollContainer>
-              <Table.Content aria-label="Marques" className="min-w-[880px]">
+              <Table.Content aria-label={t("Marques")} className="min-w-[880px]">
                 <Table.Header>
-                  <Table.Column className="w-28">Logo</Table.Column>
-                  <Table.Column isRowHeader>Marque</Table.Column>
-                  <Table.Column>Véhicules</Table.Column>
-                  <Table.Column>Visible</Table.Column>
-                  <Table.Column className="w-40">Favori</Table.Column>
-                  <Table.Column>Source du logo</Table.Column>
+                  <Table.Column className="w-28">{t("Logo")}</Table.Column>
+                  <Table.Column isRowHeader>{t("Marque")}</Table.Column>
+                  <Table.Column>{t("Véhicules")}</Table.Column>
+                  <Table.Column>{t("Visible")}</Table.Column>
+                  <Table.Column className="w-40">{t("Favori")}</Table.Column>
+                  <Table.Column>{t("Source du logo")}</Table.Column>
                   <Table.Column className="w-32 text-end">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("Actions")}</span>
                   </Table.Column>
                 </Table.Header>
                 <Table.Body
                   renderEmptyState={() => (
                     <EmptyState
                       icon={Tags}
-                      title="Aucune marque ne correspond."
-                      description="Modifiez la recherche ou le filtre."
+                      title={t("Aucune marque ne correspond.")}
+                      description={t("Modifiez la recherche ou le filtre.")}
                     />
                   )}
                 >
@@ -323,14 +335,20 @@ export function BrandsTab() {
       <ConfirmDialog
         isOpen={removal.isOpen}
         onOpenChange={removal.onOpenChange}
-        title={`Retirer le logo de ${removal.target?.name ?? "cette marque"} ?`}
-        confirmLabel="Retirer le logo"
+        title={
+          removal.target
+            ? t("Retirer le logo de {name} ?", { name: removal.target.name })
+            : t("Retirer le logo de cette marque ?")
+        }
+        confirmLabel={t("Retirer le logo")}
         onConfirm={() => removal.target && remove.mutateAsync(removal.target.slug)}
       >
         <p>
-          {removal.target?.logo
-            ? "Le logo intégré sera de nouveau affiché sur le site."
-            : "Le nom de la marque sera affiché à la place du logo."}
+          {t(
+            removal.target?.logo
+              ? "Le logo intégré sera de nouveau affiché sur le site."
+              : "Le nom de la marque sera affiché à la place du logo.",
+          )}
         </p>
       </ConfirmDialog>
     </div>
@@ -379,13 +397,13 @@ function BrandRow({
           <Switch
             isSelected={!brand.hidden}
             onChange={onToggleHidden}
-            aria-label={`Afficher ${brand.name} sur le site`}
+            aria-label={t("Afficher {name} sur le site", { name: brand.name })}
           >
             <Switch.Content>
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <span className="text-sm text-muted">{brand.hidden ? "Masquée" : "Visible"}</span>
+              <span className="text-sm text-muted">{t(brand.hidden ? "Masquée" : "Visible")}</span>
             </Switch.Content>
           </Switch>
         </div>
@@ -393,11 +411,9 @@ function BrandRow({
       <Table.Cell>
         <div {...isolate} className="flex w-fit items-center gap-1">
           <IconButton
-            label={
-              favorite
-                ? `Retirer ${brand.name} des favorites`
-                : `Ajouter ${brand.name} aux favorites`
-            }
+            label={t(favorite ? "Retirer {name} des favorites" : "Ajouter {name} aux favorites", {
+              name: brand.name,
+            })}
             icon={favorite ? StarFill : Star}
             onPress={onToggleFavorite}
             className={favorite ? "text-warning" : "text-muted"}
@@ -408,13 +424,13 @@ function BrandRow({
                 {favorite.position}
               </span>
               <IconButton
-                label={`Monter ${brand.name}`}
+                label={t("Monter {name}", { name: brand.name })}
                 icon={ArrowUp}
                 isDisabled={favorite.first}
                 onPress={() => favorite.onMove(-1)}
               />
               <IconButton
-                label={`Descendre ${brand.name}`}
+                label={t("Descendre {name}", { name: brand.name })}
                 icon={ArrowDown}
                 isDisabled={favorite.last}
                 onPress={() => favorite.onMove(1)}
@@ -425,18 +441,18 @@ function BrandRow({
       </Table.Cell>
       <Table.Cell>
         {hasUpload ? (
-          <StatusChip tone="accent">Personnalisé</StatusChip>
+          <StatusChip tone="accent">{t("Personnalisé")}</StatusChip>
         ) : brand.logo ? (
-          <StatusChip tone="success">Intégré</StatusChip>
+          <StatusChip tone="success">{t("Intégré")}</StatusChip>
         ) : (
-          <StatusChip tone="default">Aucun</StatusChip>
+          <StatusChip tone="default">{t("Aucun")}</StatusChip>
         )}
       </Table.Cell>
       <Table.Cell className="text-end">
         <div {...isolate} className="inline-flex">
           <Button size="sm" variant="secondary" isPending={working} onPress={onEdit}>
             <Pencil className="size-4" aria-hidden />
-            Modifier
+            {t("Modifier")}
             <span className="sr-only"> {brand.name}</span>
           </Button>
         </div>
@@ -471,8 +487,8 @@ function BrandCard({
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-foreground">{brand.name}</p>
             <p className="text-xs text-muted">
-              {brand.cars ? plural(brand.cars, "véhicule", "véhicules") : "Aucun véhicule"} ·{" "}
-              {hasUpload ? "logo personnalisé" : brand.logo ? "logo intégré" : "sans logo"}
+              {brand.cars ? plural(brand.cars, "véhicule", "véhicules") : t("Aucun véhicule")} ·{" "}
+              {t(hasUpload ? "logo personnalisé" : brand.logo ? "logo intégré" : "sans logo")}
             </p>
           </div>
           <div {...isolate}>
@@ -480,7 +496,7 @@ function BrandCard({
               size="sm"
               variant="secondary"
               isIconOnly
-              aria-label={`Modifier le logo de ${brand.name}`}
+              aria-label={t("Modifier le logo de {name}", { name: brand.name })}
               isPending={upload?.status === "working"}
               onPress={onEdit}
               className="size-10"
@@ -496,27 +512,27 @@ function BrandCard({
           <Switch
             isSelected={!brand.hidden}
             onChange={onToggleHidden}
-            aria-label={`Afficher ${brand.name} sur le site`}
+            aria-label={t("Afficher {name} sur le site", { name: brand.name })}
           >
             <Switch.Content>
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <span className="text-sm text-muted">{brand.hidden ? "Masquée" : "Visible"}</span>
+              <span className="text-sm text-muted">{t(brand.hidden ? "Masquée" : "Visible")}</span>
             </Switch.Content>
           </Switch>
           <div className="flex items-center gap-1">
             {favorite && (
               <>
                 <IconButton
-                  label={`Monter ${brand.name}`}
+                  label={t("Monter {name}", { name: brand.name })}
                   icon={ArrowUp}
                   isDisabled={favorite.first}
                   onPress={() => favorite.onMove(-1)}
                   className="size-10"
                 />
                 <IconButton
-                  label={`Descendre ${brand.name}`}
+                  label={t("Descendre {name}", { name: brand.name })}
                   icon={ArrowDown}
                   isDisabled={favorite.last}
                   onPress={() => favorite.onMove(1)}
@@ -528,11 +544,9 @@ function BrandCard({
               </>
             )}
             <IconButton
-              label={
-                favorite
-                  ? `Retirer ${brand.name} des favorites`
-                  : `Ajouter ${brand.name} aux favorites`
-              }
+              label={t(favorite ? "Retirer {name} des favorites" : "Ajouter {name} aux favorites", {
+                name: brand.name,
+              })}
               icon={favorite ? StarFill : Star}
               onPress={onToggleFavorite}
               className={`size-10 ${favorite ? "text-warning" : "text-muted"}`}
@@ -573,12 +587,13 @@ function BrandEditDialog({
         <Modal.Dialog className="sm:max-w-md">
           {brand && (
             <>
-              <Modal.CloseTrigger aria-label="Fermer" />
+              <Modal.CloseTrigger aria-label={t("Fermer")} />
               <Modal.Header>
-                <Modal.Heading>Modifier {brand.name}</Modal.Heading>
+                <Modal.Heading>{t("Modifier {name}", { name: brand.name })}</Modal.Heading>
                 <p className="mt-1 text-sm text-muted">
-                  Logo affiché sur le site : PNG ou WebP à fond transparent, proche du carré, 400 Ko
-                  maximum.
+                  {t(
+                    "Logo affiché sur le site : PNG ou WebP à fond transparent, proche du carré, 400 Ko maximum.",
+                  )}
                 </p>
               </Modal.Header>
               <Modal.Body className="grid gap-4">
@@ -588,24 +603,29 @@ function BrandEditDialog({
                     <div className="grid h-28 place-items-center rounded-xl border border-separator bg-white p-4 text-zinc-900">
                       <BrandLogo brand={brand.name} size={56} />
                     </div>
-                    <figcaption className="text-xs text-muted">Fond clair</figcaption>
+                    <figcaption className="text-xs text-muted">{t("Fond clair")}</figcaption>
                   </figure>
                   <figure className="grid gap-1.5">
                     <div className="grid h-28 place-items-center rounded-xl border border-separator bg-[oklch(0.17_0.004_286)] p-4 text-white">
                       <BrandLogo brand={brand.name} size={56} />
                     </div>
-                    <figcaption className="text-xs text-muted">Fond sombre</figcaption>
+                    <figcaption className="text-xs text-muted">{t("Fond sombre")}</figcaption>
                   </figure>
                 </div>
                 <p className="text-sm text-muted">
-                  {hasUpload
-                    ? "Logo personnalisé (envoyé depuis l’administration)."
-                    : brand.logo
-                      ? "Logo intégré au site."
-                      : "Aucun logo : le nom de la marque est affiché."}
+                  {t(
+                    hasUpload
+                      ? "Logo personnalisé (envoyé depuis l’administration)."
+                      : brand.logo
+                        ? "Logo intégré au site."
+                        : "Aucun logo : le nom de la marque est affiché.",
+                  )}
                 </p>
                 {working && (
-                  <UploadProgress state={upload} label={`Envoi du logo de ${brand.name}`} />
+                  <UploadProgress
+                    state={upload}
+                    label={t("Envoi du logo de {name}", { name: brand.name })}
+                  />
                 )}
                 {upload?.status === "error" && (
                   <p role="alert" className="text-sm text-danger">
@@ -622,7 +642,7 @@ function BrandEditDialog({
                     onPress={() => onRemove(brand)}
                   >
                     <Trash2 className="size-4" aria-hidden />
-                    Retirer ce logo
+                    {t("Retirer ce logo")}
                   </Button>
                 )}
                 <FilePickButton
@@ -631,10 +651,10 @@ function BrandEditDialog({
                   onSelect={(files) => files[0] && onUpload(brand, files[0])}
                 >
                   <Upload className="size-4" aria-hidden />
-                  {working ? "Envoi…" : "Changer le logo"}
+                  {t(working ? "Envoi…" : "Changer le logo")}
                 </FilePickButton>
                 <Button variant="tertiary" isDisabled={working} onPress={onClose}>
-                  Fermer
+                  {t("Fermer")}
                 </Button>
               </Modal.Footer>
             </>

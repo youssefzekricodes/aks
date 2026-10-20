@@ -3,7 +3,8 @@ import { Button, Modal } from "@heroui/react";
 import { Tag } from "@/components/icons";
 import { discountPercent, formatPrice } from "@/lib/cars";
 import { cn } from "@/lib/utils";
-import type { AdminCar } from "./model";
+import { plural, type AdminCar } from "./model";
+import { t } from "./i18n";
 import { IntegerField } from "./ui";
 
 const PRESETS = [5, 10, 15, 20];
@@ -76,19 +77,21 @@ function DiscountForm({
         if (valid) void submit(value, "save");
       }}
     >
-      <Modal.CloseTrigger aria-label="Fermer" />
+      <Modal.CloseTrigger aria-label={t("Fermer")} />
       <Modal.Header>
         <Modal.Icon className="bg-accent-soft text-accent">
           <Tag className="size-5" aria-hidden />
         </Modal.Icon>
-        <Modal.Heading>{hadDiscount ? "Modifier la remise" : "Ajouter une remise"}</Modal.Heading>
+        <Modal.Heading>
+          {hadDiscount ? t("Modifier la remise") : t("Ajouter une remise")}
+        </Modal.Heading>
         <p className="mt-1 text-sm text-muted">
-          {car.brand} {car.name} · prix actuel{" "}
+          {car.brand} {car.name} · {t("prix actuel")}{" "}
           <span className="tabular font-medium text-foreground">{formatPrice(car.price)}</span>
         </p>
       </Modal.Header>
       <Modal.Body className="grid gap-4">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Remise rapide">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("Remise rapide")}>
           {PRESETS.map((p) => {
             const price = Math.round((car.price * (100 - p)) / 100);
             const selected = valid && value === price;
@@ -111,7 +114,7 @@ function DiscountForm({
           })}
         </div>
         <IntegerField
-          label="Nouveau prix (DT)"
+          label={t("Nouveau prix (DT)")}
           value={value}
           onChange={setValue}
           minValue={0}
@@ -119,11 +122,12 @@ function DiscountForm({
           description={
             valid ? (
               <>
-                Le site affichera <strong className="text-foreground">{formatPrice(value)}</strong>{" "}
-                et <del>{formatPrice(car.price)}</del> barré (−{percent} %).
+                {t("Le site affichera")}{" "}
+                <strong className="text-foreground">{formatPrice(value)}</strong> {t("et")}{" "}
+                <del>{formatPrice(car.price)}</del> {t("barré (−{percent} %).", { percent })}
               </>
             ) : (
-              "Doit être inférieur au prix actuel."
+              t("Doit être inférieur au prix actuel.")
             )
           }
         />
@@ -137,18 +141,18 @@ function DiscountForm({
             isDisabled={pending !== null}
             onPress={() => void submit(null, "remove")}
           >
-            Retirer la remise
+            {t("Retirer la remise")}
           </Button>
         )}
         <Button variant="tertiary" isDisabled={pending !== null} onPress={onClose}>
-          Annuler
+          {t("Annuler")}
         </Button>
         <Button
           type="submit"
           isPending={pending === "save"}
           isDisabled={!valid || pending !== null || value === car.discount_price}
         >
-          Enregistrer
+          {t("Enregistrer")}
         </Button>
       </Modal.Footer>
     </form>
@@ -186,21 +190,22 @@ export function BulkDiscountDialog({
     <Modal.Backdrop isOpen={isOpen} onOpenChange={(open) => !pending && onOpenChange(open)}>
       <Modal.Container placement="auto">
         <Modal.Dialog className="sm:max-w-md">
-          <Modal.CloseTrigger aria-label="Fermer" />
+          <Modal.CloseTrigger aria-label={t("Fermer")} />
           <Modal.Header>
             <Modal.Icon className="bg-accent-soft text-accent">
               <Tag className="size-5" aria-hidden />
             </Modal.Icon>
             <Modal.Heading>
-              Remise sur {count} véhicule{count > 1 ? "s" : ""}
+              {t("Remise sur {vehicles}", { vehicles: plural(count, "véhicule", "véhicules") })}
             </Modal.Heading>
             <p className="mt-1 text-sm text-muted">
-              Le pourcentage s’applique au prix de chaque véhicule. Les véhicules au prix masqué
-              sont ignorés.
+              {t(
+                "Le pourcentage s’applique au prix de chaque véhicule. Les véhicules au prix masqué sont ignorés.",
+              )}
             </p>
           </Modal.Header>
           <Modal.Body className="grid gap-4">
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Remise rapide">
+            <div className="flex flex-wrap gap-2" role="group" aria-label={t("Remise rapide")}>
               {PRESETS.map((p) => (
                 <button
                   key={p}
@@ -219,7 +224,7 @@ export function BulkDiscountDialog({
               ))}
             </div>
             <IntegerField
-              label="Remise (%)"
+              label={t("Remise (%)")}
               value={percent}
               onChange={setPercent}
               minValue={1}
@@ -234,21 +239,21 @@ export function BulkDiscountDialog({
               isDisabled={pending !== null}
               onPress={() => void submit(0, "remove")}
             >
-              Retirer les remises
+              {t("Retirer les remises")}
             </Button>
             <Button
               variant="tertiary"
               isDisabled={pending !== null}
               onPress={() => onOpenChange(false)}
             >
-              Annuler
+              {t("Annuler")}
             </Button>
             <Button
               isPending={pending === "apply"}
               isDisabled={!percent || pending !== null}
               onPress={() => percent && void submit(percent, "apply")}
             >
-              Appliquer −{percent ?? 0} %
+              {t("Appliquer −{percent} %", { percent: percent ?? 0 })}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

@@ -6,6 +6,7 @@ import { setAvatar } from "@/features/auth/auth.functions";
 import { uploadImage } from "@/lib/data";
 import { CROP_PRESETS, ImageCropDialog } from "./ImageCropDialog";
 import { sessionQueryKey } from "./model";
+import { t } from "./i18n";
 import { AdminAvatar, FilePickButton } from "./ui";
 
 /** "Ma photo": choose, crop (square) and save the signed-in admin's profile photo. */
@@ -34,10 +35,10 @@ export function AvatarDialog({
     setBusy(true);
     try {
       await save(await uploadImage("avatar", blob));
-      toast.success("Photo de profil enregistrée.");
+      toast.success(t("Photo de profil enregistrée."));
       onOpenChange(false);
     } catch (e) {
-      toast.danger(e instanceof Error ? e.message : "Envoi de la photo impossible.");
+      toast.danger(e instanceof Error ? e.message : t("Envoi de la photo impossible."));
     } finally {
       setBusy(false);
     }
@@ -47,10 +48,10 @@ export function AvatarDialog({
     setBusy(true);
     try {
       await save(null);
-      toast.success("Photo de profil retirée.");
+      toast.success(t("Photo de profil retirée."));
       onOpenChange(false);
     } catch (e) {
-      toast.danger(e instanceof Error ? e.message : "Suppression impossible.");
+      toast.danger(e instanceof Error ? e.message : t("Suppression impossible."));
     } finally {
       setBusy(false);
     }
@@ -64,11 +65,11 @@ export function AvatarDialog({
       >
         <Modal.Container placement="auto">
           <Modal.Dialog className="sm:max-w-sm">
-            <Modal.CloseTrigger aria-label="Fermer" />
+            <Modal.CloseTrigger aria-label={t("Fermer")} />
             <Modal.Header>
-              <Modal.Heading>Ma photo</Modal.Heading>
+              <Modal.Heading>{t("Ma photo")}</Modal.Heading>
               <p className="mt-1 text-sm text-muted">
-                Affichée dans l’administration, à côté de votre compte.
+                {t("Affichée dans l’administration, à côté de votre compte.")}
               </p>
             </Modal.Header>
             <Modal.Body className="grid justify-items-center gap-4 py-2">
@@ -84,7 +85,7 @@ export function AvatarDialog({
                   onPress={() => void remove()}
                 >
                   <Trash2 className="size-4" aria-hidden />
-                  Retirer
+                  {t("Retirer")}
                 </Button>
               )}
               <FilePickButton
@@ -95,7 +96,7 @@ export function AvatarDialog({
                 onSelect={([file]) => file && setSource(file)}
               >
                 <ImagePlus className="size-4" aria-hidden />
-                {busy ? "Enregistrement…" : url ? "Changer la photo" : "Choisir une photo"}
+                {busy ? t("Enregistrement…") : url ? t("Changer la photo") : t("Choisir une photo")}
               </FilePickButton>
             </Modal.Footer>
           </Modal.Dialog>

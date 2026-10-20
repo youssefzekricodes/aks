@@ -53,6 +53,7 @@ import {
   type Session,
 } from "./model";
 import { NewPasswordFields } from "./password";
+import { t } from "./i18n";
 import {
   ConfirmDialog,
   EmptyState,
@@ -98,7 +99,10 @@ export function AdminsTab({ session }: { session: Session }) {
     onSuccess: async (_, admin) => {
       await refresh();
       toast.success(
-        `${admin.email} est maintenant ${ROLE_LABELS[otherRole(admin.role)].toLowerCase()}.`,
+        t("{email} est maintenant {role}.", {
+          email: admin.email,
+          role: t(ROLE_LABELS[otherRole(admin.role)]).toLowerCase(),
+        }),
       );
     },
     onError: (e: Error) => toast.danger(e.message),
@@ -108,7 +112,7 @@ export function AdminsTab({ session }: { session: Session }) {
     mutationFn: (admin: AdminAccount) => deleteAdmin({ data: { userId: admin.id } }),
     onSuccess: async (_, admin) => {
       await refresh();
-      toast.success(`Le compte ${admin.email} a été supprimé.`);
+      toast.success(t("Le compte {email} a été supprimé.", { email: admin.email }));
     },
     onError: (e: Error) => toast.danger(e.message),
   });
@@ -120,19 +124,22 @@ export function AdminsTab({ session }: { session: Session }) {
   const menuFor = (admin: AdminAccount): (RowAction | false)[] => [
     {
       id: "reset",
-      label: "Réinitialiser le mot de passe",
+      label: t("Réinitialiser le mot de passe"),
       icon: KeyRound,
       onAction: () => reset.open(admin),
     },
     !admin.isSelf && {
       id: "role",
-      label: admin.role === "super_admin" ? "Passer administrateur" : "Passer super administrateur",
+      label:
+        admin.role === "super_admin"
+          ? t("Passer administrateur")
+          : t("Passer super administrateur"),
       icon: admin.role === "super_admin" ? ShieldOff : ShieldCheck,
       onAction: () => roleChange.open(admin),
     },
     !admin.isSelf && {
       id: "delete",
-      label: "Supprimer",
+      label: t("Supprimer"),
       icon: Trash2,
       danger: true,
       onAction: () => deletion.open(admin),
@@ -142,19 +149,21 @@ export function AdminsTab({ session }: { session: Session }) {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Administrateurs"
-        description="Comptes ayant accès à cette administration. Seuls les super administrateurs voient cette page."
+        title={t("Administrateurs")}
+        description={t(
+          "Comptes ayant accès à cette administration. Seuls les super administrateurs voient cette page.",
+        )}
         actions={
           <Button className="max-sm:w-full" onPress={() => setAdding(true)}>
             <UserPlus className="size-4" aria-hidden />
-            Ajouter un administrateur
+            {t("Ajouter un administrateur")}
           </Button>
         }
       />
 
       {admins.isError ? (
         <LoadError
-          message={errorMessage(admins.error, "Impossible de charger les administrateurs.")}
+          message={errorMessage(admins.error, t("Impossible de charger les administrateurs."))}
           onRetry={() => void admins.refetch()}
         />
       ) : admins.isPending ? (
@@ -162,8 +171,8 @@ export function AdminsTab({ session }: { session: Session }) {
           <AdminCardsSkeleton />
           <div className="hidden md:block">
             <TableSkeleton
-              label="Administrateurs"
-              columns={COLUMNS}
+              label={t("Administrateurs")}
+              columns={COLUMNS.map((column) => (column ? t(column) : column))}
               rows={3}
               minWidth="min-w-[760px]"
             />
@@ -172,7 +181,7 @@ export function AdminsTab({ session }: { session: Session }) {
       ) : (
         <>
           {/* Phones: one card per account. */}
-          <ul aria-label="Administrateurs" className={`grid gap-3 md:hidden ${fadeIn}`}>
+          <ul aria-label={t("Administrateurs")} className={`grid gap-3 md:hidden ${fadeIn}`}>
             {list.map((admin) => (
               <li
                 key={admin.id}
@@ -187,40 +196,46 @@ export function AdminsTab({ session }: { session: Session }) {
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <p className="flex min-w-0 items-center gap-2">
                     <span className="truncate font-medium text-foreground">{admin.email}</span>
-                    {admin.isSelf && <StatusChip tone="accent">Vous</StatusChip>}
+                    {admin.isSelf && <StatusChip tone="accent">{t("Vous")}</StatusChip>}
                   </p>
                   <div className="flex flex-wrap gap-1">
                     <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
-                      {ROLE_LABELS[admin.role]}
+                      {t(ROLE_LABELS[admin.role])}
                     </StatusChip>
                     <FactorChips admin={admin} />
                   </div>
                   <p className="text-xs text-muted">
-                    Dernière connexion : {formatDate(admin.lastSignInAt) ?? "jamais"}
+                    {t("Dernière connexion : {date}", {
+                      date: formatDate(admin.lastSignInAt) ?? t("jamais"),
+                    })}
                   </p>
                 </div>
-                <RowMenu label={`Actions pour ${admin.email}`} actions={menuFor(admin)} large />
+                <RowMenu
+                  label={t("Actions pour {email}", { email: admin.email })}
+                  actions={menuFor(admin)}
+                  large
+                />
               </li>
             ))}
           </ul>
           <Table className="hidden md:block">
             <Table.ScrollContainer>
-              <Table.Content aria-label="Administrateurs" className="min-w-[760px]">
+              <Table.Content aria-label={t("Administrateurs")} className="min-w-[760px]">
                 <Table.Header>
-                  <Table.Column isRowHeader>Administrateur</Table.Column>
-                  <Table.Column>Rôle</Table.Column>
-                  <Table.Column>Double authentification</Table.Column>
-                  <Table.Column>Dernière connexion</Table.Column>
+                  <Table.Column isRowHeader>{t("Administrateur")}</Table.Column>
+                  <Table.Column>{t("Rôle")}</Table.Column>
+                  <Table.Column>{t("Double authentification")}</Table.Column>
+                  <Table.Column>{t("Dernière connexion")}</Table.Column>
                   <Table.Column className="w-16 text-end">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("Actions")}</span>
                   </Table.Column>
                 </Table.Header>
                 <Table.Body
                   renderEmptyState={() => (
                     <EmptyState
                       icon={UserCog}
-                      title="Aucun administrateur."
-                      description="Ajoutez un compte pour donner accès à l’administration."
+                      title={t("Aucun administrateur.")}
+                      description={t("Ajoutez un compte pour donner accès à l’administration.")}
                     />
                   )}
                 >
@@ -231,23 +246,26 @@ export function AdminsTab({ session }: { session: Session }) {
                           <span className="truncate font-medium text-foreground">
                             {admin.email}
                           </span>
-                          {admin.isSelf && <StatusChip tone="accent">Vous</StatusChip>}
+                          {admin.isSelf && <StatusChip tone="accent">{t("Vous")}</StatusChip>}
                         </div>
                       </Table.Cell>
                       <Table.Cell>
                         <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
-                          {ROLE_LABELS[admin.role]}
+                          {t(ROLE_LABELS[admin.role])}
                         </StatusChip>
                       </Table.Cell>
                       <Table.Cell>
                         <FactorChips admin={admin} />
                       </Table.Cell>
                       <Table.Cell className="text-sm text-muted">
-                        {formatDate(admin.lastSignInAt) ?? "Jamais"}
+                        {formatDate(admin.lastSignInAt) ?? t("Jamais")}
                       </Table.Cell>
                       <Table.Cell>
                         <div className="flex justify-end">
-                          <RowMenu label={`Actions pour ${admin.email}`} actions={menuFor(admin)} />
+                          <RowMenu
+                            label={t("Actions pour {email}", { email: admin.email })}
+                            actions={menuFor(admin)}
+                          />
                         </div>
                       </Table.Cell>
                     </Table.Row>
@@ -275,32 +293,39 @@ export function AdminsTab({ session }: { session: Session }) {
         tone="warning"
         title={
           roleChange.target?.role === "super_admin"
-            ? "Retirer les droits de super administrateur ?"
-            : "Donner les droits de super administrateur ?"
+            ? t("Retirer les droits de super administrateur ?")
+            : t("Donner les droits de super administrateur ?")
         }
         confirmLabel={
           roleChange.target?.role === "super_admin"
-            ? "Passer administrateur"
-            : "Passer super administrateur"
+            ? t("Passer administrateur")
+            : t("Passer super administrateur")
         }
         onConfirm={() => roleChange.target && changeRole.mutateAsync(roleChange.target)}
       >
         <p>
           {roleChange.target?.role === "super_admin"
-            ? `${roleChange.target.email} ne pourra plus gérer les administrateurs.`
-            : `${roleChange.target?.email ?? "Ce compte"} pourra gérer les administrateurs et devra configurer la double authentification à sa prochaine connexion.`}
+            ? t("{email} ne pourra plus gérer les administrateurs.", {
+                email: roleChange.target.email,
+              })
+            : t(
+                "{email} pourra gérer les administrateurs et devra configurer la double authentification à sa prochaine connexion.",
+                { email: roleChange.target?.email ?? t("Ce compte") },
+              )}
         </p>
       </ConfirmDialog>
 
       <ConfirmDialog
         isOpen={deletion.isOpen}
         onOpenChange={deletion.onOpenChange}
-        title={`Supprimer ${deletion.target?.email ?? "ce compte"} ?`}
-        confirmLabel="Supprimer le compte"
+        title={t("Supprimer {email} ?", { email: deletion.target?.email ?? t("ce compte") })}
+        confirmLabel={t("Supprimer le compte")}
         onConfirm={() => deletion.target && remove.mutateAsync(deletion.target)}
       >
         <p>
-          Ce compte perdra immédiatement l’accès à l’administration. Cette action est définitive.
+          {t(
+            "Ce compte perdra immédiatement l’accès à l’administration. Cette action est définitive.",
+          )}
         </p>
       </ConfirmDialog>
     </div>
@@ -343,7 +368,7 @@ function FormModal({
     >
       <Modal.Container placement="auto" scroll="inside">
         <Modal.Dialog className="sm:max-w-md">
-          <Modal.CloseTrigger aria-label="Fermer" />
+          <Modal.CloseTrigger aria-label={t("Fermer")} />
           <Modal.Header>
             <Modal.Icon className="bg-accent-soft text-accent">
               <Icon className="size-5" aria-hidden />
@@ -355,7 +380,7 @@ function FormModal({
             <Modal.Body className="grid gap-4">{children}</Modal.Body>
             <Modal.Footer>
               <Button variant="tertiary" isDisabled={pending} onPress={() => onOpenChange(false)}>
-                Annuler
+                {t("Annuler")}
               </Button>
               <Button type="submit" isPending={pending}>
                 {pending ? pendingLabel : submitLabel}
@@ -401,7 +426,7 @@ function AddAdminModal({
       createAdmin({ data: { email: email.trim(), password: password.password, role } }),
     onSuccess: async () => {
       await onCreated();
-      toast.success(`Compte ${email.trim()} créé.`);
+      toast.success(t("Compte {email} créé.", { email: email.trim() }));
       close(false);
     },
     onError: (e: Error) => setError(e.message),
@@ -426,10 +451,10 @@ function AddAdminModal({
       onOpenChange={close}
       pending={create.isPending}
       icon={UserPlus}
-      title="Ajouter un administrateur"
-      description="Le compte peut se connecter immédiatement avec ce mot de passe."
-      submitLabel="Créer le compte"
-      pendingLabel="Création…"
+      title={t("Ajouter un administrateur")}
+      description={t("Le compte peut se connecter immédiatement avec ce mot de passe.")}
+      submitLabel={t("Créer le compte")}
+      pendingLabel={t("Création…")}
       onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);
@@ -450,25 +475,25 @@ function AddAdminModal({
         fullWidth
         autoFocus
       >
-        <Label>E-mail</Label>
-        <Input placeholder="prenom.nom@exemple.com" />
-        <FieldError>Saisissez une adresse e-mail valide.</FieldError>
+        <Label>{t("E-mail")}</Label>
+        <Input dir="ltr" placeholder="prenom.nom@exemple.com" />
+        <FieldError>{t("Saisissez une adresse e-mail valide.")}</FieldError>
       </TextField>
       <RadioGroup
         name="role"
         value={role}
         onChange={(value) => setRole(value === "super_admin" ? "super_admin" : "admin")}
       >
-        <Label>Rôle</Label>
+        <Label>{t("Rôle")}</Label>
         {(["admin", "super_admin"] as const).map((value) => (
           <Radio key={value} value={value}>
             <Radio.Content>
               <Radio.Control>
                 <Radio.Indicator />
               </Radio.Control>
-              {ROLE_LABELS[value]}
+              {t(ROLE_LABELS[value])}
             </Radio.Content>
-            <Description>{ROLE_HELP[value]}</Description>
+            <Description>{t(ROLE_HELP[value])}</Description>
           </Radio>
         ))}
       </RadioGroup>
@@ -495,7 +520,11 @@ function ResetPasswordModal({
     mutationFn: (userId: string) =>
       resetAdminPassword({ data: { userId, password: password.password } }),
     onSuccess: async () => {
-      toast.success(`Mot de passe de ${admin?.email ?? "l’administrateur"} réinitialisé.`);
+      toast.success(
+        t("Mot de passe de {email} réinitialisé.", {
+          email: admin?.email ?? t("l’administrateur"),
+        }),
+      );
       close(false);
       // Your own sessions were revoked: the admin shell sends you back to the login.
       if (admin?.isSelf) await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
@@ -518,10 +547,10 @@ function ResetPasswordModal({
       onOpenChange={close}
       pending={save.isPending}
       icon={KeyRound}
-      title="Réinitialiser le mot de passe"
+      title={t("Réinitialiser le mot de passe")}
       description={admin?.email ?? ""}
-      submitLabel="Enregistrer le mot de passe"
-      pendingLabel="Enregistrement…"
+      submitLabel={t("Enregistrer le mot de passe")}
+      pendingLabel={t("Enregistrement…")}
       onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);
@@ -536,13 +565,13 @@ function ResetPasswordModal({
         <Alert.Content>
           <Alert.Description>
             {admin?.isSelf
-              ? "Vous serez déconnecté de tous vos appareils, y compris celui-ci."
-              : "L’administrateur sera déconnecté de tous ses appareils."}
+              ? t("Vous serez déconnecté de tous vos appareils, y compris celui-ci.")
+              : t("L’administrateur sera déconnecté de tous ses appareils.")}
           </Alert.Description>
         </Alert.Content>
       </Alert>
       <NewPasswordFields
-        label="Nouveau mot de passe"
+        label={t("Nouveau mot de passe")}
         value={password}
         onChange={setPassword}
         showErrors={submitted}
@@ -570,12 +599,12 @@ function FactorChips({ admin }: { admin: AdminAccount }) {
         [...new Set([...(admin.role === "super_admin" ? ["email"] : []), ...admin.mfa])].map(
           (type) => (
             <StatusChip key={type} tone="success">
-              {FACTOR_LABELS[type as Factor["type"]] ?? type}
+              {t(FACTOR_LABELS[type as Factor["type"]] ?? type)}
             </StatusChip>
           ),
         )
       ) : (
-        <StatusChip tone="default">Non requise</StatusChip>
+        <StatusChip tone="default">{t("Non requise")}</StatusChip>
       )}
     </div>
   );
@@ -593,7 +622,7 @@ export function MySecurity({ session }: { session: Session }) {
     mutationFn: (factor: Factor) => mfaRemove({ data: { factorId: factor.id } }),
     onSuccess: async () => {
       await refreshSession();
-      toast.success("Méthode retirée.");
+      toast.success(t("Méthode retirée."));
     },
     onError: (e: Error) => toast.danger(e.message),
   });
@@ -601,14 +630,16 @@ export function MySecurity({ session }: { session: Session }) {
   return (
     <section id="ma-securite" aria-labelledby="ma-securite-title" className="scroll-mt-24">
       <SectionCard
-        title={<span id="ma-securite-title">Ma sécurité</span>}
-        description="À chaque connexion, un code à 6 chiffres est envoyé à votre adresse e-mail après le mot de passe."
+        title={<span id="ma-securite-title">{t("Ma sécurité")}</span>}
+        description={t(
+          "À chaque connexion, un code à 6 chiffres est envoyé à votre adresse e-mail après le mot de passe.",
+        )}
         {...(APP_FACTORS_ENABLED
           ? {
               actions: (
                 <Button variant="secondary" onPress={() => setEnrolling(true)}>
                   <Plus className="size-4" aria-hidden />
-                  Ajouter une méthode
+                  {t("Ajouter une méthode")}
                 </Button>
               ),
             }
@@ -625,12 +656,12 @@ export function MySecurity({ session }: { session: Session }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">
-                      {FACTOR_NAMES[factor.type]}
+                      {t(FACTOR_NAMES[factor.type])}
                     </p>
                     <p className="truncate text-xs text-muted">{factor.label}</p>
                   </div>
                   {factor.type === "email" ? (
-                    <StatusChip tone="success">Toujours active</StatusChip>
+                    <StatusChip tone="success">{t("Toujours active")}</StatusChip>
                   ) : (
                     <Button
                       size="sm"
@@ -638,7 +669,7 @@ export function MySecurity({ session }: { session: Session }) {
                       isPending={remove.isPending && remove.variables?.id === factor.id}
                       onPress={() => removal.open(factor)}
                     >
-                      Retirer
+                      {t("Retirer")}
                       <span className="sr-only"> {factor.label}</span>
                     </Button>
                   )}
@@ -649,8 +680,8 @@ export function MySecurity({ session }: { session: Session }) {
         ) : (
           <EmptyState
             icon={ShieldCheck}
-            title="Aucune méthode configurée."
-            description="Ajoutez une application d’authentification ou un numéro de téléphone."
+            title={t("Aucune méthode configurée.")}
+            description={t("Ajoutez une application d’authentification ou un numéro de téléphone.")}
           />
         )}
       </SectionCard>
@@ -658,19 +689,19 @@ export function MySecurity({ session }: { session: Session }) {
       <Modal.Backdrop isOpen={enrolling} onOpenChange={setEnrolling}>
         <Modal.Container placement="auto" scroll="inside">
           <Modal.Dialog className="sm:max-w-md">
-            <Modal.CloseTrigger aria-label="Fermer" />
+            <Modal.CloseTrigger aria-label={t("Fermer")} />
             <Modal.Header>
               <Modal.Icon className="bg-accent-soft text-accent">
                 <ShieldCheck className="size-5" aria-hidden />
               </Modal.Icon>
-              <Modal.Heading>Ajouter une méthode</Modal.Heading>
+              <Modal.Heading>{t("Ajouter une méthode")}</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
               {enrolling && (
                 <MfaEnroll
                   onEnrolled={async () => {
                     await refreshSession();
-                    toast.success("Méthode de double authentification ajoutée.");
+                    toast.success(t("Méthode de double authentification ajoutée."));
                     setEnrolling(false);
                   }}
                 />
@@ -683,13 +714,16 @@ export function MySecurity({ session }: { session: Session }) {
       <ConfirmDialog
         isOpen={removal.isOpen}
         onOpenChange={removal.onOpenChange}
-        title="Retirer cette méthode ?"
-        confirmLabel="Retirer"
+        title={t("Retirer cette méthode ?")}
+        confirmLabel={t("Retirer")}
         onConfirm={() => removal.target && remove.mutateAsync(removal.target)}
       >
         <p>
           {removal.target
-            ? `${FACTOR_NAMES[removal.target.type]} (${removal.target.label}) ne permettra plus de valider vos connexions.`
+            ? t("{method} ({label}) ne permettra plus de valider vos connexions.", {
+                method: t(FACTOR_NAMES[removal.target.type]),
+                label: removal.target.label,
+              })
             : null}
         </p>
       </ConfirmDialog>

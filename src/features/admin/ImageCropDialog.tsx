@@ -4,6 +4,7 @@ import { Button, Modal, Slider } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import { Crop, Minus, Plus, RotateCcw } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { t } from "./i18n";
 
 /** A crop shape offered to the user; `aspect: null` keeps the picture's own proportions. */
 export type CropFormat = { id: string; label: string; aspect: number | null };
@@ -94,7 +95,7 @@ const loadImage = (src: string) =>
     // R2 sends CORS headers for GET: the canvas stays exportable.
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Image illisible."));
+    image.onerror = () => reject(new Error(t("Image illisible.")));
     image.src = src;
   });
 
@@ -111,7 +112,7 @@ async function render(
   canvas.width = Math.max(1, Math.round(area.width * scale));
   canvas.height = Math.max(1, Math.round(area.height * scale));
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Traitement de l’image impossible.");
+  if (!context) throw new Error(t("Traitement de l’image impossible."));
   const jpeg = options.type === "image/jpeg" || sourceType === "image/jpeg";
   if (jpeg) {
     // Zoomed out beyond the picture: fill margins with white rather than black.
@@ -133,7 +134,7 @@ async function render(
   const type = jpeg ? "image/jpeg" : "image/webp";
   return new Promise((resolve, reject) =>
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Traitement de l’image impossible."))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(t("Traitement de l’image impossible.")))),
       type,
       jpeg ? 0.86 : 0.92,
     ),
@@ -191,7 +192,7 @@ export function ImageCropDialog({
       setError(
         failure instanceof Error && failure.message
           ? failure.message
-          : "Recadrage impossible. Réessayez avec une autre image.",
+          : t("Recadrage impossible. Réessayez avec une autre image."),
       );
     } finally {
       setPending(false);
@@ -206,15 +207,15 @@ export function ImageCropDialog({
     >
       <Modal.Container placement="auto" scroll="inside">
         <Modal.Dialog className="sm:max-w-3xl">
-          <Modal.CloseTrigger aria-label="Fermer" />
+          <Modal.CloseTrigger aria-label={t("Fermer")} />
           <Modal.Header>
             <Modal.Icon className="bg-accent-soft text-accent">
               <Crop className="size-5" aria-hidden />
             </Modal.Icon>
-            <Modal.Heading>{options.title}</Modal.Heading>
+            <Modal.Heading>{t(options.title)}</Modal.Heading>
             <p className="mt-1 text-sm text-muted">
-              Faites glisser l’image pour la placer, zoomez pour la redimensionner.
-              {options.hint ? ` ${options.hint}` : ""}
+              {t("Faites glisser l’image pour la placer, zoomez pour la redimensionner.")}
+              {options.hint ? ` ${t(options.hint)}` : ""}
             </p>
           </Modal.Header>
           <Modal.Body className="grid gap-4">
@@ -243,7 +244,7 @@ export function ImageCropDialog({
                   onZoomChange={setZoom}
                   onCropComplete={(_, pixels) => setArea(pixels)}
                   onMediaLoaded={(media) => setNatural(media.naturalWidth / media.naturalHeight)}
-                  mediaProps={{ crossOrigin: "anonymous", alt: "Image à recadrer" }}
+                  mediaProps={{ crossOrigin: "anonymous", alt: t("Image à recadrer") }}
                   style={{ cropAreaStyle: { border: "2px solid white" } }}
                 />
               )}
@@ -253,7 +254,7 @@ export function ImageCropDialog({
               <div className="grid gap-2">
                 <div className="flex items-center justify-between text-sm">
                   <span id="crop-zoom-label" className="font-medium text-foreground">
-                    Zoom
+                    {t("Zoom")}
                   </span>
                   <span className="tabular-nums text-muted">{Math.round(zoom * 100)} %</span>
                 </div>
@@ -262,7 +263,7 @@ export function ImageCropDialog({
                     isIconOnly
                     size="sm"
                     variant="ghost"
-                    aria-label="Dézoomer"
+                    aria-label={t("Dézoomer")}
                     onPress={() => setZoom((z) => Math.max(minZoom, z - 0.1))}
                   >
                     <Minus className="size-4" aria-hidden />
@@ -285,7 +286,7 @@ export function ImageCropDialog({
                     isIconOnly
                     size="sm"
                     variant="ghost"
-                    aria-label="Zoomer"
+                    aria-label={t("Zoomer")}
                     onPress={() => setZoom((z) => Math.min(4, z + 0.1))}
                   >
                     <Plus className="size-4" aria-hidden />
@@ -301,12 +302,12 @@ export function ImageCropDialog({
                 }}
               >
                 <RotateCcw className="size-4" aria-hidden />
-                Recentrer
+                {t("Recentrer")}
               </Button>
             </div>
 
             {options.formats.length > 1 && (
-              <div role="group" aria-label="Format" className="flex flex-wrap gap-2">
+              <div role="group" aria-label={t("Format")} className="flex flex-wrap gap-2">
                 {options.formats.map((item) => (
                   <button
                     key={item.id}
@@ -318,7 +319,7 @@ export function ImageCropDialog({
                       variant: item.id === format.id ? "primary" : "secondary",
                     })}
                   >
-                    {item.label}
+                    {t(item.label)}
                   </button>
                 ))}
               </div>
@@ -332,10 +333,10 @@ export function ImageCropDialog({
           </Modal.Body>
           <Modal.Footer>
             <Button variant="tertiary" isDisabled={pending} onPress={onCancel}>
-              Annuler
+              {t("Annuler")}
             </Button>
             <Button isPending={pending} isDisabled={!area} onPress={() => void confirm()}>
-              {pending ? "Enregistrement…" : "Appliquer"}
+              {pending ? t("Enregistrement…") : t("Appliquer")}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

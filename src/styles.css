@@ -335,3 +335,20 @@ html {
     transform: translateX(100%);
   }
 }
+
+/*
+ * Admin in Tunisian Arabic (html[lang="ar"], set by the admin shell only): IBM
+ * Plex Sans Arabic for Arabic text, Inter kept for Latin text and figures. Arabic
+ * letters join, so no letter-spacing anywhere (tracking-* would break the joins),
+ * and a little more line height for the taller Arabic forms.
+ */
+html[lang="ar"] {
+  --font-sans: "IBM Plex Sans Arabic", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+}
+html[lang="ar"] body,
+html[lang="ar"] body * {
+  letter-spacing: 0 !important;
+}
+html[lang="ar"] body {
+  line-height: 1.6;
+}

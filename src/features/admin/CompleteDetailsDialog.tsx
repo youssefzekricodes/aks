@@ -13,6 +13,7 @@ import {
 import { completeCars } from "@/lib/data";
 import { fieldsToFill, plural, toOptions, type AdminCar } from "./model";
 import { ConfirmDialog, IntegerField, SelectField } from "./ui";
+import { t } from "./i18n";
 
 type Fields = {
   name?: string;
@@ -38,6 +39,9 @@ const CHOICES = {
 } as const;
 type Choice = keyof typeof CHOICES;
 const PLACEHOLDER = { id: "", label: "À choisir" };
+/** Option labels stay French in the lists (values are stored); translated where shown. */
+const shown = (options: readonly { id: string; label: string }[]) =>
+  options.map((option) => ({ ...option, label: t(option.label) }));
 
 /**
  * Every vehicle with missing details, showing only the fields to fill. Changes
@@ -93,7 +97,7 @@ function CompleteDetails({
   const [targets] = useState(() =>
     cars
       .map((car) => ({ id: car.id, missing: fieldsToFill(car) }))
-      .filter((t) => t.missing.length > 0),
+      .filter((target) => target.missing.length > 0),
   );
   const byId = useMemo(() => new Map(cars.map((car) => [car.id, car])), [cars]);
   const [drafts, setDrafts] = useState<Record<string, Fields>>({});
@@ -107,28 +111,33 @@ function CompleteDetails({
   const edit = (id: string, fields: Fields) =>
     setDrafts((all) => ({ ...all, [id]: { ...all[id], ...fields } }));
 
-  const rows = targets.filter((t) => byId.has(t.id) && (!filter || t.missing.includes(filter)));
+  const rows = targets.filter(
+    (target) => byId.has(target.id) && (!filter || target.missing.includes(filter)),
+  );
   const changed = Object.keys(drafts).filter((id) => Object.keys(drafts[id] ?? {}).length > 0);
   const stillMissing = (id: string) => fieldsToFill(merged(id));
   const fieldCounts = Object.fromEntries(
-    [...new Set(targets.flatMap((t) => t.missing))].map((label) => [
+    [...new Set(targets.flatMap((target) => target.missing))].map((label) => [
       label,
-      targets.filter((t) => t.missing.includes(label)).length,
+      targets.filter((target) => target.missing.includes(label)).length,
     ]),
   );
   const bulkTargets = targets.filter(
-    (t) => byId.has(t.id) && stillMissing(t.id).includes(bulkField),
+    (target) => byId.has(target.id) && stillMissing(target.id).includes(bulkField),
   );
 
   function applyToAll() {
     const key = CHOICES[bulkField].key;
     setDrafts((all) => {
       const next = { ...all };
-      for (const t of bulkTargets) next[t.id] = { ...next[t.id], [key]: bulkValue };
+      for (const target of bulkTargets) next[target.id] = { ...next[target.id], [key]: bulkValue };
       return next;
     });
     toast.success(
-      `${bulkField} rempli pour ${plural(bulkTargets.length, "véhicule", "véhicules")}.`,
+      t("{field} rempli pour {vehicles}.", {
+        field: t(bulkField),
+        vehicles: plural(bulkTargets.length, "véhicule", "véhicules"),
+      }),
     );
   }
 
@@ -143,11 +152,23 @@ function CompleteDetails({
       await onSaved();
       if (result.failed.length)
         toast.danger(
-          `${plural(result.failed.length, "véhicule non enregistré", "véhicules non enregistrés")} : ${result.failed[0]!.error}`,
+          t("{ignored} : {error}", {
+            ignored: plural(
+              result.failed.length,
+              "véhicule non enregistré",
+              "véhicules non enregistrés",
+            ),
+            error: result.failed[0]!.error,
+          }),
         );
-      else toast.success(`${plural(result.done, "véhicule mis à jour", "véhicules mis à jour")}.`);
+      else
+        toast.success(
+          t("{vehicles}.", {
+            vehicles: plural(result.done, "véhicule mis à jour", "véhicules mis à jour"),
+          }),
+        );
     } catch (error) {
-      toast.danger(error instanceof Error ? error.message : "Enregistrement impossible.");
+      toast.danger(error instanceof Error ? error.message : t("Enregistrement impossible."));
     } finally {
       setSaving(false);
     }
@@ -157,15 +178,17 @@ function CompleteDetails({
 
   return (
     <>
-      <Modal.CloseTrigger aria-label="Fermer" onPress={close} />
+      <Modal.CloseTrigger aria-label={t("Fermer")} onPress={close} />
       <Modal.Header>
         <Modal.Icon className="bg-danger-soft text-danger">
           <ClipboardList className="size-5" aria-hidden />
         </Modal.Icon>
-        <Modal.Heading>Compléter les informations manquantes</Modal.Heading>
+        <Modal.Heading>{t("Compléter les informations manquantes")}</Modal.Heading>
         <p className="mt-1 text-sm text-muted">
-          {plural(targets.length, "véhicule a", "véhicules ont")} besoin d’attention. Seuls les
-          champs à remplir sont affichés ; enregistrez quand vous voulez.
+          {t(
+            "{vehicles} besoin d’attention. Seuls les champs à remplir sont affichés ; enregistrez quand vous voulez.",
+            { vehicles: plural(targets.length, "véhicule a", "véhicules ont") },
+          )}
         </p>
       </Modal.Header>
 
@@ -173,18 +196,18 @@ function CompleteDetails({
         {/* Same value for every vehicle missing it (e.g. gearbox, origin). */}
         <section className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-xl border border-border bg-surface-secondary p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <SelectField
-            label="Remplir d’un coup"
+            label={t("Remplir d’un coup")}
             value={bulkField}
-            options={(Object.keys(CHOICES) as Choice[]).map((id) => ({ id, label: id }))}
+            options={(Object.keys(CHOICES) as Choice[]).map((id) => ({ id, label: t(id) }))}
             onChange={(value) => {
               setBulkField(value as Choice);
               setBulkValue("");
             }}
           />
           <SelectField
-            label="Valeur"
+            label={t("Valeur")}
             value={bulkValue}
-            options={[PLACEHOLDER, ...CHOICES[bulkField].options]}
+            options={shown([PLACEHOLDER, ...CHOICES[bulkField].options])}
             onChange={setBulkValue}
           />
           <Button
@@ -192,11 +215,17 @@ function CompleteDetails({
             isDisabled={!bulkValue || bulkTargets.length === 0}
             onPress={applyToAll}
           >
-            Appliquer à {plural(bulkTargets.length, "véhicule", "véhicules")}
+            {t("Appliquer à {vehicles}", {
+              vehicles: plural(bulkTargets.length, "véhicule", "véhicules"),
+            })}
           </Button>
         </section>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par champ manquant">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("Filtrer par champ manquant")}
+        >
           {[["", targets.length] as const, ...Object.entries(fieldCounts)].map(([label, count]) => (
             <button
               key={label}
@@ -209,7 +238,7 @@ function CompleteDetails({
                   : "rounded-full border border-border px-3 py-1 text-sm text-foreground hover:bg-surface-secondary"
               }
             >
-              {label || "Tous"} <span className="tabular opacity-70">{count}</span>
+              {label ? t(label) : t("Tous")} <span className="tabular opacity-70">{count}</span>
             </button>
           ))}
         </div>
@@ -234,11 +263,15 @@ function CompleteDetails({
                     </p>
                     <p className="text-sm text-muted">
                       {left.length ? (
-                        `Manque : ${left.join(", ")}`
+                        t("Manque : {fields}", {
+                          fields: left.map((field) => t(field)).join(", "),
+                        })
                       ) : (
                         <span className="inline-flex items-center gap-1 text-success">
-                          <Check className="size-4" aria-hidden /> Complet
-                          {drafts[id] && Object.keys(drafts[id]!).length ? " (à enregistrer)" : ""}
+                          <Check className="size-4" aria-hidden /> {t("Complet")}
+                          {drafts[id] && Object.keys(drafts[id]!).length
+                            ? ` (${t("à enregistrer")})`
+                            : ""}
                         </span>
                       )}
                     </p>
@@ -253,7 +286,7 @@ function CompleteDetails({
                       onChange={(fields) => edit(id, fields)}
                       onPhotos={() =>
                         changed.length
-                          ? toast.warning("Enregistrez d’abord vos modifications.")
+                          ? toast.warning(t("Enregistrez d’abord vos modifications."))
                           : onEditCar(byId.get(id)!)
                       }
                     />
@@ -268,28 +301,29 @@ function CompleteDetails({
       <Modal.Footer>
         <span className="me-auto text-sm text-muted" aria-live="polite">
           {changed.length
-            ? `${plural(changed.length, "véhicule modifié", "véhicules modifiés")}`
-            : "Aucune modification"}
+            ? plural(changed.length, "véhicule modifié", "véhicules modifiés")
+            : t("Aucune modification")}
         </span>
         <Button variant="tertiary" isDisabled={saving} onPress={close}>
-          Fermer
+          {t("Fermer")}
         </Button>
         <Button isPending={saving} isDisabled={!changed.length} onPress={save}>
-          Enregistrer
+          {t("Enregistrer")}
         </Button>
       </Modal.Footer>
 
       <ConfirmDialog
         isOpen={confirmClose}
         onOpenChange={setConfirmClose}
-        title="Fermer sans enregistrer ?"
-        confirmLabel="Fermer sans enregistrer"
+        title={t("Fermer sans enregistrer ?")}
+        confirmLabel={t("Fermer sans enregistrer")}
         tone="warning"
         onConfirm={onClose}
       >
         <p>
-          Les informations saisies pour {plural(changed.length, "véhicule", "véhicules")} seront
-          perdues.
+          {t("Les informations saisies pour {vehicles} seront perdues.", {
+            vehicles: plural(changed.length, "véhicule", "véhicules"),
+          })}
         </p>
       </ConfirmDialog>
     </>
@@ -313,9 +347,9 @@ function FieldEditor({
     const known = options.some((o) => o.id === value);
     return (
       <SelectField
-        label={field}
+        label={t(field)}
         value={known ? value : ""}
-        options={known ? options : [PLACEHOLDER, ...options]}
+        options={shown(known ? options : [PLACEHOLDER, ...options])}
         onChange={(next) => next && onChange({ [key]: next })}
       />
     );
@@ -335,14 +369,14 @@ function FieldEditor({
           }
           maxLength={200}
         >
-          <Label>Modèle</Label>
-          <Input placeholder="ex. Sportage" />
+          <Label>{t("Modèle")}</Label>
+          <Input placeholder={t("ex. Sportage")} />
         </TextField>
       );
     case "Année":
       return (
         <IntegerField
-          label="Année"
+          label={t("Année")}
           value={car.year > 1900 ? car.year : null}
           onChange={(year) => year && onChange({ year })}
           minValue={1901}
@@ -353,7 +387,7 @@ function FieldEditor({
     case "Prix":
       return (
         <IntegerField
-          label="Prix (DT)"
+          label={t("Prix (DT)")}
           value={car.price || null}
           // A price entered here is shown on the site instead of "Contactez-nous".
           onChange={(price) =>
@@ -363,13 +397,13 @@ function FieldEditor({
           }
           minValue={0}
           maxValue={1_000_000_000}
-          description="Affiché sur le site. Laissez vide pour « Contactez-nous »."
+          description={t("Affiché sur le site. Laissez vide pour « Contactez-nous ».")}
         />
       );
     case "Kilométrage":
       return (
         <IntegerField
-          label="Kilométrage (km)"
+          label={t("Kilométrage (km)")}
           value={car.km_value || null}
           onChange={(km) => onChange({ km_value: km ?? 0 })}
           minValue={0}
@@ -379,7 +413,7 @@ function FieldEditor({
     case "Puissance fiscale":
       return (
         <IntegerField
-          label="Puissance fiscale (CV)"
+          label={t("Puissance fiscale (CV)")}
           value={car.fiscal_power ?? null}
           onChange={(fiscal_power) => onChange({ fiscal_power })}
           minValue={0}
@@ -394,17 +428,17 @@ function FieldEditor({
           maxLength={20000}
           className="sm:col-span-2 lg:col-span-3"
         >
-          <Label>Description</Label>
+          <Label>{t("Description")}</Label>
           <TextArea rows={2} />
         </TextField>
       );
     case "Photos":
       return (
         <div className="grid gap-1.5">
-          <span className="text-sm font-medium text-foreground">Photos</span>
+          <span className="text-sm font-medium text-foreground">{t("Photos")}</span>
           <Button variant="secondary" onPress={onPhotos}>
             <ImagePlus className="size-4" aria-hidden />
-            Ajouter des photos
+            {t("Ajouter des photos")}
           </Button>
         </div>
       );

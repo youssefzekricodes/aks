@@ -6,6 +6,7 @@ import { Plus, Store, Trash2 } from "@/components/icons";
 import { carImage, formatKm } from "@/lib/cars";
 import { setVitrine } from "@/lib/data";
 import { adminCarsQuery, adminCarsQueryKey, normalize, plural, type AdminCar } from "./model";
+import { t } from "./i18n";
 import { SortableCarsSkeleton } from "./skeletons";
 import { SortableCarGrid } from "./SortableCarGrid";
 import { EmptyState, IconButton, LoadError, PageHeader } from "./ui";
@@ -80,30 +81,40 @@ export function VitrinePage() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Vitrine"
-        description="Les véhicules mis en avant sur la page d’accueil, dans l’ordre où les visiteurs les voient."
+        title={t("Vitrine")}
+        description={t(
+          "Les véhicules mis en avant sur la page d’accueil, dans l’ordre où les visiteurs les voient.",
+        )}
         actions={
           <Button onPress={() => setPicking(true)}>
             <Plus className="size-4" aria-hidden />
-            Ajouter à la vitrine
+            {t("Ajouter à la vitrine")}
           </Button>
         }
       />
 
       {cars.isError ? (
-        <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
+        <LoadError
+          message={t("Impossible de charger les véhicules.")}
+          onRetry={() => cars.refetch()}
+        />
       ) : cars.isPending ? (
         <SortableCarsSkeleton intro />
       ) : (
         <section className="grid gap-4">
           <p className="text-sm text-muted">
             {showcase.length
-              ? `Ces véhicules s’affichent sur l’accueil dans cet ordre (${HOME_LIMIT} au maximum). Glissez les cartes pour changer l’ordre, cliquez pour modifier un véhicule.`
-              : `Vitrine vide : l’accueil montre les 6 premiers véhicules de l’ordre du site.`}
+              ? t(
+                  "Ces véhicules s’affichent sur l’accueil dans cet ordre ({limit} au maximum). Glissez les cartes pour changer l’ordre, cliquez pour modifier un véhicule.",
+                  { limit: HOME_LIMIT },
+                )
+              : t("Vitrine vide : l’accueil montre les 6 premiers véhicules de l’ordre du site.")}
           </p>
           {showcase.length > HOME_LIMIT && (
             <p className="text-sm text-warning">
-              Seuls les {HOME_LIMIT} premiers véhicules visibles sont affichés sur l’accueil.
+              {t("Seuls les {limit} premiers véhicules visibles sont affichés sur l’accueil.", {
+                limit: HOME_LIMIT,
+              })}
             </p>
           )}
           {showcase.length ? (
@@ -113,7 +124,7 @@ export function VitrinePage() {
               onEdit={edit}
               actions={(car) => (
                 <IconButton
-                  label={`Retirer ${car.brand} ${car.name} de la vitrine`}
+                  label={t("Retirer {name} de la vitrine", { name: `${car.brand} ${car.name}` })}
                   icon={Trash2}
                   variant="danger-soft"
                   onPress={() => vitrine.mutate(showcaseWith(all, [], [car.id]))}
@@ -123,12 +134,12 @@ export function VitrinePage() {
           ) : (
             <EmptyState
               icon={Store}
-              title="Aucun véhicule en vitrine."
-              description="Choisissez les véhicules à mettre en avant sur l’accueil."
+              title={t("Aucun véhicule en vitrine.")}
+              description={t("Choisissez les véhicules à mettre en avant sur l’accueil.")}
               action={
                 <Button size="sm" onPress={() => setPicking(true)}>
                   <Plus className="size-4" aria-hidden />
-                  Ajouter à la vitrine
+                  {t("Ajouter à la vitrine")}
                 </Button>
               }
             />
@@ -141,13 +152,13 @@ export function VitrinePage() {
         onOpenChange={setPicking}
         cars={all.filter((car) => car.featured_rank == null && onSale(car))}
         onAdd={(ids) =>
-          vitrine
-            .mutateAsync(showcaseWith(all, ids))
-            .then(() =>
-              toast.success(
-                `${plural(ids.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
-              ),
-            )
+          vitrine.mutateAsync(showcaseWith(all, ids)).then(() =>
+            toast.success(
+              t("{count} à la vitrine.", {
+                count: plural(ids.length, "véhicule ajouté", "véhicules ajoutés"),
+              }),
+            ),
+          )
         }
       />
     </div>
@@ -183,19 +194,19 @@ function ShowcasePicker({
     <Modal.Backdrop isOpen={isOpen} onOpenChange={(open) => !open && !pending && close()}>
       <Modal.Container placement="auto" scroll="inside">
         <Modal.Dialog className="sm:max-w-2xl">
-          <Modal.CloseTrigger aria-label="Fermer" />
+          <Modal.CloseTrigger aria-label={t("Fermer")} />
           <Modal.Header>
-            <Modal.Heading>Ajouter à la vitrine</Modal.Heading>
+            <Modal.Heading>{t("Ajouter à la vitrine")}</Modal.Heading>
             <p className="mt-1 text-sm text-muted">
-              Les véhicules choisis s’ajoutent à la fin de la vitrine.
+              {t("Les véhicules choisis s’ajoutent à la fin de la vitrine.")}
             </p>
           </Modal.Header>
           <Modal.Body className="grid gap-3">
             <SearchField value={search} onChange={setSearch} fullWidth>
-              <Label className="sr-only">Rechercher</Label>
+              <Label className="sr-only">{t("Rechercher")}</Label>
               <SearchField.Group>
                 <SearchField.SearchIcon />
-                <SearchField.Input placeholder="Marque, modèle, année…" />
+                <SearchField.Input placeholder={t("Marque, modèle, année…")} />
                 <SearchField.ClearButton />
               </SearchField.Group>
             </SearchField>
@@ -226,7 +237,7 @@ function ShowcasePicker({
                         {car.brand} {car.name}
                       </span>
                       <span className="text-sm text-muted">
-                        {car.year > 1900 ? car.year : "Année ?"} · {formatKm(car.km_value)}
+                        {car.year > 1900 ? car.year : t("Année ?")} · {formatKm(car.km_value)}
                       </span>
                     </span>
                   </label>
@@ -234,8 +245,9 @@ function ShowcasePicker({
               ))}
               {!list.length && (
                 <li className="py-6 text-center text-sm text-muted">
-                  Aucun véhicule en vente à ajouter. Publiez des véhicules depuis la liste
-                  Véhicules.
+                  {t(
+                    "Aucun véhicule en vente à ajouter. Publiez des véhicules depuis la liste Véhicules.",
+                  )}
                 </li>
               )}
             </ul>
@@ -245,7 +257,7 @@ function ShowcasePicker({
               {plural(chosen.size, "sélectionné", "sélectionnés")}
             </span>
             <Button variant="tertiary" isDisabled={pending} onPress={close}>
-              Annuler
+              {t("Annuler")}
             </Button>
             <Button
               isPending={pending}
@@ -262,7 +274,7 @@ function ShowcasePicker({
                 }
               }}
             >
-              Ajouter
+              {t("Ajouter")}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

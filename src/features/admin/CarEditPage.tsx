@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "@heroui/react";
@@ -11,6 +11,7 @@ import { adminCarsQuery, adminCarsQueryKey, emptyCar, toDraft, toPayload } from 
 import { announceShare, socialStatusQuery } from "./SocialCard";
 import { AdminBreadcrumbs, EmptyState, type Crumb } from "./ui";
 import { CarFormSkeleton } from "./skeletons";
+import { t } from "./i18n";
 import { Car as CarIcon } from "@/components/icons";
 
 /**
@@ -26,32 +27,32 @@ function originOf(from: EditOrigin) {
     return {
       brand,
       crumbs: [
-        { label: "Véhicules", to: "/admin/vehicules" },
+        { label: t("Véhicules"), to: "/admin/vehicules" },
         {
           label: brandInfo(brand).name,
           to: "/admin/vehicules/marque/$brand",
           params: { brand },
         },
       ] satisfies Crumb[],
-      backLabel: `Retour à ${brandInfo(brand).name}`,
+      backLabel: t("Retour à {name}", { name: brandInfo(brand).name }),
     };
   }
   if (from === "accueil")
     return {
       brand: null,
-      crumbs: [{ label: "Accueil", to: "/admin" }] satisfies Crumb[],
-      backLabel: "Retour à l’accueil",
+      crumbs: [{ label: t("Accueil"), to: "/admin" }] satisfies Crumb[],
+      backLabel: t("Retour à l’accueil"),
     };
   if (from === "vitrine")
     return {
       brand: null,
-      crumbs: [{ label: "Vitrine", to: "/admin/vitrine" }] satisfies Crumb[],
-      backLabel: "Retour à la vitrine",
+      crumbs: [{ label: t("Vitrine"), to: "/admin/vitrine" }] satisfies Crumb[],
+      backLabel: t("Retour à la vitrine"),
     };
   return {
     brand: null,
-    crumbs: [{ label: "Véhicules", to: "/admin/vehicules" }] satisfies Crumb[],
-    backLabel: "Retour à la liste",
+    crumbs: [{ label: t("Véhicules"), to: "/admin/vehicules" }] satisfies Crumb[],
+    backLabel: t("Retour à la liste"),
   };
 }
 
@@ -68,8 +69,8 @@ export function CarEditPage({ carId, from }: { carId: string; from: EditOrigin }
     return (
       <EmptyState
         icon={CarIcon}
-        title="Véhicule introuvable."
-        description="Il a peut-être été supprimé."
+        title={t("Véhicule introuvable.")}
+        description={t("Il a peut-être été supprimé.")}
       />
     );
 
@@ -99,7 +100,8 @@ function Editor({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { primary } = usePhones();
-  const origin = useMemo(() => originOf(from), [from]);
+  // Not memoized: its labels follow the admin language.
+  const origin = originOf(from);
   const [draft, setDraft] = useState(() => toDraft(initial));
   const [original, setOriginal] = useState(() => JSON.stringify(toDraft(initial)));
   const [done, setDone] = useState(false);
@@ -146,7 +148,7 @@ function Editor({
         ),
       }),
     onSuccess: async (result) => {
-      toast.success("Véhicule enregistré.");
+      toast.success(t("Véhicule enregistré."));
       announceShare(result.social);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminCarsQueryKey }),
@@ -161,7 +163,7 @@ function Editor({
 
   const title = initial.id
     ? `${initial.brand} ${initial.model || initial.name}`.trim()
-    : "Nouveau véhicule";
+    : t("Nouveau véhicule");
 
   return (
     <CarForm

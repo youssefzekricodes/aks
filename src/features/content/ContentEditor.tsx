@@ -37,7 +37,8 @@ import { cn } from "@/lib/utils";
 import { CROP_PRESETS, ImageCropDialog, type CropOptions } from "@/features/admin/ImageCropDialog";
 import { prepareImage, saveSiteContent, uploadImage } from "@/lib/data";
 import { useUploads, type UploadState } from "@/features/admin/hooks";
-import { adminContentQuery } from "@/features/admin/model";
+import { adminContentQuery, plural } from "@/features/admin/model";
+import { isRtl, t } from "@/features/admin/i18n";
 import {
   FilePickButton,
   IconButton,
@@ -284,6 +285,37 @@ const CROP_BY_FIELD: Record<string, CropOptions> = {
 };
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+/**
+ * Validation message in the admin's language. The messages come from
+ * definition.ts (shared with the server) as "<label> : <message>".
+ */
+function validate(field: ContentField, value: string) {
+  const result = validateContentValue(field, value);
+  if (!result) return result;
+  const prefix = `${field.label} : `;
+  if (!result.startsWith(prefix)) return t(result);
+  const message = result.slice(prefix.length);
+  // Messages with a value inside: the value is kept, the sentence translated.
+  const patterns: [RegExp, string, string][] = [
+    [/^champ (\w+) non valide\.$/, "champ {key} non valide.", "key"],
+    [/^champ (\w+) trop long\.$/, "champ {key} trop long.", "key"],
+    [
+      /^numéro « (.*) » non valide \(8 à 15 chiffres, \+ facultatif\)\.$/,
+      "numéro « {number} » non valide (8 à 15 chiffres, + facultatif).",
+      "number",
+    ],
+  ];
+  let translated = t(message);
+  for (const [pattern, text, name] of patterns) {
+    const match = pattern.exec(message);
+    if (match) {
+      translated = t(text, { [name]: match[1]! });
+      break;
+    }
+  }
+  return `${t(field.label)} : ${translated}`;
+}
+
 const cardClass = "rounded-2xl border border-separator bg-surface p-4 sm:p-6";
 const MAX_SITE_IMAGE_BYTES = 3_000_000;
 
@@ -298,9 +330,7 @@ export function ContentEditor() {
   const saved = Object.fromEntries((content.data ?? []).map((row) => [row.key, row.value]));
   const entries = Object.entries(draft).map(([key, value]) => ({ key, value }));
   const valueOf = (field: ContentField) => draft[field.key] ?? saved[field.key] ?? field.value;
-  const errors = editorFields
-    .map((field) => validateContentValue(field, valueOf(field)))
-    .filter(Boolean);
+  const errors = editorFields.map((field) => validate(field, valueOf(field))).filter(Boolean);
   const save = useMutation({
     mutationFn: () => saveSiteContent({ data: { entries } }),
     onSuccess: async () => {
@@ -310,7 +340,7 @@ export function ContentEditor() {
       ]);
       setDraft({});
       await router.invalidate();
-      toast.success("Les modifications sont publiées sur le site.");
+      toast.success(t("Les modifications sont publiées sur le site."));
     },
     onError: (error: Error) => toast.danger(error.message),
   });
@@ -347,7 +377,7 @@ export function ContentEditor() {
   /** A picked file: checked, then opened in the crop editor (fields with a preset). */
   function pick(field: ContentField, file: File) {
     if (!IMAGE_TYPES.includes(file.type)) {
-      toast.danger(`« ${file.name} » : JPG, PNG ou WebP uniquement.`);
+      toast.danger(t("« {name} » : JPG, PNG ou WebP uniquement.", { name: file.name }));
       return;
     }
     if (CROP_BY_FIELD[field.key]) setCropping({ field, source: file });
@@ -358,12 +388,12 @@ export function ContentEditor() {
     const url = await uploads.run(field.key, async (report) => {
       const blob = file instanceof File ? await prepareImage(file) : file;
       if (blob.size > MAX_SITE_IMAGE_BYTES)
-        throw new Error("Image trop lourde : 3 Mo maximum après redimensionnement.");
+        throw new Error(t("Image trop lourde : 3 Mo maximum après redimensionnement."));
       return uploadImage("site", blob, { scope: field.key, onProgress: report });
     });
     if (url) {
       change(field, url);
-      toast.success("Image enregistrée. Publiez les modifications pour l’afficher sur le site.");
+      toast.success(t("Image enregistrée. Publiez les modifications pour l’afficher sur le site."));
     }
   }
 
@@ -400,7 +430,7 @@ export function ContentEditor() {
 
   if (content.isPending)
     return (
-      <div role="status" aria-label="Chargement du contenu" className="grid gap-4">
+      <div role="status" aria-label={t("Chargement du contenu")} className="grid gap-4">
         <Skeleton className="h-10 w-full rounded-xl" />
         <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
           <Skeleton className="h-64 rounded-2xl" />
@@ -411,15 +441,20 @@ export function ContentEditor() {
   if (content.isError)
     return (
       <div className="grid gap-6">
-        <PageHeader title="Contenu du site" />
-        <LoadError message="Impossible de charger le contenu." onRetry={() => content.refetch()} />
+        <PageHeader title={t("Contenu du site")} />
+        <LoadError
+          message={t("Impossible de charger le contenu.")}
+          onRetry={() => content.refetch()}
+        />
       </div>
     );
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Contenu du site"
-        description="Logo, bannière, horaires et coordonnées. Modifiez, puis publiez : le site est mis à jour immédiatement."
+        title={t("Contenu du site")}
+        description={t(
+          "Logo, bannière, horaires et coordonnées. Modifiez, puis publiez : le site est mis à jour immédiatement.",
+        )}
         actions={
           <a
             href="/"
@@ -428,7 +463,7 @@ export function ContentEditor() {
             className={buttonVariants({ variant: "secondary" })}
           >
             <ExternalLink className="size-4" aria-hidden />
-            Voir le site
+            {t("Voir le site")}
           </a>
         }
       />
@@ -438,17 +473,17 @@ export function ContentEditor() {
         className="grid gap-6"
       >
         <Tabs.ListContainer className="overflow-x-auto">
-          <Tabs.List aria-label="Rubriques de contenu" className="w-max min-w-full">
+          <Tabs.List aria-label={t("Rubriques de contenu")} className="w-max min-w-full">
             {RUBRICS.map((item) => {
               const dirty = rubricFields(item).some((field) => draft[field.key] !== undefined);
               const Icon = item.icon;
               return (
                 <Tabs.Tab key={item.id} id={item.id} className="gap-2 whitespace-nowrap">
                   <Icon className="size-4 shrink-0" aria-hidden />
-                  {item.label}
+                  {t(item.label)}
                   {dirty && (
                     <span className="size-2 shrink-0 rounded-full bg-warning">
-                      <span className="sr-only"> — modifications non publiées</span>
+                      <span className="sr-only"> — {t("modifications non publiées")}</span>
                     </span>
                   )}
                   <Tabs.Indicator />
@@ -460,7 +495,7 @@ export function ContentEditor() {
         {RUBRICS.map((item) => (
           <Tabs.Panel key={item.id} id={item.id} className="min-w-0">
             <fieldset disabled={busy} className="grid min-w-0 content-start gap-4">
-              <p className="text-sm text-muted">{item.description}</p>
+              <p className="text-sm text-muted">{t(item.description)}</p>
               {item.id === "sections" ? (
                 <SectionsInput
                   valueOf={(key) => {
@@ -479,11 +514,13 @@ export function ContentEditor() {
                     {(block.title || block.description) && (
                       <div>
                         {block.title && (
-                          <h3 className="text-sm font-semibold text-foreground">{block.title}</h3>
+                          <h3 className="text-sm font-semibold text-foreground">
+                            {t(block.title)}
+                          </h3>
                         )}
                         {block.description && (
                           <p className={cn("text-sm text-muted", block.title && "mt-1")}>
-                            {block.description}
+                            {t(block.description)}
                           </p>
                         )}
                       </div>
@@ -494,7 +531,7 @@ export function ContentEditor() {
                       return (
                         <div key={field.key} className="grid gap-1.5">
                           {input(field)}
-                          {ref.help && <p className="text-xs text-muted">{ref.help}</p>}
+                          {ref.help && <p className="text-xs text-muted">{t(ref.help)}</p>}
                         </div>
                       );
                     })}
@@ -514,9 +551,9 @@ export function ContentEditor() {
           >
             {entries.length > 0 && <span className="size-2 rounded-full bg-warning" aria-hidden />}
             {entries.length
-              ? `${entries.length} modification(s) non publiée(s)`
-              : "Toutes les modifications sont publiées."}
-            {uploading && " · Envoi d’image en cours…"}
+              ? t("{count} modification(s) non publiée(s)", { count: entries.length })
+              : t("Toutes les modifications sont publiées.")}
+            {uploading && ` · ${t("Envoi d’image en cours…")}`}
           </p>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <Button
@@ -525,7 +562,8 @@ export function ContentEditor() {
               isDisabled={!entries.length || busy || uploading}
               onPress={() => setDraft({})}
             >
-              Annuler<span className="max-sm:hidden"> les modifications</span>
+              {t("Annuler")}
+              <span className="max-sm:hidden"> {t("les modifications")}</span>
             </Button>
             <Button
               className="w-full sm:w-auto"
@@ -534,10 +572,11 @@ export function ContentEditor() {
               onPress={() => save.mutate()}
             >
               {save.isPending ? (
-                "Publication…"
+                t("Publication…")
               ) : (
                 <>
-                  Publier<span className="max-sm:hidden"> les modifications</span>
+                  {t("Publier")}
+                  <span className="max-sm:hidden"> {t("les modifications")}</span>
                 </>
               )}
             </Button>
@@ -566,9 +605,11 @@ export function ContentEditor() {
       >
         <p>
           {entries.length > 1
-            ? `${entries.length} modifications du contenu ne sont pas publiées.`
-            : "Une modification du contenu n’est pas publiée."}{" "}
-          Elles seront perdues si vous quittez cette page.
+            ? t("{count} modifications du contenu ne sont pas publiées.", {
+                count: entries.length,
+              })
+            : t("Une modification du contenu n’est pas publiée.")}{" "}
+          {t("Elles seront perdues si vous quittez cette page.")}
         </p>
       </UnsavedChangesDialog>
     </div>
@@ -634,21 +675,23 @@ function SectionsInput({
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   <span className="tabular-nums text-muted">{index + 1}. </span>
-                  {section.label}
+                  {t(section.label)}
                 </p>
-                <p className="mt-0.5 text-xs text-muted">{section.content}</p>
+                <p className="mt-0.5 text-xs text-muted">{t(section.content)}</p>
               </div>
               <Switch
                 isSelected={visible}
                 onChange={(on) => onChange(section.key, on)}
                 isDisabled={isDisabled}
-                aria-label={`Afficher la section ${section.label} sur la page d’accueil`}
+                aria-label={t("Afficher la section {section} sur la page d’accueil", {
+                  section: t(section.label),
+                })}
               >
                 <Switch.Content>
                   <Switch.Control>
                     <Switch.Thumb />
                   </Switch.Control>
-                  <span className="text-sm">{visible ? "Affichée" : "Masquée"}</span>
+                  <span className="text-sm">{visible ? t("Affichée") : t("Masquée")}</span>
                 </Switch.Content>
               </Switch>
             </div>
@@ -680,14 +723,14 @@ function HoursInput({
     rows = [];
   }
   const update = (next: HoursRow[]) => onChange(JSON.stringify(next));
-  const error = validateContentValue(field, value);
+  const error = validate(field, value);
   return (
     <div className="grid gap-3">
       {rows.map((row, index) => (
         <div
           key={index}
           role="group"
-          aria-label={`Horaires ${index + 1}`}
+          aria-label={t("Horaires {n}", { n: index + 1 })}
           className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
         >
           <TextField
@@ -696,19 +739,21 @@ function HoursInput({
             className="col-span-2 sm:col-span-1"
             fullWidth
           >
-            <Label>Jour(s)</Label>
-            <Input placeholder="Ex. Lundi – Samedi" />
+            <Label>{t("Jour(s)")}</Label>
+            <Input dir="auto" placeholder={t("Ex. Lundi – Samedi")} />
           </TextField>
           <TextField
             value={row.time}
             onChange={(time) => update(rows.map((r, i) => (i === index ? { ...r, time } : r)))}
             fullWidth
           >
-            <Label>Horaires</Label>
-            <Input placeholder="Ex. 09:00 – 19:00 ou Fermé" />
+            <Label>{t("Horaires")}</Label>
+            <Input dir="auto" placeholder={t("Ex. 09:00 – 19:00 ou Fermé")} />
           </TextField>
           <IconButton
-            label={`Supprimer « ${row.day || `ligne ${index + 1}`} »`}
+            label={t("Supprimer « {name} »", {
+              name: row.day || t("ligne {n}", { n: index + 1 }),
+            })}
             icon={Trash2}
             variant="danger-soft"
             onPress={() => update(rows.filter((_, i) => i !== index))}
@@ -723,7 +768,7 @@ function HoursInput({
           onPress={() => update([...rows, { day: "", time: "" }])}
         >
           <Plus className="size-4" aria-hidden />
-          Ajouter une ligne
+          {t("Ajouter une ligne")}
         </Button>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -762,14 +807,14 @@ function PhonesInput({
         i === index ? { ...row, ...patch } : patch.primary ? { ...row, primary: false } : row,
       ),
     );
-  const error = validateContentValue(field, value);
+  const error = validate(field, value);
   return (
     <div className="grid gap-3">
       {rows.map((row, index) => (
         <div
           key={index}
           role="group"
-          aria-label={`Numéro ${index + 1}`}
+          aria-label={t("Numéro {n}", { n: index + 1 })}
           className="grid gap-3 rounded-xl border border-separator bg-background p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] sm:items-end"
         >
           <TextField
@@ -778,8 +823,8 @@ function PhonesInput({
             maxLength={60}
             fullWidth
           >
-            <Label>Libellé</Label>
-            <Input placeholder="Ex. Showroom, Commercial…" />
+            <Label>{t("Libellé")}</Label>
+            <Input dir="auto" placeholder={t("Ex. Showroom, Commercial…")} />
           </TextField>
           <TextField
             value={row.number}
@@ -788,12 +833,12 @@ function PhonesInput({
             isRequired
             fullWidth
           >
-            <Label>Numéro</Label>
-            <Input type="tel" inputMode="tel" placeholder="+216 52 144 869" />
-            <FieldError>Numéro non valide.</FieldError>
+            <Label>{t("Numéro")}</Label>
+            <Input type="tel" inputMode="tel" dir="ltr" placeholder="+216 52 144 869" />
+            <FieldError>{t("Numéro non valide.")}</FieldError>
           </TextField>
           <IconButton
-            label={`Supprimer le numéro ${row.number || index + 1}`}
+            label={t("Supprimer le numéro {number}", { number: row.number || index + 1 })}
             icon={Trash2}
             variant="danger-soft"
             isDisabled={rows.length <= 1}
@@ -805,18 +850,18 @@ function PhonesInput({
                 <Switch.Control>
                   <Switch.Thumb />
                 </Switch.Control>
-                <span className="text-sm">Disponible sur WhatsApp</span>
+                <span className="text-sm">{t("Disponible sur WhatsApp")}</span>
               </Switch.Content>
             </Switch>
             {row.primary ? (
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent">
                 <StarFill className="size-4" aria-hidden />
-                Numéro principal
+                {t("Numéro principal")}
               </span>
             ) : (
               <Button size="sm" variant="ghost" onPress={() => set(index, { primary: true })}>
                 <Star className="size-4" aria-hidden />
-                Définir comme principal
+                {t("Définir comme principal")}
               </Button>
             )}
           </div>
@@ -835,7 +880,7 @@ function PhonesInput({
           }
         >
           <Plus className="size-4" aria-hidden />
-          Ajouter un numéro
+          {t("Ajouter un numéro")}
         </Button>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -870,24 +915,24 @@ function ContentInput({
   /** Inside a section card: no card of its own and no generic help text. */
   bare?: boolean;
 }) {
-  const error = validateContentValue(field, value);
+  const error = validate(field, value);
   if (field.type === "collection")
     return <CollectionInput field={field} value={value} onChange={onChange} bare={bare} />;
   if (field.type === "boolean")
     return (
       <div className={`${cardClass} grid gap-3`}>
-        <p className="text-sm font-medium text-foreground">{field.label}</p>
+        <p className="text-sm font-medium text-foreground">{t(field.label)}</p>
         <Switch
           isSelected={value === "true"}
           onChange={(on) => onChange(String(on))}
           isDisabled={isDisabled}
-          aria-label={`${field.label} — visible sur la page d’accueil`}
+          aria-label={t("{label} — visible sur la page d’accueil", { label: t(field.label) })}
         >
           <Switch.Content>
             <Switch.Control>
               <Switch.Thumb />
             </Switch.Control>
-            <span className="text-sm">Visible sur la page d’accueil</span>
+            <span className="text-sm">{t("Visible sur la page d’accueil")}</span>
           </Switch.Content>
         </Switch>
         {error && <p className="text-sm text-danger">{error}</p>}
@@ -898,7 +943,7 @@ function ContentInput({
   if (bare && field.type === "image")
     return (
       <div className="grid gap-2">
-        <p className="text-sm font-medium text-foreground">{field.label}</p>
+        <p className="text-sm font-medium text-foreground">{t(field.label)}</p>
         <ImageControls
           field={field}
           value={value}
@@ -911,7 +956,8 @@ function ContentInput({
         />
       </div>
     );
-  const help = bare ? undefined : HELP[field.type];
+  const helpText = bare ? undefined : HELP[field.type];
+  const help = helpText && t(helpText);
   return (
     <div className={bare ? "grid gap-4" : `${cardClass} grid gap-4`}>
       <TextField
@@ -921,8 +967,12 @@ function ContentInput({
         isDisabled={isDisabled}
         fullWidth
       >
-        <Label>{field.label}</Label>
-        {field.type === "textarea" ? <TextArea rows={4} /> : <Input type="text" />}
+        <Label>{t(field.label)}</Label>
+        {field.type === "textarea" ? (
+          <TextArea rows={4} dir="auto" />
+        ) : (
+          <Input type="text" dir="auto" />
+        )}
         {help && <Description>{help}</Description>}
         <FieldError>{error}</FieldError>
       </TextField>
@@ -967,7 +1017,7 @@ function ImageControls({
       {value && !error ? (
         <img
           src={value}
-          alt={`Aperçu — ${field.label}`}
+          alt={t("Aperçu — {label}", { label: t(field.label) })}
           className={cn(
             "max-h-40 max-w-full rounded-xl border border-separator object-contain",
             // The logo is light (made for the dark header): preview it on dark.
@@ -979,7 +1029,7 @@ function ImageControls({
       ) : (
         <div className="flex h-24 w-40 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-background text-muted">
           <ImageOff className="size-5" aria-hidden />
-          <span className="text-xs">{value ? "Aperçu indisponible" : "Aucune image"}</span>
+          <span className="text-xs">{value ? t("Aperçu indisponible") : t("Aucune image")}</span>
         </div>
       )}
       <div className="grid min-w-0 flex-1 basis-56 content-start gap-2">
@@ -990,7 +1040,7 @@ function ImageControls({
             onSelect={(files) => files[0] && onUpload(files[0])}
           >
             <ImageUp className="size-4" aria-hidden />
-            {working ? "Envoi…" : value ? "Remplacer l’image" : "Importer une image"}
+            {working ? t("Envoi…") : value ? t("Remplacer l’image") : t("Importer une image")}
           </FilePickButton>
           {value && !error && onRecrop && (
             <Button
@@ -1000,21 +1050,24 @@ function ImageControls({
               onPress={onRecrop}
             >
               <CropIcon className="size-4" aria-hidden />
-              Recadrer
+              {t("Recadrer")}
             </Button>
           )}
           {value && (
             <Button size="sm" variant="ghost" isDisabled={isDisabled || working} onPress={onClear}>
-              Retirer l’image
+              {t("Retirer l’image")}
             </Button>
           )}
         </div>
         <span className="text-xs text-muted">
-          JPG, PNG ou WebP · 3 Mo maximum après redimensionnement
+          {t("JPG, PNG ou WebP · 3 Mo maximum après redimensionnement")}
         </span>
         {upload?.status === "working" && (
           <div className="max-w-xs">
-            <UploadProgress state={upload} label={`Envoi de l’image — ${field.label}`} />
+            <UploadProgress
+              state={upload}
+              label={t("Envoi de l’image — {label}", { label: t(field.label) })}
+            />
           </div>
         )}
         {upload?.status === "error" && (
@@ -1071,9 +1124,11 @@ function CollectionInput({
     <section className={bare ? "grid gap-4" : `${cardClass} grid gap-4`}>
       {!bare && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{field.label}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t(field.label)}</h3>
           <p className="mt-1 text-sm text-muted">
-            Ajoutez, supprimez ou déplacez les éléments. Une liste vide n’affiche aucun élément.
+            {t(
+              "Ajoutez, supprimez ou déplacez les éléments. Une liste vide n’affiche aucun élément.",
+            )}
           </p>
         </div>
       )}
@@ -1086,23 +1141,23 @@ function CollectionInput({
         >
           <div className="flex items-center justify-between gap-2">
             <h4 id={`${field.key}-item-${index}`} className="text-sm font-medium text-foreground">
-              Élément {index + 1}
+              {t("Élément {n}", { n: index + 1 })}
             </h4>
             <div className="flex gap-1">
               <IconButton
-                label={`Monter l’élément ${index + 1}`}
+                label={t("Monter l’élément {n}", { n: index + 1 })}
                 icon={ArrowUp}
                 isDisabled={index === 0}
                 onPress={() => move(index, -1)}
               />
               <IconButton
-                label={`Descendre l’élément ${index + 1}`}
+                label={t("Descendre l’élément {n}", { n: index + 1 })}
                 icon={ArrowDown}
                 isDisabled={index === rows.length - 1}
                 onPress={() => move(index, 1)}
               />
               <IconButton
-                label={`Supprimer l’élément ${index + 1}`}
+                label={t("Supprimer l’élément {n}", { n: index + 1 })}
                 icon={Trash2}
                 variant="danger-soft"
                 onPress={() => update(rows.filter((_, i) => i !== index))}
@@ -1111,7 +1166,7 @@ function CollectionInput({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {Object.entries(template).map(([key, example]) => {
-              const label = COLLECTION_LABELS[key] ?? key;
+              const label = t(COLLECTION_LABELS[key] ?? key);
               const current = row[key];
               const change = (next: string | number) =>
                 update(rows.map((item, i) => (i === index ? { ...item, [key]: next } : item)));
@@ -1123,7 +1178,7 @@ function CollectionInput({
                     value={String(current ?? "")}
                     options={SERVICE_ICONS.map((icon) => ({
                       id: icon,
-                      label: SERVICE_LABELS[icon] ?? icon,
+                      label: t(SERVICE_LABELS[icon] ?? icon),
                     }))}
                     onChange={change}
                   />
@@ -1157,7 +1212,7 @@ function CollectionInput({
                   className={key === "text" ? "sm:col-span-2" : ""}
                 >
                   <Label>{label}</Label>
-                  {key === "text" ? <TextArea rows={3} /> : <Input />}
+                  {key === "text" ? <TextArea rows={3} dir="auto" /> : <Input dir="auto" />}
                 </TextField>
               );
             })}
@@ -1167,7 +1222,7 @@ function CollectionInput({
       <div>
         <Button variant="secondary" size="sm" isDisabled={rows.length >= 30} onPress={add}>
           <Plus className="size-4" aria-hidden />
-          Ajouter un élément
+          {t("Ajouter un élément")}
         </Button>
       </div>
     </section>
@@ -1197,7 +1252,10 @@ function StarRating({
         aria-labelledby={id}
         className="flex items-center gap-1"
         onKeyDown={(e) => {
-          const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+          // Right to left: the stars run from the right, so Left adds one.
+          const forward = isRtl() ? "ArrowLeft" : "ArrowRight";
+          const back = isRtl() ? "ArrowRight" : "ArrowLeft";
+          const step = { [forward]: 1, ArrowUp: 1, [back]: -1, ArrowDown: -1 }[e.key];
           if (!step) return;
           e.preventDefault();
           const next = clamp(value + step);
@@ -1211,7 +1269,7 @@ function StarRating({
             type="button"
             role="radio"
             aria-checked={star === value}
-            aria-label={`${star} étoile${star > 1 ? "s" : ""}`}
+            aria-label={plural(star, "étoile", "étoiles")}
             tabIndex={star === value ? 0 : -1}
             onClick={() => onChange(star)}
             className="rounded p-0.5 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-focus"

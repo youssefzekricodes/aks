@@ -9,7 +9,8 @@ import { uploadImage } from "@/lib/data";
 import { CROP_PRESETS, ImageCropDialog } from "./ImageCropDialog";
 import type { PhotoUpload, usePhotoQueue } from "./hooks";
 import { IMAGE_TYPES, MAX_PHOTOS, plural } from "./model";
-import { DragHandle, frenchAnnouncements, frenchInstructions, useSortSensors } from "./sortable";
+import { t } from "./i18n";
+import { DragHandle, dragInstructions, frenchAnnouncements, useSortSensors } from "./sortable";
 import { FilePickButton, IconButton, StatusChip } from "./ui";
 
 type Queue = ReturnType<typeof usePhotoQueue>;
@@ -40,7 +41,7 @@ export function PhotoManager({
     const original = originals.get(oldUrl);
     if (original) originals.set(url, original);
     onImagesChange((current) => current.map((u) => (u === oldUrl ? url : u)));
-    toast.success("Photo recadrée. Enregistrez le véhicule pour l’appliquer sur le site.");
+    toast.success(t("Photo recadrée. Enregistrez le véhicule pour l’appliquer sur le site."));
   }
   const used = images.length + queue.items.length;
   const remaining = Math.max(0, MAX_PHOTOS - used);
@@ -49,19 +50,22 @@ export function PhotoManager({
   function addFiles(files: File[]) {
     if (!files.length) return;
     if (full) {
-      toast.danger(`Limite de ${MAX_PHOTOS} photos atteinte.`);
+      toast.danger(t("Limite de {max} photos atteinte.", { max: MAX_PHOTOS }));
       return;
     }
     if (files.length > remaining)
       toast.warning(
-        `Seules ${plural(remaining, "photo a été ajoutée", "photos ont été ajoutées")} : ${MAX_PHOTOS} photos maximum par véhicule.`,
+        t("Seules {added} : {max} photos maximum par véhicule.", {
+          added: plural(remaining, "photo a été ajoutée", "photos ont été ajoutées"),
+          max: MAX_PHOTOS,
+        }),
       );
     queue.add(files.slice(0, remaining));
   }
 
   const sensors = useSortSensors();
   const [dragging, setDragging] = useState<string | null>(null);
-  const photoName = (url: string) => `Photo ${images.indexOf(url) + 1}`;
+  const photoName = (url: string) => t("Photo {n}", { n: images.indexOf(url) + 1 });
   function onDragEnd({ active, over }: DragEndEvent) {
     setDragging(null);
     if (!over || active.id === over.id) return;
@@ -73,7 +77,7 @@ export function PhotoManager({
   return (
     <div className="grid gap-4">
       <p className="text-sm text-muted" aria-live="polite">
-        {images.length} / {MAX_PHOTOS} photos
+        {t("{count} / {max} photos", { count: images.length, max: MAX_PHOTOS })}
         {queue.active > 0 && ` · ${plural(queue.active, "envoi en cours", "envois en cours")}`}
         {queue.failed > 0 && (
           <span className="text-danger"> · {plural(queue.failed, "échec", "échecs")}</span>
@@ -89,7 +93,7 @@ export function PhotoManager({
           onDragCancel={() => setDragging(null)}
           accessibility={{
             announcements: frenchAnnouncements(photoName),
-            screenReaderInstructions: { draggable: frenchInstructions },
+            screenReaderInstructions: { draggable: dragInstructions() },
           }}
         >
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -128,7 +132,7 @@ export function PhotoManager({
 
       <DropZone
         isDisabled={full || isDisabled}
-        aria-label="Déposer des photos du véhicule"
+        aria-label={t("Déposer des photos du véhicule")}
         getDropOperation={(types) =>
           IMAGE_TYPES.some((type) => types.has(type)) ? "copy" : "cancel"
         }
@@ -146,7 +150,9 @@ export function PhotoManager({
       >
         <ImagePlus className="size-6 text-muted" aria-hidden />
         <p className="text-sm font-medium text-foreground">
-          {full ? `Limite de ${MAX_PHOTOS} photos atteinte` : "Glissez vos photos ici"}
+          {full
+            ? t("Limite de {max} photos atteinte", { max: MAX_PHOTOS })
+            : t("Glissez vos photos ici")}
         </p>
         {!full && (
           <FilePickButton
@@ -156,11 +162,11 @@ export function PhotoManager({
             onSelect={addFiles}
             accept={IMAGE_TYPES}
           >
-            Choisir des photos
+            {t("Choisir des photos")}
           </FilePickButton>
         )}
         <p className="text-xs text-muted">
-          JPG, PNG ou WebP · 15 Mo maximum par fichier · recadrage automatique au format 4:3
+          {t("JPG, PNG ou WebP · 15 Mo maximum par fichier · recadrage automatique au format 4:3")}
         </p>
       </DropZone>
       <ImageCropDialog
@@ -188,12 +194,12 @@ function PendingTile({
   const percent = item.progress === null ? null : Math.round(item.progress * 100);
   const label =
     item.status === "queued"
-      ? "En attente…"
+      ? t("En attente…")
       : item.status === "working"
         ? percent === null
-          ? "Préparation…"
-          : `Envoi ${percent} %`
-        : "Échec de l’envoi";
+          ? t("Préparation…")
+          : t("Envoi {percent} %", { percent })
+        : t("Échec de l’envoi");
   return (
     <li
       className={`overflow-hidden rounded-xl border bg-background ${
@@ -203,7 +209,7 @@ function PendingTile({
       <div className="relative">
         <img
           src={item.preview}
-          alt={`Photo en cours d’envoi : ${item.name}`}
+          alt={t("Photo en cours d’envoi : {name}", { name: item.name })}
           className="aspect-[4/3] w-full object-cover opacity-60"
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/60 p-2 text-center">
@@ -237,16 +243,16 @@ function PendingTile({
         <div className="grid grid-cols-2 gap-1 p-2">
           <Button size="sm" variant="secondary" fullWidth onPress={onRetry}>
             <RotateCw className="size-4" aria-hidden />
-            Réessayer
+            {t("Réessayer")}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             fullWidth
             onPress={onRemove}
-            aria-label={`Retirer ${item.name}`}
+            aria-label={t("Retirer {name}", { name: item.name })}
           >
-            Retirer
+            {t("Retirer")}
           </Button>
         </div>
       ) : (
@@ -295,19 +301,23 @@ function SortablePhoto({
       >
         <img
           src={url}
-          alt={`Photo ${index + 1}${index === 0 ? " (couverture)" : ""}`}
+          alt={
+            index === 0
+              ? t("Photo {n} (couverture)", { n: index + 1 })
+              : t("Photo {n}", { n: index + 1 })
+          }
           draggable={false}
           className="aspect-[4/3] w-full select-none object-cover"
         />
         {index === 0 && (
-          <span className="absolute left-2 top-2">
-            <StatusChip tone="accent">Couverture</StatusChip>
+          <span className="absolute start-2 top-2">
+            <StatusChip tone="accent">{t("Couverture")}</StatusChip>
           </span>
         )}
       </div>
       <div className="flex items-center justify-between gap-1 p-2">
         <DragHandle
-          label={`Déplacer la photo ${index + 1}`}
+          label={t("Déplacer la photo {n}", { n: index + 1 })}
           attributes={attributes}
           listeners={listeners}
           setActivatorNodeRef={setActivatorNodeRef}
@@ -315,13 +325,13 @@ function SortablePhoto({
         />
         <div className="flex gap-1">
           <IconButton
-            label={`Recadrer la photo ${index + 1}`}
+            label={t("Recadrer la photo {n}", { n: index + 1 })}
             icon={Crop}
             isDisabled={isDisabled}
             onPress={onCrop}
           />
           <IconButton
-            label={`Retirer la photo ${index + 1}`}
+            label={t("Retirer la photo {n}", { n: index + 1 })}
             icon={Trash2}
             variant="danger-soft"
             isDisabled={isDisabled}

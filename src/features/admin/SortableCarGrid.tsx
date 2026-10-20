@@ -9,7 +9,8 @@ import { CarCard, CarGrid } from "@/components/aks/CarCard";
 import { carImage, formatPrice, salePrice } from "@/lib/cars";
 import { reorderCars } from "@/lib/data";
 import { adminCarsQueryKey, type AdminCar } from "./model";
-import { DragHandle, frenchAnnouncements, frenchInstructions, useSortSensors } from "./sortable";
+import { t } from "./i18n";
+import { DragHandle, dragInstructions, frenchAnnouncements, useSortSensors } from "./sortable";
 import { IconButton, StatusChip } from "./ui";
 
 /**
@@ -83,9 +84,9 @@ export function SortableCarGrid({
       accessibility={{
         announcements: frenchAnnouncements((id) => {
           const car = cars.find((c) => c.id === id);
-          return car ? `${car.brand} ${car.name}` : "Véhicule";
+          return car ? `${car.brand} ${car.name}` : t("Véhicule");
         }),
-        screenReaderInstructions: { draggable: frenchInstructions },
+        screenReaderInstructions: { draggable: dragInstructions() },
       }}
     >
       <SortableContext items={shown.map((car) => car.id)} strategy={rectSortingStrategy}>
@@ -152,7 +153,7 @@ function SortableCard({
         <CompactRow car={car} position={position} onClick={onEdit}>
           {actions}
           <DragHandle
-            label={`Déplacer ${car.brand} ${car.name}`}
+            label={t("Déplacer {name}", { name: `${car.brand} ${car.name}` })}
             attributes={attributes}
             listeners={listeners}
             setActivatorNodeRef={setActivatorNodeRef}
@@ -168,22 +169,22 @@ function SortableCard({
       >
         <CarCard car={car} preview />
       </div>
-      <div className="pointer-events-none absolute left-3 top-12 hidden items-center gap-2 md:flex">
+      <div className="pointer-events-none absolute start-3 top-12 hidden items-center gap-2 md:flex">
         <span className="tabular grid size-7 place-items-center rounded-full bg-black/70 text-xs font-semibold text-white">
           {position}
         </span>
-        {status && <StatusChip tone={car.sold ? "warning" : "default"}>{status}</StatusChip>}
+        {status && <StatusChip tone={car.sold ? "warning" : "default"}>{t(status)}</StatusChip>}
       </div>
-      <div className="absolute bottom-3 right-3 hidden gap-1 md:flex">
+      <div className="absolute bottom-3 end-3 hidden gap-1 md:flex">
         {actions}
         <IconButton
-          label={`Modifier ${car.brand} ${car.name}`}
+          label={t("Modifier {name}", { name: `${car.brand} ${car.name}` })}
           icon={Pencil}
           onPress={onEdit}
           variant="secondary"
         />
         <DragHandle
-          label={`Déplacer ${car.brand} ${car.name}`}
+          label={t("Déplacer {name}", { name: `${car.brand} ${car.name}` })}
           attributes={attributes}
           listeners={listeners}
           setActivatorNodeRef={setActivatorNodeRef}
@@ -229,8 +230,8 @@ function CompactRow({
         </p>
         <p className="truncate font-semibold text-foreground">{car.name}</p>
         <p className="flex items-center gap-1.5 text-sm text-muted">
-          {car.price_on_request || !car.price ? "Prix sur demande" : formatPrice(salePrice(car))}
-          {status && <StatusChip tone={car.sold ? "warning" : "default"}>{status}</StatusChip>}
+          {car.price_on_request || !car.price ? t("Prix sur demande") : formatPrice(salePrice(car))}
+          {status && <StatusChip tone={car.sold ? "warning" : "default"}>{t(status)}</StatusChip>}
         </p>
       </div>
       {children && (
@@ -251,7 +252,7 @@ export function useReorderWithin() {
   const mutation = useMutation({
     mutationFn: (ids: string[]) => reorderCars({ data: { ids } }),
     onError: (e: Error) => toast.danger(e.message),
-    onSuccess: () => toast.success("Ordre enregistré."),
+    onSuccess: () => toast.success(t("Ordre enregistré.")),
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: adminCarsQueryKey }),

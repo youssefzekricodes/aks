@@ -11,6 +11,7 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { GripVertical } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { t } from "./i18n";
 
 /**
  * Mouse: drag after 4 px (clicks still work). Touch: press and hold 200 ms so
@@ -46,7 +47,7 @@ export function DragHandle({
       type="button"
       ref={setActivatorNodeRef}
       aria-label={label}
-      title="Glisser pour déplacer"
+      title={t("Glisser pour déplacer")}
       disabled={isDisabled}
       {...attributes}
       {...handlers}
@@ -66,17 +67,23 @@ export function DragHandle({
   );
 }
 
-/** Screen reader announcements in French. */
+/** Screen reader announcements, in the admin language (French or Arabic). */
 export const frenchAnnouncements = (name: (id: string) => string) => ({
   onDragStart: ({ active }: { active: { id: string | number } }) =>
-    `${name(String(active.id))} saisi.`,
+    t("{name} saisi.", { name: name(String(active.id)) }),
   onDragOver: ({
     active,
     over,
   }: {
     active: { id: string | number };
     over: { id: string | number } | null;
-  }) => (over ? `${name(String(active.id))} au-dessus de ${name(String(over.id))}.` : ""),
+  }) =>
+    over
+      ? t("{name} au-dessus de {other}.", {
+          name: name(String(active.id)),
+          other: name(String(over.id)),
+        })
+      : "",
   onDragEnd: ({
     active,
     over,
@@ -85,11 +92,16 @@ export const frenchAnnouncements = (name: (id: string) => string) => ({
     over: { id: string | number } | null;
   }) =>
     over
-      ? `${name(String(active.id))} déposé à la place de ${name(String(over.id))}.`
-      : "Déplacement annulé.",
+      ? t("{name} déposé à la place de {other}.", {
+          name: name(String(active.id)),
+          other: name(String(over.id)),
+        })
+      : t("Déplacement annulé."),
   onDragCancel: ({ active }: { active: { id: string | number } }) =>
-    `Déplacement de ${name(String(active.id))} annulé.`,
+    t("Déplacement de {name} annulé.", { name: name(String(active.id)) }),
 });
 
 export const frenchInstructions =
   "Pour déplacer, appuyez sur Espace, utilisez les flèches, puis Espace pour déposer ou Échap pour annuler.";
+/** Keyboard instructions for screen readers, in the admin language. */
+export const dragInstructions = () => t(frenchInstructions);

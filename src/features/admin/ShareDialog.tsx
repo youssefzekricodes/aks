@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Button, Modal } from "@heroui/react";
 import { FacebookLogo, InstagramLogo } from "@/components/aks/SocialLogos";
 import type { SocialPlatform } from "@/features/catalog/social";
+import { t } from "./i18n";
 import { plural } from "./model";
 import { socialStatusQuery } from "./SocialCard";
 
@@ -34,12 +35,14 @@ export function ShareDialog({
     <Modal.Backdrop isOpen={isOpen} onOpenChange={(open) => !pending && onOpenChange(open)}>
       <Modal.Container placement="auto">
         <Modal.Dialog className="sm:max-w-md">
-          <Modal.CloseTrigger aria-label="Fermer" />
+          <Modal.CloseTrigger aria-label={t("Fermer")} />
           <Modal.Header>
-            <Modal.Heading>Publier sur les réseaux</Modal.Heading>
+            <Modal.Heading>{t("Publier sur les réseaux")}</Modal.Heading>
             <p className="mt-1 text-sm text-muted">
-              {plural(count, "véhicule", "véhicules")} : une publication avec les photos et la
-              description. Un véhicule déjà publié sur un réseau n’y est pas republié.
+              {t(
+                "{count} : une publication avec les photos et la description. Un véhicule déjà publié sur un réseau n’y est pas republié.",
+                { count: plural(count, "véhicule", "véhicules") },
+              )}
             </p>
           </Modal.Header>
           <Modal.Body className="grid gap-2">
@@ -69,15 +72,17 @@ export function ShareDialog({
                   className="size-4 accent-[var(--accent)]"
                 />
                 <Logo className="size-6" />
-                <span className="flex-1 font-medium text-foreground">{label}</span>
-                {!connected[platform] && <span className="text-xs text-muted">Non connecté</span>}
+                <span className="flex-1 font-medium text-foreground">{t(label)}</span>
+                {!connected[platform] && (
+                  <span className="text-xs text-muted">{t("Non connecté")}</span>
+                )}
               </label>
             ))}
             {!connected.facebook && !connected.instagram && social.data && (
               <p className="text-sm text-muted">
-                Connectez la Page dans{" "}
+                {t("Connectez la Page dans")}{" "}
                 <Link to="/admin/connecteurs" className="font-medium underline">
-                  Connecteurs
+                  {t("Connecteurs")}
                 </Link>
                 .
               </p>
@@ -85,7 +90,7 @@ export function ShareDialog({
           </Modal.Body>
           <Modal.Footer>
             <Button variant="tertiary" isDisabled={pending} onPress={() => onOpenChange(false)}>
-              Annuler
+              {t("Annuler")}
             </Button>
             <Button
               isPending={pending}
@@ -102,7 +107,7 @@ export function ShareDialog({
                 }
               }}
             >
-              Publier
+              {t("Publier")}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

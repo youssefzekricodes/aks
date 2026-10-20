@@ -7,6 +7,7 @@ import { getSession, signIn, signOut } from "@/features/auth/auth.functions";
 import { MfaEnroll, MfaVerify } from "@/features/admin/mfa";
 import { sessionQueryKey, type Factor } from "@/features/admin/model";
 import { PasswordField } from "@/features/admin/password";
+import { setLocale, t, useLocale, type Locale } from "@/features/admin/i18n";
 import { hideSplash } from "@/lib/splash";
 import logo from "@/assets/aks-logo.png.asset.json";
 
@@ -37,12 +38,28 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const LANGUAGES: [Locale, string][] = [
+  ["fr", "Français"],
+  ["ar", "العربية"],
+];
+
 function AuthPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { pendingMfa } = Route.useRouteContext();
   // Signed out in the admin app: the login page replaces the launch splash.
   useEffect(() => hideSplash(), []);
+  // Outside AdminShell: this page sets the reading direction itself.
+  const locale = useLocale();
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dir = locale === "ar" ? "rtl" : "ltr";
+    root.lang = locale === "ar" ? "ar" : "fr";
+    return () => {
+      root.dir = "ltr";
+      root.lang = "fr";
+    };
+  }, [locale]);
   const [step, setStep] = useState<Step>(() =>
     pendingMfa
       ? { kind: "mfa", mfa: pendingMfa.mfa, factors: pendingMfa.factors }
@@ -67,7 +84,7 @@ function AuthPage() {
   }, [step.kind]);
 
   async function enterAdmin() {
-    toast.success("Connexion réussie");
+    toast.success(t("Connexion réussie"));
     // Drop any session cached by a previous visit so the admin reads the new one.
     queryClient.removeQueries({ queryKey: sessionQueryKey });
     await navigate({ to: "/admin" });
@@ -87,7 +104,7 @@ function AuthPage() {
       setPassword("");
       setStep({ kind: "mfa", mfa: result.mfa, factors: result.factors });
     } catch (failure) {
-      const message = failure instanceof Error ? failure.message : "Connexion impossible.";
+      const message = failure instanceof Error ? failure.message : t("Connexion impossible.");
       setError(message);
       toast.danger(message);
     } finally {
@@ -100,7 +117,7 @@ function AuthPage() {
     try {
       await signOut();
     } catch {
-      toast.danger("Déconnexion impossible. Veuillez réessayer.");
+      toast.danger(t("Déconnexion impossible. Veuillez réessayer."));
       return;
     } finally {
       setSigningOut(false);
@@ -114,7 +131,7 @@ function AuthPage() {
       <main className="w-full max-w-sm">
         <Link
           to="/"
-          aria-label="Auto Kontor Sfax — retour au site"
+          aria-label={t("Auto Kontor Sfax — retour au site")}
           // Dark plate keeps the white-and-red logo in its original colours.
           className="mx-auto flex w-fit items-center rounded-lg bg-[oklch(0.17_0.004_286)] px-4 py-2 outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
@@ -131,20 +148,20 @@ function AuthPage() {
           aria-labelledby="auth-title"
           className="mt-8 rounded-2xl border border-separator bg-surface p-6 sm:p-8"
         >
-          <p className="text-xs font-medium text-muted">Auto Kontor Sfax · Administration</p>
+          <p className="text-xs font-medium text-muted">{t("Auto Kontor Sfax · Administration")}</p>
           <h1
             id="auth-title"
             ref={heading}
             tabIndex={-1}
             className="mt-1 text-xl font-semibold text-foreground outline-none"
           >
-            {step.kind === "password" ? "Connexion" : "Double authentification"}
+            {step.kind === "password" ? t("Connexion") : t("Double authentification")}
           </h1>
 
           {step.kind === "password" ? (
             <>
               <p className="mt-1 text-sm text-muted">
-                Connectez-vous avec votre compte administrateur.
+                {t("Connectez-vous avec votre compte administrateur.")}
               </p>
 
               <Form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -165,18 +182,18 @@ function AuthPage() {
                   onChange={setEmail}
                   fullWidth
                 >
-                  <Label>E-mail</Label>
-                  <Input />
+                  <Label>{t("E-mail")}</Label>
+                  <Input dir="ltr" />
                 </TextField>
                 <PasswordField
-                  label="Mot de passe"
+                  label={t("Mot de passe")}
                   name="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={setPassword}
                 />
                 <Button type="submit" fullWidth isPending={pending} className="mt-2">
-                  {pending ? "Connexion…" : "Se connecter"}
+                  {pending ? t("Connexion…") : t("Se connecter")}
                 </Button>
               </Form>
             </>
@@ -184,8 +201,8 @@ function AuthPage() {
             <>
               <p className="mt-1 text-sm text-muted">
                 {step.mfa === "verify"
-                  ? "Confirmez votre identité avec votre deuxième méthode de connexion."
-                  : "Configurez une deuxième méthode de connexion pour protéger votre compte."}
+                  ? t("Confirmez votre identité avec votre deuxième méthode de connexion.")
+                  : t("Configurez une deuxième méthode de connexion pour protéger votre compte.")}
               </p>
               <div className="mt-6">
                 {step.mfa === "verify" ? (
@@ -201,7 +218,7 @@ function AuthPage() {
                   isPending={signingOut}
                   onPress={() => void leave()}
                 >
-                  Se déconnecter
+                  {t("Se déconnecter")}
                 </Button>
               </div>
             </>
@@ -212,9 +229,30 @@ function AuthPage() {
           to="/"
           className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-sm text-sm text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <ArrowLeft className="size-4" aria-hidden />
-          Retour au site
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
+          {t("Retour au site")}
         </Link>
+
+        <div
+          role="group"
+          aria-label={t("Langue")}
+          className="mt-3 flex items-center justify-center gap-3 text-sm text-muted"
+        >
+          {LANGUAGES.map(([value, name]) => (
+            <button
+              key={value}
+              type="button"
+              lang={value}
+              aria-pressed={locale === value}
+              onClick={() => setLocale(value)}
+              className={`rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus ${
+                locale === value ? "font-semibold text-foreground" : ""
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </main>
     </div>
   );

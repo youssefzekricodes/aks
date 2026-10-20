@@ -5,6 +5,7 @@ import { Car, CheckCircle2, Inbox, Phone, RotateCcw } from "@/components/icons";
 import { WhatsAppLogo } from "@/components/aks/SocialLogos";
 import { carImage } from "@/lib/cars";
 import type { Lead } from "@/lib/data";
+import { formatDate, t, useLocale } from "./i18n";
 import { adminCarsQuery } from "./model";
 import { RowMenu, type RowAction } from "./ui";
 import { fadeIn, LeadCardsSkeleton } from "./skeletons";
@@ -18,12 +19,8 @@ import { fadeIn, LeadCardsSkeleton } from "./skeletons";
 export type LeadFilter = "open" | "handled" | "all";
 export type Period = "all" | "7" | "30";
 
-const time = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
-const dayLabel = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+const DAY_LABEL: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" };
 
 /** Calm, distinct tints for the initials (picked from the name, so stable). */
 const TINTS = [
@@ -48,9 +45,9 @@ const initials = (name: string) =>
 function groupTitle(date: Date) {
   const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((start(new Date()) - start(date)) / 86_400_000);
-  if (days === 0) return "Aujourd’hui";
-  if (days === 1) return "Hier";
-  const label = dayLabel.format(date);
+  if (days === 0) return t("Aujourd’hui");
+  if (days === 1) return t("Hier");
+  const label = formatDate(date, DAY_LABEL);
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
@@ -89,6 +86,7 @@ export function LeadsMobile({
   onToggle: (lead: Lead) => void;
   onReset: () => void;
 }) {
+  const locale = useLocale();
   const cars = useQuery(adminCarsQuery);
   const bySlug = useMemo(
     () => new Map((cars.data ?? []).map((car) => [car.slug, car])),
@@ -109,7 +107,9 @@ export function LeadsMobile({
       else out.push({ title, leads: [lead] });
     }
     return out;
-  }, [filtered]);
+    // The day titles follow the language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, locale]);
 
   const tabs: { id: LeadFilter; label: string }[] = [
     { id: "open", label: "À traiter" },
@@ -125,18 +125,22 @@ export function LeadsMobile({
   return (
     <div className="grid gap-4">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Demandes</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Demandes")}</h1>
         <p className="text-sm text-muted">
           {isPending
-            ? "Chargement…"
+            ? t("Chargement…")
             : counts.open
-              ? `${counts.open} en attente de réponse`
-              : "Toutes les demandes sont traitées"}
+              ? t("{count} en attente de réponse", { count: String(counts.open) })
+              : t("Toutes les demandes sont traitées")}
         </p>
       </header>
 
       {/* Status: segmented control with counts. */}
-      <div role="tablist" aria-label="Statut" className="admin-card grid grid-cols-3 gap-1 p-1">
+      <div
+        role="tablist"
+        aria-label={t("Statut")}
+        className="admin-card grid grid-cols-3 gap-1 p-1"
+      >
         {tabs.map((tab) => {
           const active = filter === tab.id;
           return (
@@ -150,7 +154,7 @@ export function LeadsMobile({
                 active ? "bg-foreground text-background" : "text-muted active:bg-surface-secondary"
               }`}
             >
-              {tab.label}
+              {t(tab.label)}
               <span
                 className={`min-w-5 rounded-full px-1.5 text-[11px] font-semibold leading-5 tabular-nums ${
                   active
@@ -167,15 +171,20 @@ export function LeadsMobile({
         })}
       </div>
 
-      <SearchField value={search} onChange={onSearch} aria-label="Rechercher une demande" fullWidth>
+      <SearchField
+        value={search}
+        onChange={onSearch}
+        aria-label={t("Rechercher une demande")}
+        fullWidth
+      >
         <SearchField.Group className="h-12 rounded-full bg-surface px-1 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
           <SearchField.SearchIcon />
-          <SearchField.Input placeholder="Nom, téléphone ou message…" />
+          <SearchField.Input placeholder={t("Nom, téléphone ou message…")} />
           <SearchField.ClearButton />
         </SearchField.Group>
       </SearchField>
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="group" aria-label="Période">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="group" aria-label={t("Période")}>
         {periods.map((p) => (
           <button
             key={p.id}
@@ -188,7 +197,7 @@ export function LeadsMobile({
                 : "bg-surface text-muted shadow-[0_1px_2px_rgb(15_23_42/0.05)]"
             }`}
           >
-            {p.label}
+            {t(p.label)}
           </button>
         ))}
       </div>
@@ -203,16 +212,20 @@ export function LeadsMobile({
             <Inbox className="size-6" aria-hidden />
           </span>
           <p className="mt-1 font-semibold text-foreground">
-            {all.length === 0
-              ? "Aucune demande reçue pour l’instant"
-              : filter === "open" && !search && period === "all"
-                ? "Tout est traité"
-                : "Aucune demande ne correspond"}
+            {t(
+              all.length === 0
+                ? "Aucune demande reçue pour l’instant"
+                : filter === "open" && !search && period === "all"
+                  ? "Tout est traité"
+                  : "Aucune demande ne correspond",
+            )}
           </p>
           <p className="text-sm text-muted">
-            {all.length === 0
-              ? "Les messages du formulaire de contact apparaîtront ici."
-              : "Changez de statut, de recherche ou de période."}
+            {t(
+              all.length === 0
+                ? "Les messages du formulaire de contact apparaîtront ici."
+                : "Changez de statut, de recherche ou de période.",
+            )}
           </p>
           {all.length > 0 && (
             <button
@@ -220,7 +233,7 @@ export function LeadsMobile({
               onClick={onReset}
               className="mt-2 h-10 rounded-full bg-surface-secondary px-4 text-sm font-medium text-foreground active:bg-[oklch(0.95_0.008_285)]"
             >
-              Afficher toutes les demandes
+              {t("Afficher toutes les demandes")}
             </button>
           )}
         </div>
@@ -284,20 +297,27 @@ function LeadItem({
           <p className="flex items-center gap-1.5">
             <span className="truncate font-semibold text-foreground">{lead.name}</span>
             {lead.handled && (
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-label="Traitée" />
+              <CheckCircle2
+                className="size-4 shrink-0 text-emerald-600"
+                aria-label={t("Traitée")}
+              />
             )}
           </p>
           <p className="truncate text-xs text-muted">
-            <time dateTime={lead.created_at}>{time.format(new Date(lead.created_at))}</time>
+            <time dateTime={lead.created_at}>{formatDate(new Date(lead.created_at), TIME)}</time>
             {" · "}
-            {lead.phone}
+            <bdi dir="ltr">{lead.phone}</bdi>
           </p>
         </div>
         {pending ? (
-          <Spinner size="sm" aria-label="Mise à jour" />
+          <Spinner size="sm" aria-label={t("Mise à jour")} />
         ) : (
           <div className="-me-1">
-            <RowMenu label={`Actions pour la demande de ${lead.name}`} actions={menu} large />
+            <RowMenu
+              label={t("Actions pour la demande de {name}", { name: lead.name })}
+              actions={menu}
+              large
+            />
           </div>
         )}
       </div>
@@ -323,18 +343,18 @@ function LeadItem({
           )}
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] font-medium uppercase tracking-wide text-muted">
-              Véhicule demandé
+              {t("Véhicule demandé")}
             </span>
             <span className="block truncate text-sm font-semibold text-foreground">
               {car ? `${car.brand} ${car.name}` : lead.car_slug}
             </span>
           </span>
-          <span className="sr-only">(nouvel onglet)</span>
+          <span className="sr-only">{t("(nouvel onglet)")}</span>
         </a>
       )}
 
       {message && (
-        <div className="rounded-2xl rounded-tl-md bg-surface-secondary px-3.5 py-2.5">
+        <div className="rounded-2xl rounded-ss-md bg-surface-secondary px-3.5 py-2.5">
           <p
             id={`lead-m-${lead.id}`}
             className={`text-sm leading-relaxed text-foreground ${expanded ? "whitespace-pre-line" : "line-clamp-3"}`}
@@ -349,7 +369,7 @@ function LeadItem({
               onClick={() => setExpanded((v) => !v)}
               className="mt-1 text-sm font-medium text-accent"
             >
-              {expanded ? "Réduire" : "Lire la suite"}
+              {t(expanded ? "Réduire" : "Lire la suite")}
             </button>
           )}
         </div>
@@ -358,7 +378,7 @@ function LeadItem({
       <div className="flex items-center gap-2">
         <a
           href={tel}
-          aria-label={`Appeler ${lead.name}`}
+          aria-label={t("Appeler {name}", { name: lead.name })}
           className="grid size-11 shrink-0 place-items-center rounded-full bg-sky-50 text-sky-700 outline-none active:bg-sky-100 focus-visible:ring-2 focus-visible:ring-focus"
         >
           <Phone className="size-5" aria-hidden />
@@ -367,7 +387,7 @@ function LeadItem({
           href={whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Écrire à ${lead.name} sur WhatsApp`}
+          aria-label={t("Écrire à {name} sur WhatsApp", { name: lead.name })}
           className="grid size-11 shrink-0 place-items-center rounded-full bg-[#25D366]/12 outline-none active:bg-[#25D366]/20 focus-visible:ring-2 focus-visible:ring-focus"
         >
           <WhatsAppLogo className="size-5" />
@@ -387,7 +407,7 @@ function LeadItem({
           ) : (
             <CheckCircle2 className="size-4" aria-hidden />
           )}
-          {lead.handled ? "Remettre à traiter" : "Marquer traitée"}
+          {t(lead.handled ? "Remettre à traiter" : "Marquer traitée")}
         </button>
       </div>
     </li>

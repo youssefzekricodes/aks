@@ -24,6 +24,7 @@ import {
 } from "@/features/auth/auth.functions";
 import { CopyButton } from "./password";
 import { errorMessage, isE164, toE164, type Factor } from "./model";
+import { t } from "./i18n";
 
 /*
  * Two-factor authentication flows shared by the login page (/auth) and the
@@ -79,8 +80,8 @@ function InlineError({ message }: { message: string }) {
 function BackButton({ onPress, isDisabled }: { onPress: () => void; isDisabled?: boolean }) {
   return (
     <Button variant="ghost" size="sm" onPress={onPress} isDisabled={isDisabled ?? false}>
-      <ArrowLeft className="size-4" aria-hidden />
-      Retour
+      <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
+      {t("Retour")}
     </Button>
   );
 }
@@ -125,7 +126,9 @@ export function CodeChallenge({
         setCooldown(EMAIL_RESEND_COOLDOWN);
         if (result.alreadySent)
           setNotice(
-            "Un code vous a été envoyé il y a moins d’une minute : utilisez celui du dernier e-mail reçu.",
+            t(
+              "Un code vous a été envoyé il y a moins d’une minute : utilisez celui du dernier e-mail reçu.",
+            ),
           );
         else rememberEmailSend(Date.now());
       } else {
@@ -134,7 +137,7 @@ export function CodeChallenge({
         setCooldown(RESEND_COOLDOWN);
       }
     } catch (failure) {
-      setError(errorMessage(failure, "Envoi du code impossible."));
+      setError(errorMessage(failure, t("Envoi du code impossible.")));
     } finally {
       setSending(false);
     }
@@ -150,7 +153,7 @@ export function CodeChallenge({
       // A code sent moments ago is still valid: do not replace it.
       setChallengeId(EMAIL_SENT);
       setCooldown(Math.max(0, Math.ceil((EMAIL_RESEND_COOLDOWN * 1000 - age) / 1000)));
-      setNotice("Un code vous a déjà été envoyé : utilisez celui du dernier e-mail reçu.");
+      setNotice(t("Un code vous a déjà été envoyé : utilisez celui du dernier e-mail reçu."));
       return;
     }
     void send();
@@ -185,11 +188,11 @@ export function CodeChallenge({
       const id = isPhone
         ? challengeId
         : (await mfaChallenge({ data: { factorId: factor.id } })).challengeId;
-      if (!id) throw new Error("Demandez d’abord l’envoi d’un code.");
+      if (!id) throw new Error(t("Demandez d’abord l’envoi d’un code."));
       await mfaVerify({ data: { factorId: factor.id, challengeId: id, code: value } });
       await onVerified();
     } catch (failure) {
-      setError(errorMessage(failure, "Vérification impossible."));
+      setError(errorMessage(failure, t("Vérification impossible.")));
       setCode("");
       input.current?.focus();
     } finally {
@@ -204,7 +207,6 @@ export function CodeChallenge({
   }
 
   const destination = factor.label.replace(/^(SMS|E-mail)\s*/, "");
-  const by = isEmail ? "par e-mail à" : "au";
 
   return (
     <Form onSubmit={onSubmit} className="grid gap-4">
@@ -218,19 +220,31 @@ export function CodeChallenge({
         </Alert>
       )}
       <div className="grid min-w-0 gap-2">
-        <Label id={labelId}>Code de vérification</Label>
+        <Label id={labelId}>{t("Code de vérification")}</Label>
         <p id={descriptionId} className="text-sm text-muted" aria-live="polite">
           {isPhone
             ? sending
-              ? `Envoi du code ${by} ${destination}…`
+              ? isEmail
+                ? t("Envoi du code par e-mail à {destination}…", { destination })
+                : t("Envoi du code au {destination}…", { destination })
               : challengeId
-                ? `Code envoyé ${by} ${destination}.${isEmail ? " Seul le dernier code reçu est valable." : ""}`
-                : `Le code sera envoyé ${isEmail ? "par e-mail à" : "par SMS au"} ${destination}.`
-            : "Saisissez le code à 6 chiffres affiché dans votre application d’authentification."}
+                ? isEmail
+                  ? t(
+                      "Code envoyé par e-mail à {destination}. Seul le dernier code reçu est valable.",
+                      { destination },
+                    )
+                  : t("Code envoyé au {destination}.", { destination })
+                : isEmail
+                  ? t("Le code sera envoyé par e-mail à {destination}.", { destination })
+                  : t("Le code sera envoyé par SMS au {destination}.", { destination })
+            : t(
+                "Saisissez le code à 6 chiffres affiché dans votre application d’authentification.",
+              )}
         </p>
         <InputOTP
           // Boxes share the card width (8 fixed-size boxes would overflow it).
           className="min-w-0"
+          dir="ltr"
           ref={input}
           maxLength={digits}
           pattern={REGEXP_ONLY_DIGITS}
@@ -263,19 +277,21 @@ export function CodeChallenge({
       </div>
       {isPhone && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <span className="text-muted">Pas reçu ?</span>
+          <span className="text-muted">{t("Pas reçu ?")}</span>
           <Button
             variant="ghost"
             size="sm"
             isDisabled={sending || cooldown > 0 || verifying}
             onPress={() => void send()}
           >
-            {cooldown > 0 ? `Renvoyer le code (${cooldown} s)` : "Renvoyer le code"}
+            {cooldown > 0
+              ? t("Renvoyer le code ({seconds} s)", { seconds: cooldown })
+              : t("Renvoyer le code")}
           </Button>
         </div>
       )}
       <Button type="submit" fullWidth isPending={verifying} isDisabled={code.length !== digits}>
-        {verifying ? "Vérification…" : "Vérifier"}
+        {verifying ? t("Vérification…") : t("Vérifier")}
       </Button>
     </Form>
   );
@@ -295,7 +311,7 @@ export function MfaVerify({
   );
 
   if (!factors.length)
-    return <InlineError message="Aucune méthode de double authentification trouvée." />;
+    return <InlineError message={t("Aucune méthode de double authentification trouvée.")} />;
 
   if (!active)
     return (
@@ -307,7 +323,7 @@ export function MfaVerify({
         }}
       >
         <RadioGroup value={selected} onChange={setSelected} name="factor">
-          <Label>Méthode de vérification</Label>
+          <Label>{t("Méthode de vérification")}</Label>
           {factors.map((factor) => {
             const Icon = FACTOR_ICONS[factor.type];
             return (
@@ -326,7 +342,7 @@ export function MfaVerify({
           })}
         </RadioGroup>
         <Button type="submit" fullWidth>
-          Continuer
+          {t("Continuer")}
         </Button>
       </Form>
     );
@@ -341,7 +357,7 @@ export function MfaVerify({
           className="justify-self-center"
           onPress={() => setActive(null)}
         >
-          Utiliser une autre méthode
+          {t("Utiliser une autre méthode")}
         </Button>
       )}
     </div>
@@ -379,7 +395,7 @@ export function MfaEnroll({
       const result = await mfaEnroll({ data: { type: "totp" } });
       setState({ stage: "totp", ...result });
     } catch (failure) {
-      setError(errorMessage(failure, "Activation impossible."));
+      setError(errorMessage(failure, t("Activation impossible.")));
     } finally {
       setPending(false);
     }
@@ -395,7 +411,7 @@ export function MfaEnroll({
       const result = await mfaEnroll({ data: { type: "phone", phone: number } });
       setState({ stage: "phone-code", factorId: result.factorId, phone: number });
     } catch (failure) {
-      setError(errorMessage(failure, "Activation impossible."));
+      setError(errorMessage(failure, t("Activation impossible.")));
     } finally {
       setPending(false);
     }
@@ -423,10 +439,11 @@ export function MfaEnroll({
           <Alert status="accent">
             <Alert.Indicator />
             <Alert.Content>
-              <Alert.Title>Étape obligatoire</Alert.Title>
+              <Alert.Title>{t("Étape obligatoire")}</Alert.Title>
               <Alert.Description>
-                La double authentification est obligatoire pour les super administrateurs.
-                Configurez une méthode pour accéder à l’administration.
+                {t(
+                  "La double authentification est obligatoire pour les super administrateurs. Configurez une méthode pour accéder à l’administration.",
+                )}
               </Alert.Description>
             </Alert.Content>
           </Alert>
@@ -436,16 +453,18 @@ export function MfaEnroll({
           onChange={(value) => setMethod(value === "phone" ? "phone" : "totp")}
           name="mfa-method"
         >
-          <Label>Méthode</Label>
+          <Label>{t("Méthode")}</Label>
           <Radio value="totp">
             <Radio.Content>
               <Radio.Control>
                 <Radio.Indicator />
               </Radio.Control>
-              Application d’authentification (recommandé)
+              {t("Application d’authentification (recommandé)")}
             </Radio.Content>
             <Description>
-              Google Authenticator, Microsoft Authenticator, 1Password… Fonctionne hors ligne.
+              {t(
+                "Google Authenticator, Microsoft Authenticator, 1Password… Fonctionne hors ligne.",
+              )}
             </Description>
           </Radio>
           <Radio value="phone">
@@ -455,11 +474,13 @@ export function MfaEnroll({
               </Radio.Control>
               SMS
             </Radio.Content>
-            <Description>Un code est envoyé sur votre téléphone à chaque connexion.</Description>
+            <Description>
+              {t("Un code est envoyé sur votre téléphone à chaque connexion.")}
+            </Description>
           </Radio>
         </RadioGroup>
         <Button type="submit" fullWidth>
-          Continuer
+          {t("Continuer")}
         </Button>
       </Form>
     );
@@ -471,18 +492,18 @@ export function MfaEnroll({
         {pending ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
             <Spinner size="sm" />
-            Préparation du QR code…
+            {t("Préparation du QR code…")}
           </div>
         ) : state.factorId && state.qrCode ? (
           <>
             <ol className="grid list-decimal gap-1 ps-5 text-sm text-muted">
-              <li>Ouvrez votre application d’authentification.</li>
-              <li>Scannez le QR code ou saisissez la clé.</li>
-              <li>Entrez le code à 6 chiffres affiché.</li>
+              <li>{t("Ouvrez votre application d’authentification.")}</li>
+              <li>{t("Scannez le QR code ou saisissez la clé.")}</li>
+              <li>{t("Entrez le code à 6 chiffres affiché.")}</li>
             </ol>
             <img
               src={state.qrCode}
-              alt="QR code à scanner avec votre application d’authentification"
+              alt={t("QR code à scanner avec votre application d’authentification")}
               width={180}
               height={180}
               className="mx-auto size-[180px] rounded-lg border border-separator bg-white p-2"
@@ -490,16 +511,17 @@ export function MfaEnroll({
             {state.secret && (
               <div className="grid gap-1">
                 <p className="text-xs text-muted" id="totp-secret-label">
-                  Clé de configuration
+                  {t("Clé de configuration")}
                 </p>
                 <div className="flex items-center gap-1 rounded-xl border border-separator bg-surface-secondary ps-3 pe-1">
                   <code
                     aria-labelledby="totp-secret-label"
+                    dir="ltr"
                     className="min-w-0 flex-1 break-all py-2 font-mono text-sm text-foreground"
                   >
                     {state.secret.replace(/(.{4})(?=.)/g, "$1 ")}
                   </code>
-                  <CopyButton value={state.secret} label="Copier la clé" />
+                  <CopyButton value={state.secret} label={t("Copier la clé")} />
                 </div>
               </div>
             )}
@@ -510,7 +532,7 @@ export function MfaEnroll({
           </>
         ) : (
           <Button variant="secondary" onPress={() => void startTotp()}>
-            Réessayer
+            {t("Réessayer")}
           </Button>
         )}
         <BackButton onPress={back} isDisabled={pending} />
@@ -538,15 +560,15 @@ export function MfaEnroll({
           isInvalid={phoneTouched && !phoneValid}
           fullWidth
         >
-          <Label>Numéro de téléphone</Label>
-          <Input inputMode="tel" placeholder="+216 52 144 869" />
-          <Description>Format international, par exemple +216 52 144 869.</Description>
+          <Label>{t("Numéro de téléphone")}</Label>
+          <Input inputMode="tel" dir="ltr" placeholder="+216 52 144 869" />
+          <Description>{t("Format international, par exemple +216 52 144 869.")}</Description>
           <FieldError>
-            Numéro invalide : indicatif du pays puis le numéro, par exemple +216 52 144 869.
+            {t("Numéro invalide : indicatif du pays puis le numéro, par exemple +216 52 144 869.")}
           </FieldError>
         </TextField>
         <Button type="submit" fullWidth isPending={pending}>
-          {pending ? "Envoi…" : "Envoyer le code"}
+          {pending ? t("Envoi…") : t("Envoyer le code")}
         </Button>
         <BackButton onPress={back} isDisabled={pending} />
       </Form>

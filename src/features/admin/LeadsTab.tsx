@@ -23,6 +23,7 @@ import {
 } from "@/components/icons";
 import { deleteLead, setLeadHandled, type Lead } from "@/lib/data";
 import { useDialogTarget } from "./hooks";
+import { t } from "./i18n";
 import { LeadsMobile, type Period } from "./LeadsMobile";
 import { dateTimeFormat, leadsQueryOptions, normalize, plural } from "./model";
 import {
@@ -83,7 +84,7 @@ export function LeadsTab() {
       toast.danger(e.message);
     },
     onSuccess: (_, { handled: done }) =>
-      toast.success(done ? "Demande marquée comme traitée." : "Demande remise à traiter."),
+      toast.success(t(done ? "Demande marquée comme traitée." : "Demande remise à traiter.")),
     onSettled: (_data, _error, { id }) => {
       setPending((current) => {
         const next = new Set(current);
@@ -97,7 +98,7 @@ export function LeadsTab() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteLead({ data: { id } }),
     onSuccess: () => {
-      toast.success("Demande supprimée.");
+      toast.success(t("Demande supprimée."));
       return queryClient.invalidateQueries({ queryKey: key });
     },
     onError: (e: Error) => toast.danger(e.message),
@@ -139,18 +140,18 @@ export function LeadsTab() {
     all.length === 0 ? (
       <EmptyState
         icon={Inbox}
-        title="Aucune demande reçue pour l’instant."
-        description="Les messages du formulaire de contact apparaîtront ici."
+        title={t("Aucune demande reçue pour l’instant.")}
+        description={t("Les messages du formulaire de contact apparaîtront ici.")}
       />
     ) : (
       <EmptyState
         icon={Inbox}
-        title={!filtersActive ? "Aucune demande à traiter." : "Aucune demande ne correspond."}
-        description={
+        title={t(!filtersActive ? "Aucune demande à traiter." : "Aucune demande ne correspond.")}
+        description={t(
           !filtersActive
             ? "Toutes les demandes ont été traitées."
-            : "Modifiez la recherche, le statut ou la période."
-        }
+            : "Modifiez la recherche, le statut ou la période.",
+        )}
         action={
           <Button
             variant="secondary"
@@ -160,7 +161,7 @@ export function LeadsTab() {
               setFilter("all");
             }}
           >
-            Afficher toutes les demandes
+            {t("Afficher toutes les demandes")}
           </Button>
         }
       />
@@ -187,7 +188,7 @@ export function LeadsTab() {
           error={
             leads.isError ? (
               <LoadError
-                message="Impossible de charger les demandes."
+                message={t("Impossible de charger les demandes.")}
                 onRetry={() => leads.refetch()}
               />
             ) : null
@@ -224,15 +225,17 @@ export function LeadsTab() {
 
       <div className="grid gap-6 max-lg:hidden">
         <PageHeader
-          title="Demandes"
+          title={t("Demandes")}
           description={
             leads.data
-              ? `Messages envoyés depuis le formulaire du site · ${plural(openCount, "demande à traiter", "demandes à traiter")}`
-              : "Messages envoyés depuis le formulaire du site."
+              ? t("Messages envoyés depuis le formulaire du site · {count}", {
+                  count: plural(openCount, "demande à traiter", "demandes à traiter"),
+                })
+              : t("Messages envoyés depuis le formulaire du site.")
           }
         />
 
-        <Toolbar label="Filtrer les demandes">
+        <Toolbar label={t("Filtrer les demandes")}>
           <SearchField
             value={search}
             onChange={(value) => {
@@ -242,17 +245,17 @@ export function LeadsTab() {
             className="min-w-0 flex-1 basis-64"
             fullWidth
           >
-            <Label>Rechercher</Label>
+            <Label>{t("Rechercher")}</Label>
             <SearchField.Group>
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Nom, téléphone ou message…" />
+              <SearchField.Input placeholder={t("Nom, téléphone ou message…")} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
           <SelectField
-            label="Statut"
+            label={t("Statut")}
             value={filter}
-            options={FILTERS}
+            options={FILTERS.map((option) => ({ ...option, label: t(option.label) }))}
             onChange={(value) => {
               setFilter(value as Filter);
               setPage(1);
@@ -268,7 +271,7 @@ export function LeadsTab() {
             maxValue={today(tz)}
             className="w-full sm:w-80"
           >
-            <Label>Reçues entre le</Label>
+            <Label>{t("Reçues entre le")}</Label>
             <DateField.Group fullWidth>
               <DateField.Input slot="start">
                 {(segment) => <DateField.Segment segment={segment} />}
@@ -278,13 +281,13 @@ export function LeadsTab() {
                 {(segment) => <DateField.Segment segment={segment} />}
               </DateField.Input>
               <DateField.Suffix>
-                <DateRangePicker.Trigger aria-label="Choisir les dates">
+                <DateRangePicker.Trigger aria-label={t("Choisir les dates")}>
                   <DateRangePicker.TriggerIndicator />
                 </DateRangePicker.Trigger>
               </DateField.Suffix>
             </DateField.Group>
             <DateRangePicker.Popover>
-              <RangeCalendar aria-label="Période de réception">
+              <RangeCalendar aria-label={t("Période de réception")}>
                 <RangeCalendar.Header>
                   <RangeCalendar.YearPickerTrigger>
                     <RangeCalendar.YearPickerTriggerHeading />
@@ -311,31 +314,35 @@ export function LeadsTab() {
           </DateRangePicker>
           {filtersActive && (
             <Button variant="tertiary" onPress={resetFilters}>
-              Réinitialiser
+              {t("Réinitialiser")}
             </Button>
           )}
         </Toolbar>
 
         {leads.isError ? (
           <LoadError
-            message="Impossible de charger les demandes."
+            message={t("Impossible de charger les demandes.")}
             onRetry={() => leads.refetch()}
           />
         ) : leads.isPending ? (
-          <TableSkeleton label="Demandes" columns={COLUMNS} minWidth="min-w-[880px]" />
+          <TableSkeleton
+            label={t("Demandes")}
+            columns={COLUMNS.map((column) => (column ? t(column) : column))}
+            minWidth="min-w-[880px]"
+          />
         ) : (
           <>
             <Table>
               <Table.ScrollContainer>
-                <Table.Content aria-label="Demandes de contact" className="min-w-[880px]">
+                <Table.Content aria-label={t("Demandes de contact")} className="min-w-[880px]">
                   <Table.Header>
-                    <Table.Column className="w-40">Reçue le</Table.Column>
-                    <Table.Column isRowHeader>Contact</Table.Column>
-                    <Table.Column>Véhicule</Table.Column>
-                    <Table.Column className="w-80">Message</Table.Column>
-                    <Table.Column>Statut</Table.Column>
+                    <Table.Column className="w-40">{t("Reçue le")}</Table.Column>
+                    <Table.Column isRowHeader>{t("Contact")}</Table.Column>
+                    <Table.Column>{t("Véhicule")}</Table.Column>
+                    <Table.Column className="w-80">{t("Message")}</Table.Column>
+                    <Table.Column>{t("Statut")}</Table.Column>
                     <Table.Column className="w-14">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t("Actions")}</span>
                     </Table.Column>
                   </Table.Header>
                   <Table.Body renderEmptyState={() => emptyState}>
@@ -357,7 +364,11 @@ export function LeadsTab() {
                 page={current}
                 pageCount={pageCount}
                 onChange={setPage}
-                summary={`${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, filtered.length)} sur ${plural(filtered.length, "demande", "demandes")}`}
+                summary={t("{from}–{to} sur {total}", {
+                  from: String((current - 1) * PAGE_SIZE + 1),
+                  to: String(Math.min(current * PAGE_SIZE, filtered.length)),
+                  total: plural(filtered.length, "demande", "demandes"),
+                })}
               />
             )}
           </>
@@ -367,13 +378,13 @@ export function LeadsTab() {
       <ConfirmDialog
         isOpen={deletion.isOpen}
         onOpenChange={deletion.onOpenChange}
-        title="Supprimer cette demande ?"
-        confirmLabel="Supprimer"
+        title={t("Supprimer cette demande ?")}
+        confirmLabel={t("Supprimer")}
         onConfirm={() => deletion.target && remove.mutateAsync(deletion.target.id)}
       >
         <p>
-          La demande de <strong>{deletion.target?.name}</strong> sera définitivement supprimée.
-          Cette action est irréversible.
+          {t("La demande de")} <strong>{deletion.target?.name}</strong>{" "}
+          {t("sera définitivement supprimée. Cette action est irréversible.")}
         </p>
       </ConfirmDialog>
     </>
@@ -403,7 +414,7 @@ function LeadRow({
       <Table.Cell>
         <p className="font-medium text-foreground">{lead.name}</p>
         <a href={tel} className="block text-sm text-accent hover:underline">
-          {lead.phone}
+          <bdi dir="ltr">{lead.phone}</bdi>
         </a>
         {lead.email && (
           <a
@@ -446,7 +457,7 @@ function LeadRow({
                 aria-controls={`lead-message-${lead.id}`}
                 onPress={() => setExpanded((v) => !v)}
               >
-                {expanded ? "Réduire" : "Lire la suite"}
+                {t(expanded ? "Réduire" : "Lire la suite")}
               </Button>
             )}
           </div>
@@ -457,14 +468,14 @@ function LeadRow({
       <Table.Cell>
         <span className="inline-flex items-center gap-2">
           <StatusChip tone={lead.handled ? "success" : "warning"}>
-            {lead.handled ? "Traitée" : "À traiter"}
+            {t(lead.handled ? "Traitée" : "À traiter")}
           </StatusChip>
-          {pending && <Spinner size="sm" aria-label="Mise à jour du statut" />}
+          {pending && <Spinner size="sm" aria-label={t("Mise à jour du statut")} />}
         </span>
       </Table.Cell>
       <Table.Cell className="text-end">
         <RowMenu
-          label={`Actions pour la demande de ${lead.name}`}
+          label={t("Actions pour la demande de {name}", { name: lead.name })}
           actions={leadMenu(lead, onToggle, onDelete)}
         />
       </Table.Cell>
@@ -479,11 +490,11 @@ function leadMenu(lead: Lead, onToggle: () => void, onDelete: () => void): (RowA
   return [
     {
       id: "toggle",
-      label: lead.handled ? "Marquer à traiter" : "Marquer traitée",
+      label: t(lead.handled ? "Marquer à traiter" : "Marquer traitée"),
       icon: lead.handled ? RotateCcw : CheckCircle2,
       onAction: onToggle,
     },
-    { id: "call", label: "Appeler", icon: Phone, href: tel },
+    { id: "call", label: t("Appeler"), icon: Phone, href: tel },
     {
       id: "whatsapp",
       label: "WhatsApp",
@@ -493,11 +504,11 @@ function leadMenu(lead: Lead, onToggle: () => void, onDelete: () => void): (RowA
     },
     !!lead.car_slug && {
       id: "car",
-      label: "Voir le véhicule",
+      label: t("Voir le véhicule"),
       icon: Car,
       href: `/vehicule/${lead.car_slug}`,
       external: true,
     },
-    { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
+    { id: "delete", label: t("Supprimer"), icon: Trash2, onAction: onDelete, danger: true },
   ];
 }

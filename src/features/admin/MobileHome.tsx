@@ -19,6 +19,7 @@ import {
 } from "@/components/icons";
 import { salePrice } from "@/lib/cars";
 import { Notch } from "./Notch";
+import { formatNumber, t } from "./i18n";
 import { socialStatusQuery } from "./SocialCard";
 import {
   SECTION_LABELS,
@@ -39,8 +40,6 @@ import { onSale } from "./VitrinePage";
 
 /** Phone address of the statistics (the computer shows them at /admin). */
 export const MOBILE_DASHBOARD_PATH = "/admin/tableau-de-bord";
-
-const compact = new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 });
 
 type Tile = { id: AdminSection; icon: LucideIcon; color: string; short?: string };
 
@@ -99,15 +98,19 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
   const share = all.length ? Math.round((forSale.length / all.length) * 100) : 0;
 
   const meta: Partial<Record<AdminSection, string>> = {
-    cars: cars.data ? `${all.length} au total` : "Stock",
-    showcase: cars.data ? `${showcase} en avant` : "Accueil",
-    brands: "Logos",
-    dashboard: "Visites",
-    leads: leads.data ? (openLeads ? `${openLeads} à traiter` : "À jour") : "Contacts",
-    facebook: "Annonces",
-    content: "Textes",
-    connectors: "Réseaux",
-    admins: "Accès",
+    cars: cars.data ? t("{count} au total", { count: all.length }) : t("Stock"),
+    showcase: cars.data ? t("{count} en avant", { count: showcase }) : t("Accueil"),
+    brands: t("Logos"),
+    dashboard: t("Visites"),
+    leads: leads.data
+      ? openLeads
+        ? t("{count} à traiter", { count: openLeads })
+        : t("À jour")
+      : t("Contacts"),
+    facebook: t("Annonces"),
+    content: t("Textes"),
+    connectors: t("Réseaux"),
+    admins: t("Accès"),
   };
 
   return (
@@ -115,24 +118,25 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
       {/* Overview, with the main action in the cut-out corner. */}
       <section className="relative overflow-hidden rounded-[1.75rem] bg-[oklch(0.94_0.03_20)] p-5 pb-[5.25rem]">
         {cars.data && leads.data ? (
-          <p className="animate-in fade-in-0 duration-300 max-w-[15rem] text-[15px] font-medium leading-snug text-[oklch(0.3_0.06_20)]">
-            {plural(forSale.length, "véhicule", "véhicules")} en vente
+          <p className="animate-in fade-in-0 duration-300 max-w-[62%] text-[15px] font-medium leading-snug text-[oklch(0.3_0.06_20)]">
             {openLeads
-              ? ` et ${plural(openLeads, "demande", "demandes")} à traiter.`
-              : ", aucune demande en attente."}
+              ? t("{cars} en vente et {leads} à traiter.", {
+                  cars: plural(forSale.length, "véhicule", "véhicules"),
+                  leads: plural(openLeads, "demande", "demandes"),
+                })
+              : t("{cars} en vente, aucune demande en attente.", {
+                  cars: plural(forSale.length, "véhicule", "véhicules"),
+                })}
           </p>
         ) : (
           // Two text lines, same height as the sentence.
-          <div className="grid max-w-[15rem] gap-2 py-0.5">
+          <div className="grid max-w-[62%] gap-2 py-0.5">
             <Skeleton className="h-4 w-full rounded" />
             <Skeleton className="h-4 w-2/3 rounded" />
           </div>
         )}
         {/* Stock split as small bars: for sale / drafts / sold. */}
-        <div className="absolute bottom-5 end-5 grid justify-items-end gap-1.5" aria-hidden>
-          <span className="text-xs font-semibold text-[oklch(0.45_0.08_20)]">
-            {share} % en vente
-          </span>
+        <div className="absolute bottom-5 end-5 grid justify-items-center gap-1.5" aria-hidden>
           <span className="flex items-end gap-1.5">
             {[forSale.length, drafts, sold, all.length].map((value, i) => (
               <span
@@ -141,6 +145,9 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
                 style={{ height: `${12 + (all.length ? (value / all.length) * 40 : 0)}px` }}
               />
             ))}
+          </span>
+          <span className="whitespace-nowrap text-xs font-semibold text-[oklch(0.45_0.12_25)]">
+            {t("{share} en vente", { share: formatNumber(share / 100, { style: "percent" }) })}
           </span>
         </div>
         <Notch corner="bottom-left" radius="1.75rem">
@@ -160,7 +167,7 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
             <span className="grid size-8 place-items-center rounded-full bg-white/20">
               <Car className="size-[18px]" aria-hidden />
             </span>
-            Ajouter un véhicule
+            {t("Ajouter un véhicule")}
             <Plus className="size-4" aria-hidden />
           </button>
         </Notch>
@@ -177,7 +184,8 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
           value={leads.data ? String(openLeads) : undefined}
           unit="à traiter"
           color="text-emerald-600"
-          footer={leads.data ? `${leads.data.length} au total` : undefined}
+          titleColor="text-emerald-700"
+          footer={leads.data ? t("{count} au total", { count: leads.data.length }) : undefined}
         />
         <FigureCard
           to={MOBILE_DASHBOARD_PATH}
@@ -185,10 +193,15 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
           tint="bg-indigo-50 text-indigo-600"
           title="Stock"
           subtitle="Valeur en vente"
-          value={cars.data ? compact.format(stockValue) : undefined}
+          value={
+            cars.data
+              ? formatNumber(stockValue, { notation: "compact", maximumFractionDigits: 1 })
+              : undefined
+          }
           unit="DT"
           color="text-indigo-600"
-          footer={cars.data ? `${forSale.length} véhicules` : undefined}
+          titleColor="text-indigo-700"
+          footer={cars.data ? plural(forSale.length, "véhicule", "véhicules") : undefined}
         />
       </div>
 
@@ -198,7 +211,7 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         return (
           <section key={group.title} className="admin-card relative p-3 pt-0">
             <h2 className="px-2 pb-3 pt-4 text-base font-semibold text-foreground">
-              {group.title}
+              {t(group.title)}
             </h2>
             {group.more && (
               <Notch corner="top-right">
@@ -206,7 +219,7 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
                   to={group.more.to}
                   className="flex h-10 items-center gap-1 rounded-full bg-surface px-4 text-sm font-medium text-muted shadow-[0_1px_2px_rgb(15_23_42/0.06)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  {group.more.label}
+                  {t(group.more.label)}
                 </Link>
               </Notch>
             )}
@@ -231,9 +244,9 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         rel="noopener noreferrer"
         className="admin-card flex items-center justify-between gap-3 px-5 py-4 text-sm font-medium text-foreground outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
       >
-        Voir le site public
-        <ArrowUpRight className="size-4 text-muted" aria-hidden />
-        <span className="sr-only">(nouvel onglet)</span>
+        {t("Voir le site public")}
+        <ArrowUpRight className="size-4 text-muted rtl:-scale-x-100" aria-hidden />
+        <span className="sr-only">{t("(nouvel onglet)")}</span>
       </a>
     </div>
   );
@@ -251,10 +264,10 @@ function TileLink({ tile, meta, badge }: { tile: Tile; meta: string; badge: numb
       <span className="grid size-12 place-items-center rounded-full bg-surface shadow-[0_1px_2px_rgb(15_23_42/0.06)]">
         <Icon className={`size-[22px] ${tile.color}`} aria-hidden />
       </span>
-      <span className="mt-2 w-full truncate text-sm font-semibold text-foreground">
-        {tile.short ?? SECTION_LABELS[tile.id]}
+      <span dir="auto" className="mt-2 w-full truncate text-sm font-semibold text-foreground">
+        {t(tile.short ?? SECTION_LABELS[tile.id])}
       </span>
-      <span className="w-full truncate text-xs text-muted">{meta}</span>
+      <span className={`w-full truncate text-xs font-medium opacity-80 ${tile.color}`}>{meta}</span>
       {badge > 0 && (
         <span className="absolute end-2 top-2 min-w-5 rounded-full bg-accent px-1.5 text-center text-[11px] font-bold leading-5 text-accent-foreground tabular-nums">
           {badge > 99 ? "99+" : badge}
@@ -274,9 +287,12 @@ function FigureCard({
   value,
   unit,
   color,
+  titleColor,
   footer,
 }: {
   to: string;
+  /** Darker shade of the card's colour for its title. */
+  titleColor: string;
   icon: LucideIcon;
   tint: string;
   title: string;
@@ -287,32 +303,40 @@ function FigureCard({
   footer: ReactNode;
 }) {
   return (
-    <div className="admin-card relative flex flex-col p-3 pt-4">
+    <div className="admin-card relative flex min-w-0 flex-col p-3 pt-4">
       <Notch corner="top-left" radius="1.25rem">
         <Link
           to={to}
-          aria-label={`Ouvrir : ${title}`}
+          aria-label={t("Ouvrir : {title}", { title: t(title) })}
           className="grid size-10 place-items-center rounded-full bg-surface text-muted shadow-[0_1px_2px_rgb(15_23_42/0.08)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <ArrowUpRight className="size-4" aria-hidden />
+          <ArrowUpRight className="size-4 rtl:-scale-x-100" aria-hidden />
         </Link>
       </Notch>
-      <span className={`ms-auto grid size-11 place-items-center rounded-full ${tint}`}>
-        <Icon className="size-5" aria-hidden />
+      <span className={`ms-auto grid size-10 place-items-center rounded-full ${tint}`}>
+        <Icon className="size-[18px]" aria-hidden />
       </span>
-      <p className="mt-3 px-1 text-base font-semibold text-foreground">{title}</p>
-      <p className="px-1 text-xs text-muted">{subtitle}</p>
-      <div className="mt-2 flex items-baseline gap-1.5 px-1">
+      <p className={`mt-2.5 px-1 text-[15px] font-semibold ${titleColor}`}>{t(title)}</p>
+      <p className="px-1 text-xs text-muted">{t(subtitle)}</p>
+      {/* The unit goes under the figure when both don't fit on one line. */}
+      <div className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 px-1">
         {value === undefined ? (
           <Skeleton className="h-10 w-16 rounded-lg" />
         ) : (
           <span
-            className={`text-[2.5rem] font-bold leading-none tracking-tight tabular-nums animate-in fade-in-0 duration-300 ${color}`}
+            // Amounts in words ("1,2 مليون") get a smaller size so the unit stays visible.
+            className={`font-bold leading-tight tracking-tight tabular-nums animate-in fade-in-0 duration-300 ${
+              value.length <= 3
+                ? "text-[2.25rem]"
+                : value.length <= 6
+                  ? "text-[1.75rem]"
+                  : "text-[1.375rem]"
+            } ${color}`}
           >
             {value}
           </span>
         )}
-        <span className={`text-sm font-medium ${color}`}>{unit}</span>
+        <span className={`text-xs font-semibold opacity-80 ${color}`}>{t(unit)}</span>
       </div>
       <p className="mt-3 truncate rounded-full bg-surface-secondary px-3 py-1.5 text-xs text-muted">
         {footer ?? "…"}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { prepareVehiclePhoto, uploadImage } from "@/lib/data";
 import { UPLOAD_CONCURRENCY, errorMessage } from "./model";
+import { t } from "./i18n";
 
 /** `progress` is null while the file is being prepared, then 0–1 while it is sent. */
 export type UploadState =
@@ -33,7 +34,7 @@ export function useUploads() {
         set(key, null);
         return result;
       } catch (error) {
-        set(key, { status: "error", message: errorMessage(error, "Envoi impossible.") });
+        set(key, { status: "error", message: errorMessage(error, t("Envoi impossible.")) });
         return undefined;
       }
     },
@@ -116,7 +117,7 @@ export function usePhotoQueue(onUploaded: (url: string, original: File) => void)
         } catch (error) {
           patch(item.id, {
             status: "error",
-            error: errorMessage(error, "Envoi de la photo impossible."),
+            error: errorMessage(error, t("Envoi de la photo impossible.")),
           });
         } finally {
           started.current.delete(item.id);

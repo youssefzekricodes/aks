@@ -53,6 +53,7 @@ import {
   plural,
   type AdminCar,
 } from "./model";
+import { t } from "./i18n";
 import { FacebookLogo } from "@/components/aks/SocialLogos";
 import { brandInfo } from "@/features/catalog/brands";
 import {
@@ -99,6 +100,11 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 25;
 const COLUMNS = ["", "Photo", "Véhicule", "Prix", "Statut", "Facebook", "Mise à jour", ""];
 const titleOf = (car: Pick<AdminCar, "brand" | "name">) => `${car.brand} ${car.name}`.trim();
+/** Option labels stay French (they are keys); translated where shown. */
+const translated = (options: { id: string; label: string }[]) =>
+  options.map((option) => ({ ...option, label: t(option.label) }));
+/** Missing field names (French labels from missingFields), as shown. */
+const fieldList = (fields: string[]) => fields.map((field) => t(field)).join(", ");
 
 function sortCars(cars: AdminCar[], sort: Sort) {
   if (sort === "order") return cars;
@@ -180,7 +186,7 @@ export function CarsTab() {
       toast.danger(e.message);
     },
     onSuccess: (result, { published }) => {
-      toast.success(published ? "Véhicule publié sur le site." : "Véhicule retiré du site.");
+      toast.success(published ? t("Véhicule publié sur le site.") : t("Véhicule retiré du site."));
       announceShare(result.social);
     },
     onSettled: (_data, _error, { id }) => {
@@ -196,7 +202,7 @@ export function CarsTab() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteCar({ data: { id } }),
     onSuccess: () => {
-      toast.success("Véhicule supprimé.");
+      toast.success(t("Véhicule supprimé."));
       return invalidate();
     },
     onError: (e: Error) => toast.danger(e.message),
@@ -222,8 +228,8 @@ export function CarsTab() {
     onSuccess: (_, { sold }) =>
       toast.success(
         sold
-          ? "Véhicule marqué comme vendu : il n’apparaît plus sur le site."
-          : "Véhicule remis en vente.",
+          ? t("Véhicule marqué comme vendu : il n’apparaît plus sur le site.")
+          : t("Véhicule remis en vente."),
       ),
     onSettled: () => invalidate(),
   });
@@ -236,7 +242,7 @@ export function CarsTab() {
       ),
     onError: (e: Error, _vars, context) => rollback(e, context),
     onSuccess: (_, { discountPrice }) =>
-      toast.success(discountPrice == null ? "Remise retirée." : "Remise enregistrée."),
+      toast.success(discountPrice == null ? t("Remise retirée.") : t("Remise enregistrée.")),
     onSettled: () => invalidate(),
   });
 
@@ -246,19 +252,22 @@ export function CarsTab() {
     onSuccess: (result, { action, percent }) => {
       const n = plural(result.done, "véhicule", "véhicules");
       const message: Record<BulkAction, string> = {
-        publish: `${n} publié(s) : visible(s) sur le site.`,
-        unpublish: `${n} retiré(s) du site (brouillons).`,
-        sold: `${n} marqué(s) comme vendu(s).`,
-        unsold: `Mention « vendu » retirée pour ${n}.`,
-        delete: `${n} supprimé(s).`,
+        publish: t("{n} publié(s) : visible(s) sur le site.", { n }),
+        unpublish: t("{n} retiré(s) du site (brouillons).", { n }),
+        sold: t("{n} marqué(s) comme vendu(s).", { n }),
+        unsold: t("Mention « vendu » retirée pour {n}.", { n }),
+        delete: t("{n} supprimé(s).", { n }),
         discount: percent
-          ? `Remise de ${percent} % appliquée à ${n}.`
-          : `Remise retirée pour ${n}.`,
+          ? t("Remise de {percent} % appliquée à {n}.", { percent, n })
+          : t("Remise retirée pour {n}.", { n }),
       };
       if (result.done) toast.success(message[action]);
       if (result.failed.length)
         toast.danger(
-          `${plural(result.failed.length, "véhicule ignoré", "véhicules ignorés")} : ${result.failed[0]!.error}`,
+          t("{ignored} : {error}", {
+            ignored: plural(result.failed.length, "véhicule ignoré", "véhicules ignorés"),
+            error: result.failed[0]!.error,
+          }),
         );
       setSelected(new Set(result.failed.map((f) => f.id)));
     },
@@ -348,7 +357,7 @@ export function CarsTab() {
     const test = needsChange[action];
     const ids = test ? selectedCars.filter(test).map((car) => car.id) : selectedIds;
     if (!ids.length) {
-      toast.info("Aucun changement : les véhicules sélectionnés sont déjà dans cet état.");
+      toast.info(t("Aucun changement : les véhicules sélectionnés sont déjà dans cet état."));
       return Promise.resolve();
     }
     return bulk.mutateAsync({ ids, action, ...(percent === undefined ? {} : { percent }) });
@@ -361,8 +370,8 @@ export function CarsTab() {
   const emptyState = all.length ? (
     <EmptyState
       icon={CarIcon}
-      title="Aucun véhicule ne correspond."
-      description="Modifiez la recherche ou le filtre de statut."
+      title={t("Aucun véhicule ne correspond.")}
+      description={t("Modifiez la recherche ou le filtre de statut.")}
       action={
         filtersActive && (
           <Button
@@ -373,7 +382,7 @@ export function CarsTab() {
               setStatus("all");
             }}
           >
-            Réinitialiser les filtres
+            {t("Réinitialiser les filtres")}
           </Button>
         )
       }
@@ -381,12 +390,12 @@ export function CarsTab() {
   ) : (
     <EmptyState
       icon={CarIcon}
-      title="Aucun véhicule pour le moment."
-      description="Ajoutez votre premier véhicule pour l’afficher sur le site."
+      title={t("Aucun véhicule pour le moment.")}
+      description={t("Ajoutez votre premier véhicule pour l’afficher sur le site.")}
       action={
         <Button size="sm" onPress={() => open(emptyCar)}>
           <Plus className="size-4" aria-hidden />
-          Ajouter un véhicule
+          {t("Ajouter un véhicule")}
         </Button>
       }
     />
@@ -414,8 +423,8 @@ export function CarsTab() {
           onSuccess: () =>
             toast.success(
               car.featured_rank != null
-                ? "Retiré de la vitrine."
-                : "Ajouté à la vitrine de l’accueil.",
+                ? t("Retiré de la vitrine.")
+                : t("Ajouté à la vitrine de l’accueil."),
             ),
         },
       ),
@@ -442,38 +451,38 @@ export function CarsTab() {
   const bulkCandidates: (BulkItem | false)[] = [
     selectedCars.length === 1 && {
       id: "edit",
-      label: "Modifier",
+      label: t("Modifier"),
       icon: Pencil,
       tint: "bg-slate-100 text-slate-700",
       onPress: () => open(selectedCars[0]!),
     },
     selectedCars.some((car) => !car.published) && {
       id: "publish",
-      label: "Publier",
-      long: "Publier sur le site",
+      label: t("Publier"),
+      long: t("Publier sur le site"),
       icon: Eye,
       tint: "bg-emerald-50 text-emerald-700",
       onPress: () => runBulk("publish"),
     },
     selectedCars.some((car) => car.published) && {
       id: "unpublish",
-      label: "Retirer",
-      long: "Retirer du site",
+      label: t("Retirer"),
+      long: t("Retirer du site"),
       icon: EyeOff,
       tint: "bg-zinc-100 text-zinc-700",
       onPress: () => runBulk("unpublish"),
     },
     {
       id: "discount",
-      label: "Remise",
+      label: t("Remise"),
       icon: Tag,
       tint: "bg-violet-50 text-violet-700",
       onPress: () => setBulkDialog("discount"),
     },
     toShowcase.length > 0 && {
       id: "showcase",
-      label: "Vitrine",
-      long: "Ajouter à la vitrine",
+      label: t("Vitrine"),
+      long: t("Ajouter à la vitrine"),
       icon: Store,
       tint: "bg-amber-50 text-amber-700",
       disabled: vitrine.isPending,
@@ -487,7 +496,9 @@ export function CarsTab() {
           )
           .then(() => {
             toast.success(
-              `${plural(toShowcase.length, "véhicule ajouté", "véhicules ajoutés")} à la vitrine.`,
+              t("{added} à la vitrine.", {
+                added: plural(toShowcase.length, "véhicule ajouté", "véhicules ajoutés"),
+              }),
             );
             setSelected(new Set());
           })
@@ -495,7 +506,7 @@ export function CarsTab() {
     },
     selectedCars.some(onSale) && {
       id: "share",
-      label: "Réseaux",
+      label: t("Réseaux"),
       long: "Facebook / Instagram",
       icon: Share2,
       tint: "bg-blue-50 text-blue-700",
@@ -503,8 +514,8 @@ export function CarsTab() {
     },
     selectedCars.some((car) => !car.sold) && {
       id: "sold",
-      label: "Vendu",
-      long: "Marquer vendu",
+      label: t("Vendu"),
+      long: t("Marquer vendu"),
       icon: BadgeCheck,
       tint: "bg-sky-50 text-sky-700",
       onPress: () => runBulk("sold"),
@@ -512,15 +523,15 @@ export function CarsTab() {
     // Only for vehicles marked sold: removes the mark (drafts stay drafts).
     selectedCars.some((car) => car.sold) && {
       id: "unsold",
-      label: "Remettre",
-      long: "Annuler « vendu »",
+      label: t("Remettre"),
+      long: t("Annuler « vendu »"),
       icon: RotateCcw,
       tint: "bg-teal-50 text-teal-700",
       onPress: () => runBulk("unsold"),
     },
     {
       id: "delete",
-      label: "Supprimer",
+      label: t("Supprimer"),
       icon: Trash2,
       tint: "bg-red-50 text-red-600",
       danger: true,
@@ -536,11 +547,15 @@ export function CarsTab() {
       {/* Phones: compact header, search with a sort button, status chips. */}
       <div className="grid gap-3 md:hidden">
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Véhicules</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Véhicules")}</h1>
           <p className="text-sm text-muted">
             {cars.data
-              ? `${all.length} au total · ${published} en vente · ${plural(sold, "vendu", "vendus")}`
-              : "Chargement…"}
+              ? t("{total} au total · {published} en vente · {sold}", {
+                  total: all.length,
+                  published,
+                  sold: plural(sold, "vendu", "vendus"),
+                })
+              : t("Chargement…")}
           </p>
         </header>
         <div className="flex gap-2">
@@ -550,20 +565,22 @@ export function CarsTab() {
               setSearch(value);
               setPage(1);
             }}
-            aria-label="Rechercher un véhicule"
+            aria-label={t("Rechercher un véhicule")}
             className="min-w-0 flex-1"
             fullWidth
           >
             <SearchField.Group className="h-12 rounded-full bg-surface px-1 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Marque, modèle…" />
+              <SearchField.Input placeholder={t("Marque, modèle…")} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
           <button
             type="button"
             onClick={() => setSortOpen(true)}
-            aria-label={`Trier : ${SORT_OPTIONS.find((o) => o.id === sort)?.label}`}
+            aria-label={t("Trier : {sort}", {
+              sort: t(SORT_OPTIONS.find((o) => o.id === sort)?.label ?? ""),
+            })}
             className="relative grid size-12 shrink-0 place-items-center rounded-full bg-surface text-foreground shadow-[0_1px_2px_rgb(15_23_42/0.04)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
           >
             <ArrowUpDown className="size-5" aria-hidden />
@@ -572,7 +589,11 @@ export function CarsTab() {
             )}
           </button>
         </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="group" aria-label="Statut">
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto px-4"
+          role="group"
+          aria-label={t("Statut")}
+        >
           {STATUS_OPTIONS.map((option) => {
             const active = status === option.id;
             return (
@@ -590,7 +611,7 @@ export function CarsTab() {
                     : "bg-surface text-muted shadow-[0_1px_2px_rgb(15_23_42/0.05)]"
                 }`}
               >
-                {option.label}
+                {t(option.label)}
                 {cars.data && (
                   <span
                     className={`text-xs tabular-nums ${active ? "text-background/70" : "text-muted/80"}`}
@@ -613,13 +634,13 @@ export function CarsTab() {
               <strong className="font-semibold">
                 {plural(incomplete, "véhicule", "véhicules")}
               </strong>{" "}
-              à compléter
+              {t("à compléter")}
             </span>
-            <span className="font-semibold text-amber-700">Compléter</span>
+            <span className="font-semibold text-amber-700">{t("Compléter")}</span>
           </button>
         )}
-        <BottomSheet isOpen={sortOpen} onOpenChange={setSortOpen} title="Trier par">
-          <div role="listbox" aria-label="Trier par" className="grid gap-0.5">
+        <BottomSheet isOpen={sortOpen} onOpenChange={setSortOpen} title={t("Trier par")}>
+          <div role="listbox" aria-label={t("Trier par")} className="grid gap-0.5">
             {SORT_OPTIONS.map((option) => (
               <SheetOption
                 key={option.id}
@@ -630,7 +651,7 @@ export function CarsTab() {
                   setSortOpen(false);
                 }}
               >
-                {option.label}
+                {t(option.label)}
               </SheetOption>
             ))}
           </div>
@@ -639,11 +660,11 @@ export function CarsTab() {
 
       <div className="max-md:hidden">
         <PageHeader
-          title="Véhicules"
+          title={t("Véhicules")}
           description={
             cars.data
               ? `${plural(all.length, "véhicule", "véhicules")} · ${plural(published, "en vente", "en vente")} · ${plural(sold, "vendu", "vendus")}`
-              : "Gérez le stock affiché sur le site."
+              : t("Gérez le stock affiché sur le site.")
           }
           actions={
             <>
@@ -654,7 +675,7 @@ export function CarsTab() {
                   onPress={() => setCompleting(true)}
                 >
                   <ClipboardList className="size-4" aria-hidden />
-                  Compléter les infos manquantes
+                  {t("Compléter les infos manquantes")}
                   <span className="tabular rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger">
                     {incomplete}
                   </span>
@@ -663,7 +684,7 @@ export function CarsTab() {
               {/* Phones: the round "+" button at the bottom of the screen instead. */}
               <Button className="max-sm:hidden" onPress={() => open(emptyCar)}>
                 <Plus className="size-4" aria-hidden />
-                Ajouter un véhicule
+                {t("Ajouter un véhicule")}
               </Button>
             </>
           }
@@ -672,7 +693,7 @@ export function CarsTab() {
       {selectedIds.length === 0 && (
         <Button
           isIconOnly
-          aria-label="Ajouter un véhicule"
+          aria-label={t("Ajouter un véhicule")}
           onPress={() => open(emptyCar)}
           className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] end-[max(1rem,env(safe-area-inset-right))] z-30 size-14 rounded-full shadow-lg md:hidden"
         >
@@ -681,7 +702,7 @@ export function CarsTab() {
       )}
 
       <div className="max-md:hidden">
-        <Toolbar label="Filtrer les véhicules">
+        <Toolbar label={t("Filtrer les véhicules")}>
           <SearchField
             value={search}
             onChange={(value) => {
@@ -691,18 +712,18 @@ export function CarsTab() {
             className="min-w-0 flex-1 basis-64"
             fullWidth
           >
-            <Label>Rechercher</Label>
+            <Label>{t("Rechercher")}</Label>
             <SearchField.Group>
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Marque, modèle ou version…" />
+              <SearchField.Input placeholder={t("Marque, modèle ou version…")} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
           <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:gap-4">
             <SelectField
-              label="Statut"
+              label={t("Statut")}
               value={status}
-              options={STATUS_OPTIONS}
+              options={translated(STATUS_OPTIONS)}
               onChange={(value) => {
                 setStatus(value as Status);
                 setPage(1);
@@ -710,9 +731,9 @@ export function CarsTab() {
               className="min-w-0 sm:w-44"
             />
             <SelectField
-              label="Trier par"
+              label={t("Trier par")}
               value={sort}
-              options={SORT_OPTIONS}
+              options={translated(SORT_OPTIONS)}
               onChange={(value) => {
                 setSort(value as Sort);
                 setPage(1);
@@ -724,12 +745,19 @@ export function CarsTab() {
       </div>
 
       {cars.isError ? (
-        <LoadError message="Impossible de charger les véhicules." onRetry={() => cars.refetch()} />
+        <LoadError
+          message={t("Impossible de charger les véhicules.")}
+          onRetry={() => cars.refetch()}
+        />
       ) : cars.isPending ? (
         <>
           <CarCardsSkeleton />
           <div className="hidden md:block">
-            <TableSkeleton label="Véhicules" columns={COLUMNS} minWidth="min-w-[860px]" />
+            <TableSkeleton
+              label={t("Véhicules")}
+              columns={COLUMNS.map((column) => column && t(column))}
+              minWidth="min-w-[860px]"
+            />
           </div>
         </>
       ) : (
@@ -739,7 +767,7 @@ export function CarsTab() {
               {/* Computers: bar above the table. */}
               <div
                 role="toolbar"
-                aria-label="Actions groupées"
+                aria-label={t("Actions groupées")}
                 className="sticky top-2 z-10 hidden flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-md md:flex"
               >
                 <span className="px-2 text-sm font-medium text-foreground">
@@ -751,7 +779,7 @@ export function CarsTab() {
                     variant="ghost"
                     onPress={() => setSelected(new Set(visible.map((car) => car.id)))}
                   >
-                    Tout sélectionner ({visible.length})
+                    {t("Tout sélectionner ({count})", { count: visible.length })}
                   </Button>
                 )}
                 {bulkItems.map((item) => (
@@ -765,7 +793,7 @@ export function CarsTab() {
                     {item.long ?? item.label}
                   </BulkButton>
                 ))}
-                {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
+                {bulk.isPending && <Spinner size="sm" aria-label={t("Action en cours")} />}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -773,7 +801,7 @@ export function CarsTab() {
                   onPress={() => setSelected(new Set())}
                 >
                   <X className="size-4" aria-hidden />
-                  Désélectionner
+                  {t("Désélectionner")}
                 </Button>
               </div>
 
@@ -782,26 +810,26 @@ export function CarsTab() {
                 ref={panelRef}
                 data-selection-panel
                 role="toolbar"
-                aria-label="Actions groupées"
+                aria-label={t("Actions groupées")}
                 className="fixed inset-x-0 bottom-0 z-30 rounded-t-[1.75rem] bg-surface pb-[calc(0.75rem+env(safe-area-inset-bottom))] pe-[max(1rem,env(safe-area-inset-right))] ps-[max(1rem,env(safe-area-inset-left))] pt-2.5 shadow-[0_-10px_30px_-10px_rgb(15_23_42/0.3)] animate-in slide-in-from-bottom-6 duration-200 md:hidden"
               >
                 <div className="mb-1.5 flex items-center gap-3">
                   <p className="flex-1 text-[15px] font-semibold text-foreground">
                     {plural(selectedIds.length, "véhicule sélectionné", "véhicules sélectionnés")}
                   </p>
-                  {bulk.isPending && <Spinner size="sm" aria-label="Action en cours" />}
+                  {bulk.isPending && <Spinner size="sm" aria-label={t("Action en cours")} />}
                   {selectedIds.length < visible.length && (
                     <button
                       type="button"
                       onClick={() => setSelected(new Set(visible.map((car) => car.id)))}
                       className="h-9 rounded-full px-3 text-sm font-semibold text-accent active:bg-accent-soft"
                     >
-                      Tout ({visible.length})
+                      {t("Tout ({count})", { count: visible.length })}
                     </button>
                   )}
                   <button
                     type="button"
-                    aria-label="Désélectionner"
+                    aria-label={t("Désélectionner")}
                     onClick={() => setSelected(new Set())}
                     className="grid size-9 place-items-center rounded-full bg-surface-secondary text-foreground active:opacity-80"
                   >
@@ -838,7 +866,7 @@ export function CarsTab() {
             </>
           )}
           {/* Phones and small tablets: one card per vehicle. */}
-          <ul aria-label="Véhicules" className={`grid gap-3 md:hidden ${fadeIn}`}>
+          <ul aria-label={t("Véhicules")} className={`grid gap-3 md:hidden ${fadeIn}`}>
             {pageCars.map((car, index) => (
               <CarCard key={car.id} {...itemProps(car, index)} />
             ))}
@@ -847,7 +875,7 @@ export function CarsTab() {
           <Table className="hidden md:block">
             <Table.ScrollContainer>
               <Table.Content
-                aria-label="Véhicules"
+                aria-label={t("Véhicules")}
                 className="min-w-[860px]"
                 keyboardNavigationBehavior="tab"
               >
@@ -860,8 +888,8 @@ export function CarsTab() {
                       type="checkbox"
                       aria-label={
                         pageSelected
-                          ? "Désélectionner les véhicules de cette page"
-                          : "Sélectionner les véhicules de cette page"
+                          ? t("Désélectionner les véhicules de cette page")
+                          : t("Sélectionner les véhicules de cette page")
                       }
                       checked={allSelected}
                       ref={(el) => {
@@ -879,14 +907,14 @@ export function CarsTab() {
                       className="size-4 cursor-pointer accent-[var(--accent)]"
                     />
                   </Table.Column>
-                  <Table.Column className="w-24">Photo</Table.Column>
-                  <Table.Column isRowHeader>Véhicule</Table.Column>
-                  <Table.Column>Prix</Table.Column>
-                  <Table.Column>Statut</Table.Column>
+                  <Table.Column className="w-24">{t("Photo")}</Table.Column>
+                  <Table.Column isRowHeader>{t("Véhicule")}</Table.Column>
+                  <Table.Column>{t("Prix")}</Table.Column>
+                  <Table.Column>{t("Statut")}</Table.Column>
                   <Table.Column>Facebook</Table.Column>
-                  <Table.Column>Mise à jour</Table.Column>
+                  <Table.Column>{t("Mise à jour")}</Table.Column>
                   <Table.Column className="w-14">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("Actions")}</span>
                   </Table.Column>
                 </Table.Header>
                 <Table.Body renderEmptyState={() => emptyState}>
@@ -905,7 +933,11 @@ export function CarsTab() {
                 setPage(next);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              summary={`${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, visible.length)} sur ${plural(visible.length, "véhicule", "véhicules")}${filtersActive ? ` (${all.length} au total)` : ""}`}
+              summary={`${t("{from}–{to} sur {count}", {
+                from: (current - 1) * PAGE_SIZE + 1,
+                to: Math.min(current * PAGE_SIZE, visible.length),
+                count: plural(visible.length, "véhicule", "véhicules"),
+              })}${filtersActive ? ` (${t("{total} au total", { total: all.length })})` : ""}`}
             />
           )}
           {/* Room under the last cards for the phone selection panel. */}
@@ -913,8 +945,9 @@ export function CarsTab() {
             <div aria-hidden className="md:hidden" style={{ height: panelHeight + 16 }} />
           )}
           <p className="text-sm text-muted">
-            Pour changer l’ordre d’affichage sur le site, cliquez sur la marque d’un véhicule : ses
-            véhicules s’affichent en cartes, à glisser-déposer.
+            {t(
+              "Pour changer l’ordre d’affichage sur le site, cliquez sur la marque d’un véhicule : ses véhicules s’affichent en cartes, à glisser-déposer.",
+            )}
           </p>
         </>
       )}
@@ -937,13 +970,16 @@ export function CarsTab() {
       <ConfirmDialog
         isOpen={bulkDialog === "delete"}
         onOpenChange={(isOpen) => setBulkDialog(isOpen ? "delete" : null)}
-        title={`Supprimer ${plural(selectedIds.length, "véhicule", "véhicules")} ?`}
-        confirmLabel="Supprimer"
+        title={t("Supprimer {count} ?", {
+          count: plural(selectedIds.length, "véhicule", "véhicules"),
+        })}
+        confirmLabel={t("Supprimer")}
         onConfirm={() => runBulk("delete")}
       >
         <p>
-          Les véhicules sélectionnés et leurs photos seront définitivement supprimés. Cette action
-          est irréversible.
+          {t(
+            "Les véhicules sélectionnés et leurs photos seront définitivement supprimés. Cette action est irréversible.",
+          )}
         </p>
       </ConfirmDialog>
 
@@ -957,13 +993,18 @@ export function CarsTab() {
             if (result.error) toast.danger(result.error);
             else if (result.started)
               toast.success(
-                `${plural(result.started, "publication lancée", "publications lancées")} : elles apparaissent dans la colonne Facebook dans quelques secondes.`,
+                t(
+                  "{started} : elles apparaissent dans la colonne Facebook dans quelques secondes.",
+                  {
+                    started: plural(result.started, "publication lancée", "publications lancées"),
+                  },
+                ),
               );
-            else toast.info("Rien à publier : ces véhicules sont déjà sur les réseaux choisis.");
+            else toast.info(t("Rien à publier : ces véhicules sont déjà sur les réseaux choisis."));
             setSelected(new Set());
             await queryClient.invalidateQueries({ queryKey: ["admin-facebook-sync"] });
           } catch (e) {
-            toast.danger(e instanceof Error ? e.message : "Publication impossible.");
+            toast.danger(e instanceof Error ? e.message : t("Publication impossible."));
             throw e;
           }
         }}
@@ -983,13 +1024,13 @@ export function CarsTab() {
       <ConfirmDialog
         isOpen={deletion.isOpen}
         onOpenChange={deletion.onOpenChange}
-        title="Supprimer ce véhicule ?"
-        confirmLabel="Supprimer"
+        title={t("Supprimer ce véhicule ?")}
+        confirmLabel={t("Supprimer")}
         onConfirm={() => deletion.target && remove.mutateAsync(deletion.target.id)}
       >
         <p>
-          <strong>{deletion.target ? titleOf(deletion.target) : ""}</strong> et ses photos seront
-          définitivement supprimés. Cette action est irréversible.
+          <strong>{deletion.target ? titleOf(deletion.target) : ""}</strong>{" "}
+          {t("et ses photos seront définitivement supprimés. Cette action est irréversible.")}
         </p>
       </ConfirmDialog>
     </div>
@@ -1045,7 +1086,7 @@ function CarRow({
         <input
           {...isolate}
           type="checkbox"
-          aria-label={`Sélectionner ${title}`}
+          aria-label={t("Sélectionner {title}", { title })}
           checked={selected}
           onChange={onSelect}
           className="size-4 cursor-pointer accent-[var(--accent)]"
@@ -1067,7 +1108,7 @@ function CarRow({
           onPointerDown={stop}
           onKeyDown={stop}
           onClick={stop}
-          title={`Ordre des véhicules ${car.brand}`}
+          title={t("Ordre des véhicules {brand}", { brand: car.brand })}
           className="rounded-sm text-xs font-medium text-muted outline-none hover:text-accent hover:underline focus-visible:ring-2 focus-visible:ring-focus"
         >
           {car.brand}
@@ -1089,7 +1130,7 @@ function CarRow({
       </Table.Cell>
       <Table.Cell className="whitespace-nowrap text-sm">
         {car.price_on_request ? (
-          <span className="text-muted">Prix masqué</span>
+          <span className="text-muted">{t("Prix masqué")}</span>
         ) : !car.sold && car.price > 0 ? (
           <button
             type="button"
@@ -1098,13 +1139,13 @@ function CarRow({
               event.stopPropagation();
               onDiscount();
             }}
-            title={percent ? "Modifier la remise" : "Ajouter une remise"}
+            title={percent ? t("Modifier la remise") : t("Ajouter une remise")}
             className="group grid rounded-sm text-start outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <PriceLabel car={car} percent={percent} />
             {!percent && (
               <span className="inline-flex items-center gap-1 text-xs text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                <Tag className="size-3" aria-hidden /> Remise
+                <Tag className="size-3" aria-hidden /> {t("Remise")}
               </span>
             )}
           </button>
@@ -1115,13 +1156,13 @@ function CarRow({
       <Table.Cell>
         <span className="inline-flex items-center gap-2">
           {car.sold ? (
-            <StatusChip tone="warning">Vendu</StatusChip>
+            <StatusChip tone="warning">{t("Vendu")}</StatusChip>
           ) : (
             <StatusChip tone={car.published ? "success" : "default"}>
-              {car.published ? "En vente" : "Brouillon"}
+              {car.published ? t("En vente") : t("Brouillon")}
             </StatusChip>
           )}
-          {inShowcase && onSale(car) && <StatusChip tone="accent">Vitrine</StatusChip>}
+          {inShowcase && onSale(car) && <StatusChip tone="accent">{t("Vitrine")}</StatusChip>}
           {missing.length > 0 && (
             <Tooltip delay={150}>
               <Tooltip.Trigger>
@@ -1132,18 +1173,20 @@ function CarRow({
                     event.stopPropagation();
                     onEdit();
                   }}
-                  aria-label={`À compléter : ${missing.join(", ")}`}
+                  aria-label={t("À compléter : {fields}", { fields: fieldList(missing) })}
                   className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  <StatusChip tone="danger">À compléter · {missing.length}</StatusChip>
+                  <StatusChip tone="danger">
+                    {t("À compléter · {count}", { count: missing.length })}
+                  </StatusChip>
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="max-w-64 text-sm">
-                Manque : {missing.join(", ")}
+                {t("Manque : {fields}", { fields: fieldList(missing) })}
               </Tooltip.Content>
             </Tooltip>
           )}
-          {publishing && <Spinner size="sm" aria-label="Mise à jour du statut" />}
+          {publishing && <Spinner size="sm" aria-label={t("Mise à jour du statut")} />}
         </span>
       </Table.Cell>
       <Table.Cell className="whitespace-nowrap text-sm">
@@ -1155,7 +1198,7 @@ function CarRow({
       <Table.Cell className="text-end">
         <div {...isolate} className="inline-flex">
           <RowMenu
-            label={`Actions pour ${title}`}
+            label={t("Actions pour {title}", { title })}
             actions={carMenu({ car, onEdit, onDiscount, ...handlers })}
           />
         </div>
@@ -1190,10 +1233,10 @@ function carMenu({
   const percent = discountPercent(car);
   const inShowcase = car.featured_rank != null;
   return [
-    { id: "edit", label: "Modifier", icon: Pencil, onAction: onEdit },
+    { id: "edit", label: t("Modifier"), icon: Pencil, onAction: onEdit },
     car.published && {
       id: "view",
-      label: "Voir sur le site",
+      label: t("Voir sur le site"),
       icon: ExternalLink,
       href: `/vehicule/${car.slug}`,
       external: true,
@@ -1202,50 +1245,50 @@ function carMenu({
       car.price > 0 &&
       !car.sold && {
         id: "discount",
-        label: percent ? "Modifier la remise" : "Ajouter une remise",
+        label: percent ? t("Modifier la remise") : t("Ajouter une remise"),
         icon: Tag,
         onAction: onDiscount,
       },
     // Only cars en vente can be added; a featured one can always be removed.
     (onSale(car) || inShowcase) && {
       id: "vitrine",
-      label: inShowcase ? "Retirer de la vitrine" : "Ajouter à la vitrine",
+      label: inShowcase ? t("Retirer de la vitrine") : t("Ajouter à la vitrine"),
       icon: Store,
       onAction: onToggleShowcase,
     },
     onSale(car) && {
       id: "share",
-      label: "Publier sur Facebook / Instagram",
+      label: t("Publier sur Facebook / Instagram"),
       icon: Share2,
       onAction: onShare,
     },
     {
       id: "sold",
-      label: car.sold ? "Annuler « vendu »" : "Marquer comme vendu",
+      label: car.sold ? t("Annuler « vendu »") : t("Marquer comme vendu"),
       icon: car.sold ? RotateCcw : BadgeCheck,
       onAction: onToggleSold,
     },
     order &&
       !order.first && {
         id: "first",
-        label: "Afficher en premier",
+        label: t("Afficher en premier"),
         icon: ArrowUpToLine,
         onAction: () => order.onMove("first"),
       },
     order &&
       !order.last && {
         id: "last",
-        label: "Afficher en dernier",
+        label: t("Afficher en dernier"),
         icon: ArrowDownToLine,
         onAction: () => order.onMove("last"),
       },
     {
       id: "publish",
-      label: car.published ? "Retirer du site" : "Publier sur le site",
+      label: car.published ? t("Retirer du site") : t("Publier sur le site"),
       icon: car.published ? EyeOff : Eye,
       onAction: onTogglePublished,
     },
-    { id: "delete", label: "Supprimer", icon: Trash2, onAction: onDelete, danger: true },
+    { id: "delete", label: t("Supprimer"), icon: Trash2, onAction: onDelete, danger: true },
   ];
 }
 
@@ -1311,35 +1354,37 @@ function CarCard(props: ItemProps) {
           <p className="line-clamp-2 font-semibold leading-snug text-foreground">{car.name}</p>
           <div className="mt-0.5 text-sm">
             {car.price_on_request ? (
-              <span className="text-muted">Prix masqué</span>
+              <span className="text-muted">{t("Prix masqué")}</span>
             ) : (
               <PriceLabel car={car} percent={percent} />
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {car.sold ? (
-              <StatusChip tone="warning">Vendu</StatusChip>
+              <StatusChip tone="warning">{t("Vendu")}</StatusChip>
             ) : (
               <StatusChip tone={car.published ? "success" : "default"}>
-                {car.published ? "En vente" : "Brouillon"}
+                {car.published ? t("En vente") : t("Brouillon")}
               </StatusChip>
             )}
             {car.featured_rank != null && onSale(car) && (
-              <StatusChip tone="accent">Vitrine</StatusChip>
+              <StatusChip tone="accent">{t("Vitrine")}</StatusChip>
             )}
             {missing.length > 0 && (
-              <StatusChip tone="danger">À compléter · {missing.length}</StatusChip>
+              <StatusChip tone="danger">
+                {t("À compléter · {count}", { count: missing.length })}
+              </StatusChip>
             )}
             {facebook && (
               <span className="text-xs" {...isolate}>
                 <FacebookCell sync={facebook} loading={facebookLoading} published={car.published} />
               </span>
             )}
-            {publishing && <Spinner size="sm" aria-label="Mise à jour du statut" />}
+            {publishing && <Spinner size="sm" aria-label={t("Mise à jour du statut")} />}
           </div>
         </div>
         <div {...isolate} className="-me-1 -mt-1 self-start">
-          <RowMenu label={`Actions pour ${title}`} actions={carMenu(props)} large />
+          <RowMenu label={t("Actions pour {title}", { title })} actions={carMenu(props)} large />
         </div>
       </div>
     </li>
@@ -1406,32 +1451,35 @@ function FacebookCell({
         onKeyDown={stop}
         onClick={stop}
         className="inline-flex items-center gap-1.5 rounded-sm font-medium text-success outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-        title="Voir la publication Facebook"
+        title={t("Voir la publication Facebook")}
       >
         <FacebookLogo className="size-4" />
-        Publié
+        {t("Publié")}
       </a>
     ) : (
       <span className="inline-flex items-center gap-1.5 font-medium text-success">
         <FacebookLogo className="size-4" />
-        Publié
+        {t("Publié")}
       </span>
     );
   if (sync?.status === "pending")
     return (
       <span className="inline-flex items-center gap-1.5 text-muted">
-        <Spinner size="sm" aria-hidden /> En cours
+        <Spinner size="sm" aria-hidden /> {t("En cours")}
       </span>
     );
   if (sync?.status === "failed")
     return (
       <span className="font-medium text-danger" title={sync.error ?? undefined}>
-        Échec
+        {t("Échec")}
       </span>
     );
   return (
-    <span className="text-muted" title={published ? "Pas encore partagé sur Facebook" : undefined}>
-      Non publié
+    <span
+      className="text-muted"
+      title={published ? t("Pas encore partagé sur Facebook") : undefined}
+    >
+      {t("Non publié")}
     </span>
   );
 }

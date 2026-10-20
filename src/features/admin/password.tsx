@@ -17,6 +17,7 @@ import {
   passwordStrength,
   type PasswordDraft,
 } from "./model";
+import { plural, t } from "./i18n";
 
 /** Copies `value` and confirms it for a moment (icon + toast). */
 export function CopyButton({ value, label }: { value: string; label: string }) {
@@ -25,10 +26,10 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      toast.success("Copié dans le presse-papiers.");
+      toast.success(t("Copié dans le presse-papiers."));
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.danger("Copie impossible. Sélectionnez le texte puis copiez-le.");
+      toast.danger(t("Copie impossible. Sélectionnez le texte puis copiez-le."));
     }
   }
   const Icon = copied ? Check : Copy;
@@ -86,7 +87,7 @@ export function PasswordField({
   const [visibleState, setVisibleState] = useState(false);
   const isVisible = visibleProp ?? visibleState;
   const input = useRef<HTMLInputElement>(null);
-  const toggleLabel = isVisible ? "Masquer le mot de passe" : "Afficher le mot de passe";
+  const toggleLabel = isVisible ? t("Masquer le mot de passe") : t("Afficher le mot de passe");
   const Icon = isVisible ? EyeOff : Eye;
 
   return (
@@ -105,6 +106,7 @@ export function PasswordField({
       <InputGroup fullWidth>
         <InputGroup.Input
           ref={input}
+          dir="ltr"
           spellCheck={false}
           autoCapitalize="off"
           className={isVisible ? "font-mono" : ""}
@@ -159,7 +161,7 @@ export function NewPasswordFields({
   value,
   onChange,
   showErrors,
-  label = "Mot de passe",
+  label,
 }: {
   value: PasswordDraft;
   onChange: (value: PasswordDraft) => void;
@@ -174,19 +176,19 @@ export function NewPasswordFields({
   const mismatch = value.confirm.length > 0 && value.confirm !== value.password;
   const passwordError =
     (showErrors || value.password.length > 0) && tooLong
-      ? `${PASSWORD_MAX} caractères maximum.`
+      ? t("{max} caractères maximum.", { max: PASSWORD_MAX })
       : showErrors && tooShort
-        ? `${PASSWORD_MIN} caractères minimum.`
+        ? t("{min} caractères minimum.", { min: PASSWORD_MIN })
         : null;
   const confirmError =
     mismatch || (showErrors && value.confirm !== value.password)
-      ? "Les deux mots de passe ne correspondent pas."
+      ? t("Les deux mots de passe ne correspondent pas.")
       : null;
 
   return (
     <div className="grid gap-4">
       <PasswordField
-        label={label}
+        label={label ?? t("Mot de passe")}
         name="new-password"
         autoComplete="new-password"
         value={value.password}
@@ -195,28 +197,34 @@ export function NewPasswordFields({
         onVisibleChange={setVisible}
         isInvalid={passwordError !== null}
         errorMessage={passwordError}
-        suffix={<CopyButton value={value.password} label="Copier le mot de passe" />}
+        suffix={<CopyButton value={value.password} label={t("Copier le mot de passe")} />}
         description={
           passwordError ? undefined : (
             <span aria-live="polite">
               {value.password ? (
                 <>
                   <span className={`font-medium ${STRENGTH[strength].className}`}>
-                    {STRENGTH[strength].label}
+                    {t(STRENGTH[strength].label)}
                   </span>
                   {" · "}
-                  {value.password.length} caractère{value.password.length > 1 ? "s" : ""}
-                  {tooShort ? ` sur ${PASSWORD_MIN} minimum` : ""}
+                  {tooShort
+                    ? t("{count} sur {min} minimum", {
+                        count: plural(value.password.length, "caractère", "caractères"),
+                        min: PASSWORD_MIN,
+                      })
+                    : plural(value.password.length, "caractère", "caractères")}
                 </>
               ) : (
-                `${PASSWORD_MIN} caractères minimum. Mélangez lettres, chiffres et symboles.`
+                t("{min} caractères minimum. Mélangez lettres, chiffres et symboles.", {
+                  min: PASSWORD_MIN,
+                })
               )}
             </span>
           )
         }
       />
       <PasswordField
-        label="Confirmation du mot de passe"
+        label={t("Confirmation du mot de passe")}
         name="confirm-password"
         autoComplete="new-password"
         value={value.confirm}
@@ -237,10 +245,10 @@ export function NewPasswordFields({
           }}
         >
           <Wand2 className="size-4" aria-hidden />
-          Générer un mot de passe
+          {t("Générer un mot de passe")}
         </Button>
         <p className="mt-2 text-xs text-muted">
-          Transmettez-le par un canal sûr ; il ne sera plus affiché après validation.
+          {t("Transmettez-le par un canal sûr ; il ne sera plus affiché après validation.")}
         </p>
       </div>
     </div>

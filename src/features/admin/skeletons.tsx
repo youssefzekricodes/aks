@@ -1,4 +1,5 @@
 import { Skeleton } from "@heroui/react";
+import { t } from "./i18n";
 
 /*
  * Loading placeholders of the admin, one per kind of content. Each copies the
@@ -22,7 +23,7 @@ function Busy({
   children: React.ReactNode;
 }) {
   return (
-    <div role="status" aria-label={label} aria-busy className={className}>
+    <div role="status" aria-label={t(label)} aria-busy className={className}>
       {children}
     </div>
   );
@@ -220,15 +221,15 @@ export function BodyBreakdownSkeleton({ rows = 6 }: { rows?: number }) {
 export function StockSplitSkeleton() {
   return (
     <Busy label="Chargement du stock" className="grid gap-4">
-      <Skeleton className="h-3 w-full rounded-full" />
-      <div className="grid gap-2.5">
+      <div className="mx-auto grid size-[188px] place-items-center rounded-full border-[28px] border-surface-secondary">
+        <Skeleton className="h-7 w-10 rounded" />
+      </div>
+      <div className="grid grid-cols-3 gap-2 rounded-2xl bg-surface-secondary p-3">
         {range(3).map((i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="size-2.5 rounded-full" />
-            <Skeleton className="h-3.5 flex-1 rounded" style={{ maxWidth: "6rem" }} />
-            <span className="flex-1" />
-            <Skeleton className="h-3.5 w-6 rounded" />
-            <Skeleton className="h-3 w-8 rounded" />
+          <div key={i} className="grid justify-items-center gap-1.5">
+            <Skeleton className="h-3 w-14 rounded" />
+            <Skeleton className="h-5 w-10 rounded" />
+            <Skeleton className="h-2.5 w-5 rounded" />
           </div>
         ))}
       </div>

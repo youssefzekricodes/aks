@@ -17,6 +17,7 @@ import {
   listSiteContent,
 } from "@/lib/data";
 import { getSession, listAdmins } from "@/features/auth/auth.functions";
+import { formatDate, plural as translatedPlural } from "./i18n";
 
 /** Non-component helpers shared by the admin sections. */
 
@@ -210,14 +211,14 @@ export const normalize = (value: string) =>
 export const errorMessage = (error: unknown, fallback = "Une erreur est survenue.") =>
   error instanceof Error && error.message ? error.message : fallback;
 
-export const dateTimeFormat = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-export const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
+/** Dates in the admin's language (same `.format()` as Intl). */
+export const dateTimeFormat = {
+  format: (date: Date) => formatDate(date, { dateStyle: "medium", timeStyle: "short" }),
+};
+export const dateFormat = { format: (date: Date) => formatDate(date, { dateStyle: "medium" }) };
 
-export const plural = (count: number, one: string, many: string) =>
-  `${count.toLocaleString("fr-FR")} ${count > 1 ? many : one}`;
+/** "3 véhicules", in the admin's language (see i18n). */
+export const plural = translatedPlural;
 
 export const MAX_PHOTOS = 40;
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];

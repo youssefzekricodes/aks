@@ -32,6 +32,7 @@ import {
 import { socialStatusQuery } from "./SocialCard";
 import { EmptyState, IntegerField, PageHeader, SelectField } from "./ui";
 import { FacebookPostsSkeleton } from "./skeletons";
+import { t } from "./i18n";
 
 const inboxQuery = queryOptions({
   queryKey: ["admin-facebook-inbox"],
@@ -41,6 +42,10 @@ const inboxQuery = queryOptions({
 /** A sync on opening the page when the last one is older than this. */
 const AUTO_SYNC_AFTER_MS = 15 * 60_000;
 const TO_FILL = "À préciser";
+
+/** Option labels (French, also the stored values for some) shown in the admin's language. */
+const translated = (options: { id: string; label: string }[]) =>
+  options.map((option) => ({ ...option, label: t(option.label) }));
 
 const FILTERS: { id: InboxStatus; label: string }[] = [
   { id: "new", label: "À traiter" },
@@ -95,13 +100,17 @@ export function FacebookImportPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Import Facebook"
-        description="Les publications de votre Page Facebook : vérifiez les informations lues dans chaque annonce puis importez le véhicule sur le site, avec ses photos."
+        title={t("Import Facebook")}
+        description={t(
+          "Les publications de votre Page Facebook : vérifiez les informations lues dans chaque annonce puis importez le véhicule sur le site, avec ses photos.",
+        )}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             {lastSyncedAt && (
               <span className="text-sm text-muted">
-                Dernière synchronisation : {dateTimeFormat.format(new Date(lastSyncedAt))}
+                {t("Dernière synchronisation : {date}", {
+                  date: dateTimeFormat.format(new Date(lastSyncedAt)),
+                })}
               </span>
             )}
             <Button
@@ -110,7 +119,7 @@ export function FacebookImportPage() {
               onPress={() => sync.mutate()}
             >
               {!sync.isPending && <RefreshCw className="size-4" aria-hidden />}
-              Synchroniser maintenant
+              {t("Synchroniser maintenant")}
             </Button>
           </div>
         }
@@ -120,13 +129,13 @@ export function FacebookImportPage() {
         <Alert status="warning">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Page Facebook non connectée</Alert.Title>
+            <Alert.Title>{t("Page Facebook non connectée")}</Alert.Title>
             <Alert.Description>
-              Connectez la Page du showroom dans{" "}
+              {t("Connectez la Page du showroom dans")}{" "}
               <Link to="/admin/connecteurs" className="font-medium underline">
-                Connecteurs
+                {t("Connecteurs")}
               </Link>{" "}
-              pour lire ses publications.
+              {t("pour lire ses publications.")}
             </Alert.Description>
           </Alert.Content>
         </Alert>
@@ -135,16 +144,18 @@ export function FacebookImportPage() {
         <Alert status="warning">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Import Facebook pas encore installé</Alert.Title>
+            <Alert.Title>{t("Import Facebook pas encore installé")}</Alert.Title>
             <Alert.Description>
-              Exécutez la migration 20261019220000_facebook_inbox.sql dans Supabase (SQL Editor),
-              puis redéployez la fonction social-publish.
+              {t(
+                "Exécutez la migration {file} dans Supabase (SQL Editor), puis redéployez la fonction social-publish.",
+                { file: "20261019220000_facebook_inbox.sql" },
+              )}
             </Alert.Description>
           </Alert.Content>
         </Alert>
       )}
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer les publications">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t("Filtrer les publications")}>
         {FILTERS.map((f) => (
           <button
             key={f.id}
@@ -157,7 +168,7 @@ export function FacebookImportPage() {
                 : "rounded-full border border-border px-3 py-1 text-sm text-foreground hover:bg-surface-secondary"
             }
           >
-            {f.label} <span className="tabular opacity-70">{counts[f.id]}</span>
+            {t(f.label)} <span className="tabular opacity-70">{counts[f.id]}</span>
           </button>
         ))}
       </div>
@@ -168,11 +179,13 @@ export function FacebookImportPage() {
         <EmptyState
           icon={RefreshCw}
           title={
-            filter === "new" ? "Aucune nouvelle publication à traiter." : "Rien dans cette liste."
+            filter === "new"
+              ? t("Aucune nouvelle publication à traiter.")
+              : t("Rien dans cette liste.")
           }
           description={
             filter === "new"
-              ? "Les nouvelles annonces de votre Page apparaîtront ici après la synchronisation."
+              ? t("Les nouvelles annonces de votre Page apparaîtront ici après la synchronisation.")
               : undefined
           }
         />
@@ -265,12 +278,12 @@ function PostCard({
   const similar = lookAlikes(draft, cars);
 
   const missing = [
-    !draft.brand.trim() && "marque",
-    !draft.model.trim() && "modèle",
-    !draft.year && "année",
-    !draft.fuel && "carburant",
-    !draft.gearbox && "boîte",
-    !draft.body && "carrosserie",
+    !draft.brand.trim() && t("marque"),
+    !draft.model.trim() && t("modèle"),
+    !draft.year && t("année"),
+    !draft.fuel && t("carburant"),
+    !draft.gearbox && t("boîte"),
+    !draft.body && t("carrosserie"),
   ].filter(Boolean);
 
   const importPost = useMutation({
@@ -296,7 +309,15 @@ function PostCard({
       }),
     onSuccess: async (result, publish) => {
       toast.success(
-        `${draft.brand} ${draft.model} importé${publish ? " et publié" : " en brouillon"} (${plural(result.photos, "photo", "photos")}).`,
+        t(
+          publish
+            ? "{car} importé et publié ({photos})."
+            : "{car} importé en brouillon ({photos}).",
+          {
+            car: `${draft.brand} ${draft.model}`,
+            photos: plural(result.photos, "photo", "photos"),
+          },
+        ),
       );
       await Promise.all([
         onDone(),
@@ -327,7 +348,7 @@ function PostCard({
               rel="noopener noreferrer"
               className="ms-auto inline-flex items-center gap-1 font-medium text-foreground hover:underline"
             >
-              Voir sur Facebook <ExternalLink className="size-3.5" aria-hidden />
+              {t("Voir sur Facebook")} <ExternalLink className="size-3.5" aria-hidden />
             </a>
           )}
         </div>
@@ -338,19 +359,21 @@ function PostCard({
         />
         <details className="rounded-lg bg-surface-secondary px-3 py-2 text-sm">
           <summary className="cursor-pointer font-medium text-foreground">
-            Texte de l’annonce
+            {t("Texte de l’annonce")}
           </summary>
-          <p className="mt-2 whitespace-pre-line text-muted">{item.message || "(sans texte)"}</p>
+          <p dir="auto" className="mt-2 whitespace-pre-line text-muted">
+            {item.message || t("(sans texte)")}
+          </p>
         </details>
       </div>
 
       {!expanded ? (
         <div className="grid content-start gap-3">
           <p className="font-medium text-foreground">
-            Cette publication ne ressemble pas à une annonce.
+            {t("Cette publication ne ressemble pas à une annonce.")}
           </p>
-          <p className="text-sm text-muted">
-            {item.message ? item.message.slice(0, 160) : "Publication sans texte."}
+          <p dir="auto" className="text-sm text-muted">
+            {item.message ? item.message.slice(0, 160) : t("Publication sans texte.")}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -359,21 +382,21 @@ function PostCard({
               onPress={() => decide.mutate({ status: "dismissed" })}
             >
               <EyeOff className="size-4" aria-hidden />
-              Ignorer
+              {t("Ignorer")}
             </Button>
             <Button variant="ghost" onPress={() => setExpanded(true)}>
-              Importer quand même
+              {t("Importer quand même")}
             </Button>
           </div>
         </div>
       ) : (
         <div className="grid content-start gap-4">
           <h3 className="text-lg font-semibold text-foreground">
-            {[draft.brand, draft.model, draft.version].filter(Boolean).join(" ") || "Véhicule"}
+            {[draft.brand, draft.model, draft.version].filter(Boolean).join(" ") || t("Véhicule")}
           </h3>
           {similar.length > 0 && (
             <div className="grid gap-2 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm">
-              <p className="font-medium text-foreground">Déjà sur le site ?</p>
+              <p className="font-medium text-foreground">{t("Déjà sur le site ?")}</p>
               {similar.slice(0, 3).map((car) => (
                 <div key={car.id} className="flex flex-wrap items-center gap-2">
                   <span className="text-foreground">
@@ -386,7 +409,7 @@ function PostCard({
                     onPress={() => decide.mutate({ status: "imported", carId: car.id })}
                   >
                     <Link2 className="size-4" aria-hidden />
-                    C’est ce véhicule
+                    {t("C’est ce véhicule")}
                   </Button>
                   <button
                     type="button"
@@ -395,7 +418,7 @@ function PostCard({
                       void navigate({ to: "/admin/vehicules/$carId", params: { carId: car.id } })
                     }
                   >
-                    Ouvrir
+                    {t("Ouvrir")}
                   </button>
                 </div>
               ))}
@@ -403,19 +426,19 @@ function PostCard({
           )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <TextField value={draft.brand} onChange={(v) => set("brand", v)} isRequired>
-              <Label>Marque</Label>
+              <Label>{t("Marque")}</Label>
               <Input />
             </TextField>
             <TextField value={draft.model} onChange={(v) => set("model", v)} isRequired>
-              <Label>Modèle</Label>
+              <Label>{t("Modèle")}</Label>
               <Input />
             </TextField>
             <TextField value={draft.version} onChange={(v) => set("version", v)}>
-              <Label>Version</Label>
+              <Label>{t("Version")}</Label>
               <Input />
             </TextField>
             <IntegerField
-              label="Année"
+              label={t("Année")}
               value={draft.year}
               onChange={(v) => set("year", v)}
               minValue={1950}
@@ -423,68 +446,68 @@ function PostCard({
               grouping={false}
             />
             <IntegerField
-              label="Kilométrage (km)"
+              label={t("Kilométrage (km)")}
               value={draft.km}
               onChange={(v) => set("km", v)}
               minValue={0}
               maxValue={100_000_000}
               {...(draft.km != null && draft.km > 600_000
-                ? { description: "Valeur inhabituelle : vérifiez." }
+                ? { description: t("Valeur inhabituelle : vérifiez.") }
                 : {})}
             />
             <IntegerField
-              label="Puissance fiscale (CV)"
+              label={t("Puissance fiscale (CV)")}
               value={draft.fiscalPower}
               onChange={(v) => set("fiscalPower", v)}
               minValue={0}
               maxValue={100}
             />
             <SelectField
-              label="Carburant"
+              label={t("Carburant")}
               value={draft.fuel}
-              options={[{ id: "", label: "À choisir" }, ...toOptions(CAR_FUELS)]}
+              options={translated([{ id: "", label: "À choisir" }, ...toOptions(CAR_FUELS)])}
               onChange={(v) => set("fuel", v)}
             />
             <SelectField
-              label="Boîte"
+              label={t("Boîte")}
               value={draft.gearbox}
-              options={[
+              options={translated([
                 { id: "", label: "À choisir" },
                 ...toOptions(CAR_GEARBOXES, GEARBOX_LABELS),
-              ]}
+              ])}
               onChange={(v) => set("gearbox", v)}
             />
             <SelectField
-              label="Carrosserie"
+              label={t("Carrosserie")}
               value={draft.body}
-              options={[{ id: "", label: "À choisir" }, ...toOptions(CAR_BODIES)]}
+              options={translated([{ id: "", label: "À choisir" }, ...toOptions(CAR_BODIES)])}
               onChange={(v) => set("body", v)}
             />
             <SelectField
-              label="Origine"
+              label={t("Origine")}
               value={draft.country}
-              options={[
+              options={translated([
                 { id: TO_FILL, label: TO_FILL },
                 ...toOptions(CAR_COUNTRIES, COUNTRY_LABELS),
-              ]}
+              ])}
               onChange={(v) => set("country", v)}
             />
             <IntegerField
-              label="Prix (DT)"
+              label={t("Prix (DT)")}
               value={draft.price}
               onChange={(v) => set("price", v)}
               minValue={0}
               maxValue={1_000_000_000}
-              description="Vide : « Contactez-nous »."
+              description={t("Vide : « Contactez-nous ».")}
             />
           </div>
           <TextField value={draft.description} onChange={(v) => set("description", v)}>
-            <Label>Description</Label>
+            <Label>{t("Description")}</Label>
             <TextArea rows={3} />
           </TextField>
           {missing.length > 0 && (
             <p className="text-sm text-warning">
-              À compléter avant l’import : {missing.join(", ")}.
+              {t("À compléter avant l’import : {fields}.", { fields: missing.join(t(", ")) })}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
@@ -494,7 +517,7 @@ function PostCard({
               onPress={() => importPost.mutate(true)}
             >
               <Check className="size-4" aria-hidden />
-              Importer et publier
+              {t("Importer et publier")}
             </Button>
             <Button
               variant="secondary"
@@ -502,7 +525,7 @@ function PostCard({
               isDisabled={busy || missing.length > 0}
               onPress={() => importPost.mutate(false)}
             >
-              Importer en brouillon
+              {t("Importer en brouillon")}
             </Button>
             <Button
               variant="ghost"
@@ -511,12 +534,14 @@ function PostCard({
               onPress={() => decide.mutate({ status: "dismissed" })}
             >
               <EyeOff className="size-4" aria-hidden />
-              Ignorer
+              {t("Ignorer")}
             </Button>
           </div>
           {importPost.isPending && (
             <p className="text-sm text-muted" aria-live="polite">
-              Copie de {plural(draft.photos.length, "photo", "photos")} vers le site…
+              {t("Copie de {photos} vers le site…", {
+                photos: plural(draft.photos.length, "photo", "photos"),
+              })}
             </p>
           )}
         </div>
@@ -536,11 +561,14 @@ function PhotoPicker({
   onChange: (photos: string[]) => void;
 }) {
   if (!photos.length)
-    return <p className="text-sm text-muted">Aucune photo dans cette publication.</p>;
+    return <p className="text-sm text-muted">{t("Aucune photo dans cette publication.")}</p>;
   return (
     <div className="grid gap-2">
       <p className="text-sm text-muted">
-        {chosen.length} / {photos.length} photos · cliquez pour en retirer une
+        {t("{chosen} / {total} photos · cliquez pour en retirer une", {
+          chosen: chosen.length,
+          total: photos.length,
+        })}
       </p>
       <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
         {photos.map((url, index) => {
@@ -550,7 +578,9 @@ function PhotoPicker({
               <button
                 type="button"
                 aria-pressed={kept}
-                aria-label={`${kept ? "Retirer" : "Garder"} la photo ${index + 1}`}
+                aria-label={t(kept ? "Retirer la photo {n}" : "Garder la photo {n}", {
+                  n: index + 1,
+                })}
                 onClick={() =>
                   onChange(
                     kept
@@ -570,8 +600,8 @@ function PhotoPicker({
                   className="aspect-square w-full object-cover"
                 />
                 {kept && chosen[0] === url && (
-                  <span className="absolute left-1 top-1 rounded bg-black/70 px-1 text-[0.65rem] font-semibold text-white">
-                    Couverture
+                  <span className="absolute start-1 top-1 rounded bg-black/70 px-1 text-[0.65rem] font-semibold text-white">
+                    {t("Couverture")}
                   </span>
                 )}
               </button>
@@ -615,8 +645,8 @@ function DecidedRow({
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">
-          {item.parsed.title || item.message.slice(0, 60) || "Publication"}
+        <p dir="auto" className="truncate font-medium text-foreground">
+          {item.parsed.title || item.message.slice(0, 60) || t("Publication")}
         </p>
         <p className="text-sm text-muted">{dateTimeFormat.format(new Date(item.postedAt))}</p>
       </div>
@@ -637,7 +667,7 @@ function DecidedRow({
           onPress={() => restore.mutate()}
         >
           <RotateCcw className="size-4" aria-hidden />
-          Remettre à traiter
+          {t("Remettre à traiter")}
         </Button>
       )}
     </div>

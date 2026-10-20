@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   LayoutDashboard,
   ExternalLink,
+  Globe,
   ImagePlus,
   FileText,
   Inbox,
@@ -47,6 +48,18 @@ import {
 } from "./model";
 import { AvatarDialog } from "./AvatarDialog";
 import { AdminAvatar, BottomSheet, SheetOption, useIsPhone } from "./ui";
+import { formatDate, intlLocale, setLocale, t, useLocale } from "./i18n";
+import { I18nProvider } from "react-aria-components";
+
+/** IBM Plex Sans Arabic (Arabic glyphs only), fetched the first time Arabic is used. */
+let arabicFont: Promise<unknown> | null = null;
+const loadArabicFont = () =>
+  (arabicFont ??= Promise.all([
+    import("@fontsource/ibm-plex-sans-arabic/arabic-400.css"),
+    import("@fontsource/ibm-plex-sans-arabic/arabic-500.css"),
+    import("@fontsource/ibm-plex-sans-arabic/arabic-600.css"),
+    import("@fontsource/ibm-plex-sans-arabic/arabic-700.css"),
+  ]));
 
 const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -98,12 +111,6 @@ function pageTitle(pathname: string, section: AdminSection) {
   if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) return "Fiche véhicule";
   return SECTION_LABELS[section];
 }
-
-const homeDate = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
 
 /** A swipe that starts this close to the left edge (px) and goes this far goes back. */
 const EDGE = 28;
@@ -170,6 +177,20 @@ export function AdminShell({
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const phone = useIsPhone();
+  const locale = useLocale();
+  const rtl = locale === "ar";
+  // Language of the admin: direction and language of the page (dialogs and sheets
+  // included), and the Arabic font, loaded only when Arabic is chosen.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.lang = rtl ? "ar" : "fr";
+    root.dir = rtl ? "rtl" : "ltr";
+    if (rtl) void loadArabicFont();
+    return () => {
+      root.lang = "fr";
+      root.dir = "ltr";
+    };
+  }, [rtl]);
   /** Close the account sheet, then run what was chosen (dialogs open after it). */
   const fromSheet = (action: () => void) => {
     setAccountOpen(false);
@@ -201,7 +222,7 @@ export function AdminShell({
     const el = page.current;
     if (!el) return;
     el.style.transition = animate ? "transform 200ms cubic-bezier(0.2, 0, 0, 1)" : "none";
-    el.style.transform = dx ? `translateX(${dx}px)` : "";
+    el.style.transform = dx ? `translateX(${rtl ? -dx : dx}px)` : "";
     el.style.boxShadow = dx ? "-12px 0 24px rgb(0 0 0 / 0.12)" : "";
   };
   // Pull down at the top of a page (phones): the refresh icon follows the finger,
@@ -286,7 +307,8 @@ export function AdminShell({
     onTouchStart: (event: React.TouchEvent) => {
       const t = event.touches[0];
       if (!t || window.innerWidth >= 1024) return;
-      if (parent && t.clientX <= EDGE) {
+      const fromEdge = rtl ? t.clientX >= window.innerWidth - EDGE : t.clientX <= EDGE;
+      if (parent && fromEdge) {
         swipe.current = { x: t.clientX, y: t.clientY, dx: 0, active: false };
         return;
       }
@@ -319,7 +341,8 @@ export function AdminShell({
       }
       const s = swipe.current;
       if (!s) return;
-      const dx = t.clientX - s.x;
+      // Towards "back": rightwards in French, leftwards in Arabic (mirrored screen).
+      const dx = (t.clientX - s.x) * (rtl ? -1 : 1);
       const dy = t.clientY - s.y;
       if (!s.active) {
         if (Math.abs(dy) > Math.abs(dx)) {
@@ -357,7 +380,7 @@ export function AdminShell({
     try {
       await clearSession();
     } catch {
-      toast.danger("Déconnexion impossible. Veuillez réessayer.");
+      toast.danger(t("Déconnexion impossible. Veuillez réessayer."));
       return;
     }
     markAdminDevice(false);
@@ -411,9 +434,10 @@ export function AdminShell({
         </Button>
         <Dropdown.Popover placement="bottom end" className="min-w-60">
           <Dropdown.Menu
-            aria-label="Compte"
+            aria-label={t("Compte")}
             onAction={(key) => {
               if (key === "logout") void signOut();
+              if (key === "language") setLocale(locale === "ar" ? "fr" : "ar");
               if (key === "avatar") setAvatarOpen(true);
               if (key === "security")
                 void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
@@ -421,35 +445,39 @@ export function AdminShell({
           >
             <Dropdown.Section>
               <Header>
-                <span className="block text-xs text-muted">Connecté en tant que</span>
+                <span className="block text-xs text-muted">{t("Connecté en tant que")}</span>
                 <span className="block truncate text-sm text-foreground">
-                  {email || "Administrateur"}
+                  {email || t("Administrateur")}
                 </span>
                 {session.data && (
                   <span className="mt-0.5 block text-xs text-muted">
-                    {ROLE_LABELS[session.data.role]}
+                    {t(ROLE_LABELS[session.data.role])}
                   </span>
                 )}
               </Header>
-              <Dropdown.Item id="avatar" textValue="Ma photo">
+              <Dropdown.Item id="avatar" textValue={t("Ma photo")}>
                 <ImagePlus className="size-4 shrink-0 text-muted" aria-hidden />
-                <Label>{avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}</Label>
+                <Label>{avatarUrl ? t("Changer ma photo") : t("Ajouter ma photo")}</Label>
               </Dropdown.Item>
               {isSuperAdmin ? (
-                <Dropdown.Item id="security" textValue="Ma sécurité">
+                <Dropdown.Item id="security" textValue={t("Ma sécurité")}>
                   <ShieldCheck className="size-4 shrink-0 text-muted" aria-hidden />
-                  <Label>Ma sécurité</Label>
+                  <Label>{t("Ma sécurité")}</Label>
                 </Dropdown.Item>
               ) : null}
-              <Dropdown.Item id="site" textValue="Voir le site" href="/" target="_blank">
+              <Dropdown.Item id="site" textValue={t("Voir le site")} href="/" target="_blank">
                 <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
-                <Label>Voir le site</Label>
+                <Label>{t("Voir le site")}</Label>
+              </Dropdown.Item>
+              <Dropdown.Item id="language" textValue={locale === "ar" ? "Français" : "العربية"}>
+                <Globe className="size-4 shrink-0 text-muted" aria-hidden />
+                <Label>{locale === "ar" ? "Français" : "العربية"}</Label>
               </Dropdown.Item>
             </Dropdown.Section>
             <Separator />
-            <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
+            <Dropdown.Item id="logout" textValue={t("Déconnexion")} variant="danger">
               <LogOut className="size-4 shrink-0 text-danger" aria-hidden />
-              <Label>Déconnexion</Label>
+              <Label>{t("Déconnexion")}</Label>
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown.Popover>
@@ -457,158 +485,175 @@ export function AdminShell({
     );
 
   return (
-    <div className="admin-app min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
-      <a
-        href="#admin-main"
-        className="sr-only z-50 rounded-lg bg-surface px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-      >
-        Aller au contenu
-      </a>
+    // react-aria widgets (selects, switches, calendars) follow the admin's language.
+    <I18nProvider locale={intlLocale()}>
+      <div className="admin-app min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+        <a
+          href="#admin-main"
+          className="sr-only z-50 rounded-lg bg-surface px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        >
+          {t("Aller au contenu")}
+        </a>
 
-      <aside className="vt-sidebar sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
-        <Brand />
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <SectionNav section={section} sections={sections} counts={counts} />
-        </div>
-        <div className="border-t border-separator p-4">
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            <ExternalLink className="size-4" aria-hidden />
-            Voir le site
-            <span className="sr-only">(nouvel onglet)</span>
-          </a>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-col overflow-x-clip">
-        {/* Computer top bar (unchanged). */}
-        <header className="vt-header dark sticky top-0 z-30 hidden border-b border-white/10 bg-[oklch(0.17_0.004_286)] text-foreground lg:block">
-          <div className="flex h-16 items-center gap-2 px-8">
-            <p className="min-w-0 flex-1 truncate text-sm">
-              <span className="text-muted">Administration / </span>
-              <span className="font-semibold text-foreground">{SECTION_LABELS[section]}</span>
-            </p>
-            {accountMenu()}
+        <aside className="vt-sidebar sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
+          <Brand />
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <SectionNav section={section} sections={sections} counts={counts} />
           </div>
-        </header>
+          <div className="border-t border-separator p-4">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <ExternalLink className="size-4" aria-hidden />
+              {t("Voir le site")}
+              <span className="sr-only">{t("(nouvel onglet)")}</span>
+            </a>
+          </div>
+        </aside>
 
-        {/* Phone: light bar with a round back button and the page title. */}
-        {parent && (
-          <header className="sticky top-0 z-30 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:hidden">
-            <div className="flex h-14 items-center gap-3 px-4">
-              <button
-                type="button"
-                onClick={goBack}
-                aria-label={`Retour : ${parent.label}`}
-                className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-foreground shadow-[0_1px_2px_rgb(15_23_42/0.08)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <ChevronLeft className="size-5" aria-hidden />
-              </button>
-              <p className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-                {pageTitle(pathname, section)}
+        <div className="flex min-w-0 flex-col overflow-x-clip">
+          {/* Computer top bar (unchanged). */}
+          <header className="vt-header dark sticky top-0 z-30 hidden border-b border-white/10 bg-[oklch(0.17_0.004_286)] text-foreground lg:block">
+            <div className="flex h-16 items-center gap-2 px-8">
+              <p className="min-w-0 flex-1 truncate text-sm">
+                <span className="text-muted">{t("Administration")} / </span>
+                <span className="font-semibold text-foreground">{t(SECTION_LABELS[section])}</span>
               </p>
-              <span className="grid size-10 shrink-0 place-items-center">{accountMenu()}</span>
+              {accountMenu()}
             </div>
           </header>
-        )}
 
-        {/* Phone home screen: greeting and the account photo, no bar. */}
-        {!parent && (
-          <div className="pt-[env(safe-area-inset-top)] lg:hidden">
-            <div className="flex items-center justify-between gap-4 px-4 pt-6 sm:px-6">
-              <div className="min-w-0">
-                <p className="text-sm text-muted first-letter:uppercase">
-                  {homeDate.format(new Date())}
+          {/* Phone: light bar with a round back button and the page title. */}
+          {parent && (
+            <header className="sticky top-0 z-30 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:hidden">
+              <div className="flex h-14 items-center gap-3 px-4">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  aria-label={t("Retour : {page}", { page: t(parent.label) })}
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-foreground shadow-[0_1px_2px_rgb(15_23_42/0.08)] outline-none active:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <ChevronLeft className="size-5 rtl:-scale-x-100" aria-hidden />
+                </button>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
+                  {t(pageTitle(pathname, section))}
                 </p>
-                <h1 className="mt-0.5 text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
-                  Bonjour !
-                </h1>
+                <span className="grid size-10 shrink-0 place-items-center">{accountMenu()}</span>
               </div>
-              {accountMenu(true)}
-            </div>
-          </div>
-        )}
-        {/* Pull-to-refresh indicator (phones), moved by the touch handlers. */}
-        <div
-          ref={indicator}
-          aria-hidden
-          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center opacity-0 lg:hidden"
-          style={{
-            top: `calc(env(safe-area-inset-top) + ${parent ? "3.75rem" : "0.75rem"})`,
-            transform: "translateY(-48px)",
-          }}
-        >
-          <span className="grid size-10 place-items-center rounded-full bg-surface text-accent shadow-[0_4px_14px_-4px_rgb(15_23_42/0.25)]">
-            <RefreshCw className={`size-5 ${refreshing ? "animate-spin" : ""}`} />
-          </span>
-        </div>
-        <p role="status" className="sr-only">
-          {refreshing ? "Actualisation des données…" : ""}
-        </p>
-        <div ref={page} {...touch} onTouchCancel={touch.onTouchEnd} className="flex-1">
-          <main
-            id="admin-main"
-            tabIndex={-1}
-            className="mx-auto w-full max-w-6xl px-4 py-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:py-8"
-          >
-            {/* Phones: each page slides in (from the left when going back). */}
-            <div
-              key={pathname}
-              className={`max-lg:animate-in max-lg:fade-in-0 max-lg:duration-300 ${
-                direction === "back"
-                  ? "max-lg:slide-in-from-left-8"
-                  : "max-lg:slide-in-from-right-8"
-              }`}
-            >
-              {children}
-            </div>
-          </main>
-        </div>
-      </div>
-
-      <BottomSheet
-        isOpen={accountOpen}
-        onOpenChange={setAccountOpen}
-        title={email || "Compte"}
-        description={session.data ? ROLE_LABELS[session.data.role] : undefined}
-      >
-        <div className="grid gap-0.5">
-          <SheetOption icon={ImagePlus} onPress={() => fromSheet(() => setAvatarOpen(true))}>
-            {avatarUrl ? "Changer ma photo" : "Ajouter ma photo"}
-          </SheetOption>
-          {isSuperAdmin && (
-            <SheetOption
-              icon={ShieldCheck}
-              onPress={() =>
-                fromSheet(
-                  () => void navigate({ to: "/admin/administrateurs", hash: "ma-securite" }),
-                )
-              }
-            >
-              Ma sécurité
-            </SheetOption>
+            </header>
           )}
-          <SheetOption icon={ExternalLink} href="/" external onPress={() => setAccountOpen(false)}>
-            Voir le site
-          </SheetOption>
-          <Separator className="my-1.5" />
-          <SheetOption icon={LogOut} danger onPress={() => fromSheet(() => void signOut())}>
-            Déconnexion
-          </SheetOption>
-        </div>
-      </BottomSheet>
 
-      <AvatarDialog
-        email={email}
-        url={avatarUrl}
-        isOpen={avatarOpen}
-        onOpenChange={setAvatarOpen}
-      />
-    </div>
+          {/* Phone home screen: greeting and the account photo, no bar. */}
+          {!parent && (
+            <div className="pt-[env(safe-area-inset-top)] lg:hidden">
+              <div className="flex items-center justify-between gap-4 px-4 pt-6 sm:px-6">
+                <div className="min-w-0">
+                  <p className="text-sm text-muted first-letter:uppercase">
+                    {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}
+                  </p>
+                  <h1 className="mt-0.5 text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
+                    {t("Bonjour !")}
+                  </h1>
+                </div>
+                {accountMenu(true)}
+              </div>
+            </div>
+          )}
+          {/* Pull-to-refresh indicator (phones), moved by the touch handlers. */}
+          <div
+            ref={indicator}
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 z-40 flex justify-center opacity-0 lg:hidden"
+            style={{
+              top: `calc(env(safe-area-inset-top) + ${parent ? "3.75rem" : "0.75rem"})`,
+              transform: "translateY(-48px)",
+            }}
+          >
+            <span className="grid size-10 place-items-center rounded-full bg-surface text-accent shadow-[0_4px_14px_-4px_rgb(15_23_42/0.25)]">
+              <RefreshCw className={`size-5 ${refreshing ? "animate-spin" : ""}`} />
+            </span>
+          </div>
+          <p role="status" className="sr-only">
+            {refreshing ? t("Actualisation des données…") : ""}
+          </p>
+          <div ref={page} {...touch} onTouchCancel={touch.onTouchEnd} className="flex-1">
+            <main
+              id="admin-main"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-6xl px-4 py-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:py-8"
+            >
+              {/* Phones: each page slides in (from the left when going back). */}
+              <div
+                key={`${pathname}|${locale}`}
+                className={`max-lg:animate-in max-lg:fade-in-0 max-lg:duration-300 ${
+                  (direction === "back") !== rtl
+                    ? "max-lg:slide-in-from-left-8"
+                    : "max-lg:slide-in-from-right-8"
+                }`}
+              >
+                {children}
+              </div>
+            </main>
+          </div>
+        </div>
+
+        <BottomSheet
+          isOpen={accountOpen}
+          onOpenChange={setAccountOpen}
+          title={email || t("Compte")}
+          description={session.data ? t(ROLE_LABELS[session.data.role]) : undefined}
+        >
+          <div className="grid gap-0.5">
+            <SheetOption icon={ImagePlus} onPress={() => fromSheet(() => setAvatarOpen(true))}>
+              {avatarUrl ? t("Changer ma photo") : t("Ajouter ma photo")}
+            </SheetOption>
+            {isSuperAdmin && (
+              <SheetOption
+                icon={ShieldCheck}
+                onPress={() =>
+                  fromSheet(
+                    () => void navigate({ to: "/admin/administrateurs", hash: "ma-securite" }),
+                  )
+                }
+              >
+                {t("Ma sécurité")}
+              </SheetOption>
+            )}
+            <SheetOption
+              icon={ExternalLink}
+              href="/"
+              external
+              onPress={() => setAccountOpen(false)}
+            >
+              {t("Voir le site")}
+            </SheetOption>
+            <SheetOption
+              icon={Globe}
+              onPress={() => {
+                setAccountOpen(false);
+                setLocale(locale === "ar" ? "fr" : "ar");
+              }}
+            >
+              {locale === "ar" ? "Français" : "العربية"}
+            </SheetOption>
+            <Separator className="my-1.5" />
+            <SheetOption icon={LogOut} danger onPress={() => fromSheet(() => void signOut())}>
+              {t("Déconnexion")}
+            </SheetOption>
+          </div>
+        </BottomSheet>
+
+        <AvatarDialog
+          email={email}
+          url={avatarUrl}
+          isOpen={avatarOpen}
+          onOpenChange={setAvatarOpen}
+        />
+      </div>
+    </I18nProvider>
   );
 }
 
@@ -620,11 +665,11 @@ function Brand() {
     <div className="dark relative flex h-16 shrink-0 items-center gap-3 bg-[oklch(0.17_0.004_286)] px-5 text-foreground">
       <img src={logo} alt="" width={96} height={32} className="h-8 w-auto shrink-0" />
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">
+        <p dir="ltr" className="truncate text-sm font-semibold">
           {text("identity.brand", "Auto Kontor")}{" "}
           <span className="text-accent">{text("identity.brand_suffix", "Sfax")}</span>
         </p>
-        <p className="text-xs text-muted">Administration</p>
+        <p className="text-xs text-muted">{t("Administration")}</p>
       </div>
     </div>
   );
@@ -642,7 +687,7 @@ function SectionNav({
   onNavigate?: (() => void) | undefined;
 }) {
   return (
-    <nav aria-label="Sections de l’administration">
+    <nav aria-label={t("Sections de l’administration")}>
       <ul className="grid gap-1">
         {sections.map((id) => {
           const Icon = SECTION_ICONS[id];
@@ -662,7 +707,7 @@ function SectionNav({
                 }`}
               >
                 <Icon className={`size-4 ${active ? "text-accent" : ""}`} aria-hidden />
-                <span className="flex-1 truncate">{SECTION_LABELS[id]}</span>
+                <span className="flex-1 truncate">{t(SECTION_LABELS[id])}</span>
                 {count && (
                   <span
                     className={`min-w-6 rounded-full px-2 text-center text-xs font-medium tabular-nums leading-5 ${
@@ -670,7 +715,7 @@ function SectionNav({
                     }`}
                   >
                     {count.value}
-                    <span className="sr-only"> {count.label}</span>
+                    <span className="sr-only"> {t(count.label)}</span>
                   </span>
                 )}
               </Link>
