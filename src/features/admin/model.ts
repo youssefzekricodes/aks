@@ -16,7 +16,7 @@ import {
   type CarInput,
   listSiteContent,
 } from "@/lib/data";
-import { getSession, listAdmins } from "@/features/auth/auth.functions";
+import { getProfile, getSession, listAdmins } from "@/features/auth/auth.functions";
 import { formatDate, plural as translatedPlural } from "./i18n";
 
 /** Non-component helpers shared by the admin sections. */
@@ -69,6 +69,21 @@ export function sectionAt(pathname: string): AdminSection {
     .sort(([, a], [, b]) => b.length - a.length)[0];
   return found?.[0] ?? "dashboard";
 }
+
+/**
+ * The three states of the stock and their colours, the same on the home screen and
+ * the dashboard (validated for colour-blind readers; always shown with labels).
+ */
+export const STOCK_STATUS = [
+  { key: "sale", label: "En vente", color: "#7c3aed" },
+  { key: "draft", label: "Non publiés", color: "#38bdf8" },
+  { key: "sold", label: "Vendus", color: "#f07563" },
+] as const;
+export type StockStatus = (typeof STOCK_STATUS)[number]["key"];
+
+/** Filters the vehicle list can open with (`/admin/vehicules?filtre=…`). */
+export const CAR_FILTERS = ["published", "draft", "sold", "incomplete"] as const;
+export type CarFilter = (typeof CAR_FILTERS)[number];
 
 /** Sections only a super administrator can open. */
 export const SUPER_ADMIN_SECTIONS: readonly AdminSection[] = ["admins"];
@@ -134,6 +149,17 @@ export const sessionQuery = queryOptions({
   // Reused across admin pages; checked again after a minute or when the tab regains focus.
   staleTime: 60_000,
 });
+
+/** "Mon profil": name, e-mail and the address waiting for confirmation. */
+export const PROFILE_PATH = "/admin/profil";
+export const profileQuery = queryOptions({
+  queryKey: ["admin-profile"],
+  queryFn: () => getProfile(),
+});
+
+/** Name shown for an admin: their display name, or else their e-mail. */
+export const displayName = (admin: { name?: string | null; email: string }) =>
+  admin.name?.trim() || admin.email;
 
 export const adminsQuery = queryOptions({
   queryKey: ["admin-accounts"],

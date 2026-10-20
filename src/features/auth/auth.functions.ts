@@ -29,6 +29,26 @@ export const setAvatar = createServerFn({ method: "POST" })
   .validator(z.object({ url: z.string().url().max(500).nullable() }))
   .handler(async ({ data }) => (await auth()).setAvatar(data.url));
 
+/* "Mon profil": name and e-mail of the signed-in admin. */
+export const getProfile = createServerFn({ method: "GET" }).handler(async () =>
+  (await auth()).profile(),
+);
+export const setName = createServerFn({ method: "POST" })
+  .validator(z.object({ name: z.string().max(200) }))
+  .handler(async ({ data }) => (await auth()).setName(data.name));
+export const changeEmail = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      email: z
+        .string()
+        .trim()
+        .email()
+        .max(254)
+        .transform((v) => v.toLowerCase()),
+    }),
+  )
+  .handler(async ({ data }) => (await auth()).changeEmail(data.email));
+
 /* Two-factor authentication (Supabase MFA: SMS or authenticator app). */
 const factorId = z.string().uuid();
 export const mfaEnroll = createServerFn({ method: "POST" })
@@ -69,6 +89,8 @@ export const emailCodeVerify = createServerFn({ method: "POST" })
 export type AdminAccount = {
   id: string;
   email: string;
+  /** Display name; absent until the admin-users function is redeployed. */
+  name?: string | null;
   role: "admin" | "super_admin";
   createdAt: string | null;
   lastSignInAt: string | null;
@@ -83,12 +105,18 @@ export const listAdmins = createServerFn({ method: "GET" }).handler(
   async () =>
     ((await (await auth()).manageAdmins({ action: "list" })) as { admins: AdminAccount[] }).admins,
 );
+const name = z.string().max(200);
 export const createAdmin = createServerFn({ method: "POST" })
-  .validator(z.object({ email: z.string().trim().email().max(254), password, role }))
+  .validator(
+    z.object({ email: z.string().trim().email().max(254), password, role, name: name.optional() }),
+  )
   .handler(async ({ data }) => (await auth()).manageAdmins({ action: "create", ...data }));
 export const resetAdminPassword = createServerFn({ method: "POST" })
   .validator(z.object({ userId, password }))
   .handler(async ({ data }) => (await auth()).manageAdmins({ action: "reset_password", ...data }));
+export const setAdminName = createServerFn({ method: "POST" })
+  .validator(z.object({ userId, name }))
+  .handler(async ({ data }) => (await auth()).manageAdmins({ action: "set_name", ...data }));
 export const setAdminRole = createServerFn({ method: "POST" })
   .validator(z.object({ userId, role }))
   .handler(async ({ data }) => (await auth()).manageAdmins({ action: "set_role", ...data }));

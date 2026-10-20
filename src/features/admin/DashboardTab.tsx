@@ -34,11 +34,22 @@ export function DashboardTab() {
 
 /** One row per body type (all of them, zero included), bar length = share of the largest. */
 /** `bar`: colour of the bars (the phone home screen uses gradients). */
-export function BodyBreakdown({ cars, bar = "bg-accent" }: { cars: AdminCar[]; bar?: string }) {
+export function BodyBreakdown({
+  cars,
+  bar = "bg-accent",
+  hideEmpty = false,
+}: {
+  cars: AdminCar[];
+  bar?: string;
+  /** Leave out the body types with no vehicle (shorter list). */
+  hideEmpty?: boolean;
+}) {
   const counts = new Map<string, number>(CAR_BODIES.map((body) => [body, 0]));
   // Only real body types: "À préciser" (imported, not filled in yet) is left out.
   for (const car of cars) if (counts.has(car.body)) counts.set(car.body, counts.get(car.body)! + 1);
-  const rows = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"));
+  const rows = [...counts.entries()]
+    .filter(([, count]) => !hideEmpty || count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"));
   const max = Math.max(1, ...rows.map(([, count]) => count));
   if (!cars.length)
     return (
@@ -49,7 +60,7 @@ export function BodyBreakdown({ cars, bar = "bg-accent" }: { cars: AdminCar[]; b
       />
     );
   return (
-    <ul className="grid gap-2.5">
+    <ul className="grid grid-cols-1 gap-2.5">
       {rows.map(([body, count]) => (
         <li
           key={body}
@@ -97,11 +108,11 @@ export function MostViewed({
     );
   const max = rows[0]!.last30;
   return (
-    <ol className="grid gap-3">
+    <ol className="grid grid-cols-1 gap-3">
       {rows.map((row, index) => {
         const car = byId.get(row.carId)!;
         return (
-          <li key={row.carId} className="flex items-center gap-3">
+          <li key={row.carId} className="flex min-w-0 items-center gap-3">
             <span className="tabular-nums w-5 shrink-0 text-end text-sm text-muted">
               {formatNumber(index + 1)}
             </span>
@@ -113,7 +124,11 @@ export function MostViewed({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-3">
-                <p className="truncate text-sm font-medium text-foreground">
+                {/* Latin names in the Arabic screen keep their start ("Volkswagen Am…"). */}
+                <p
+                  dir="auto"
+                  className="truncate text-sm font-medium text-foreground rtl:text-right"
+                >
                   {car.brand} {car.name}
                   {car.sold && (
                     <span className="ms-2 text-xs font-normal text-muted">{t("Vendu")}</span>

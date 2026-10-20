@@ -6,9 +6,7 @@ import {
   Banknote,
   Car,
   ChevronRight,
-  ClipboardList,
   Eye,
-  FileClock,
   Inbox,
   RefreshCw,
   type LucideIcon,
@@ -18,12 +16,14 @@ import { BodyBreakdown, MostViewed } from "./DashboardTab";
 import { formatDate, formatNumber, t } from "./i18n";
 import {
   SECTION_PATHS,
+  STOCK_STATUS,
   adminCarsQuery,
   dashboardStatsQuery,
-  fieldsToFill,
   leadsQueryOptions,
   plural,
+  type StockStatus,
 } from "./model";
+import { TodoList } from "./TodoList";
 import { BodyBreakdownSkeleton, MostViewedSkeleton, StockSplitSkeleton, fadeIn } from "./skeletons";
 import { LoadError } from "./ui";
 
@@ -34,16 +34,11 @@ import { LoadError } from "./ui";
  * (icons, status, chart), every block in the same card style.
  */
 
-/** Stock status colours (validated for colour-blind readers; always shown with labels). */
-const STATUS = [
-  { key: "sale", label: "En vente", color: "#7c3aed" },
-  { key: "draft", label: "Brouillons", color: "#38bdf8" },
-  { key: "sold", label: "Vendus", color: "#f07563" },
-] as const;
-type StatusKey = (typeof STATUS)[number]["key"];
+const STATUS = STOCK_STATUS;
+type StatusKey = StockStatus;
 
-const money = (value: number) =>
-  `${formatNumber(value, { notation: "compact", maximumFractionDigits: 1 })} ${t("DT")}`;
+/** Amounts written in full ("967 500 DT"): easier to read than "967,5 k". */
+const money = (value: number) => `${formatNumber(Math.round(value))} ${t("DT")}`;
 
 export function Dashboard() {
   const queryClient = useQueryClient();
@@ -67,7 +62,6 @@ export function Dashboard() {
   const priced = forSale.filter((car) => !car.price_on_request && car.price > 0);
   const prices = priced.map((car) => salePrice(car));
   const stockValue = prices.reduce((sum, p) => sum + p, 0);
-  const toFill = all.filter((car) => fieldsToFill(car).length > 0).length;
   const allLeads = leads.data ?? [];
   const openLeads = allLeads.filter((lead) => !lead.handled).length;
   const views = stats.data?.views ?? [];
@@ -81,7 +75,7 @@ export function Dashboard() {
   const refreshing = cars.isFetching || stats.isFetching || leads.isFetching;
 
   return (
-    <div className="grid gap-5 lg:gap-6">
+    <div className="grid grid-cols-1 gap-5 lg:gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -117,7 +111,7 @@ export function Dashboard() {
           value={ready ? formatNumber(forSale.length) : undefined}
           detail={
             ready
-              ? t("sur {total}", { total: plural(all.length, "véhicule", "véhicules") })
+              ? t("sur {total} au total", { total: plural(all.length, "véhicule", "véhicules") })
               : undefined
           }
           progress={ready && all.length ? forSale.length / all.length : undefined}
@@ -127,18 +121,22 @@ export function Dashboard() {
           icon={Inbox}
           tint="bg-emerald-50 text-emerald-600"
           labelColor="text-emerald-700"
-          label={t("Demandes à traiter")}
+          label={t("Demandes")}
           value={leads.data ? formatNumber(openLeads) : undefined}
-          detail={leads.data ? t("{count} au total", { count: allLeads.length }) : undefined}
+          detail={
+            leads.data
+              ? t("à traiter, sur {count} reçues", { count: formatNumber(allLeads.length) })
+              : undefined
+          }
           to={SECTION_PATHS.leads}
         />
         <Metric
           icon={Eye}
           tint="bg-sky-50 text-sky-600"
           labelColor="text-sky-700"
-          label={t("Vues (30 jours)")}
+          label={t("Visites")}
           value={stats.data ? formatNumber(views30) : stats.isError ? "—" : undefined}
-          detail={t("Fiches véhicules consultées")}
+          detail={t("vues ces 30 derniers jours")}
         />
         <Metric
           icon={Banknote}
@@ -146,44 +144,18 @@ export function Dashboard() {
           labelColor="text-indigo-700"
           label={t("Valeur du stock")}
           value={ready ? money(stockValue) : undefined}
-          detail={ready ? plural(priced.length, "prix affiché", "prix affichés") : undefined}
+          detail={
+            ready
+              ? t("pour {count}", { count: plural(priced.length, "prix affiché", "prix affichés") })
+              : undefined
+          }
         />
       </dl>
 
-      <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
         {/* What needs doing. */}
-        <Panel title={t("À faire")} hint={t("Les actions qui attendent")}>
-          {ready && leads.data ? (
-            <ul className={`grid gap-2 ${fadeIn}`}>
-              <Todo
-                icon={Inbox}
-                tint="bg-emerald-50 text-emerald-600"
-                to={SECTION_PATHS.leads}
-                count={openLeads}
-                label={t("Demandes en attente de réponse")}
-              />
-              <Todo
-                icon={ClipboardList}
-                tint="bg-amber-50 text-amber-600"
-                to={SECTION_PATHS.cars}
-                count={toFill}
-                label={t("Véhicules avec des informations manquantes")}
-              />
-              <Todo
-                icon={FileClock}
-                tint="bg-slate-100 text-slate-600"
-                to={SECTION_PATHS.cars}
-                count={drafts.length}
-                label={t("Brouillons à publier")}
-              />
-            </ul>
-          ) : (
-            <div className="grid gap-2" aria-hidden>
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-14 rounded-2xl" />
-              ))}
-            </div>
-          )}
+        <Panel title={t("À faire")} hint={t("Touchez une ligne pour vous en occuper")}>
+          <TodoList cars={cars.data} leads={leads.data} />
         </Panel>
 
         {/* Stock split. */}
@@ -201,12 +173,14 @@ export function Dashboard() {
         </Panel>
 
         {/* Prices of the vehicles for sale. */}
-        <Panel title={t("Prix")} hint={t("Véhicules en vente avec un prix affiché")}>
+        <Panel title={t("Prix")} hint={t("Des véhicules en vente, prix affichés uniquement")}>
           {ready ? (
             <dl className={`grid grid-cols-2 gap-3 ${fadeIn}`}>
               <PriceFact
                 label={t("Prix moyen")}
-                value={prices.length ? money(stockValue / prices.length) : "—"}
+                value={
+                  prices.length ? money(Math.round(stockValue / prices.length / 100) * 100) : "—"
+                }
               />
               <PriceFact label={t("Valeur totale")} value={money(stockValue)} />
               <PriceFact
@@ -219,7 +193,7 @@ export function Dashboard() {
               />
               <p className="col-span-2 text-xs text-muted">
                 {t("{count} sur demande (prix masqué)", {
-                  count: forSale.length - priced.length,
+                  count: formatNumber(forSale.length - priced.length),
                 })}
               </p>
             </dl>
@@ -233,7 +207,7 @@ export function Dashboard() {
         </Panel>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6">
         <Panel title={t("Les plus consultés")} hint={t("Vues des 30 derniers jours")}>
           {stats.isError ? (
             <LoadError message={t("Statistiques indisponibles.")} onRetry={() => stats.refetch()} />
@@ -282,7 +256,7 @@ export function Dashboard() {
           <BodyBreakdownSkeleton />
         ) : (
           <div className={`lg:max-w-2xl ${fadeIn}`}>
-            <BodyBreakdown cars={forSale} />
+            <BodyBreakdown cars={forSale} hideEmpty />
           </div>
         )}
       </Panel>
@@ -334,7 +308,7 @@ function Metric({
           </span>
         )}
         {detail ? (
-          <span className="mt-1 block truncate text-xs text-muted">{detail}</span>
+          <span className="mt-1 line-clamp-2 block text-xs leading-snug text-muted">{detail}</span>
         ) : (
           <Skeleton className="mt-2 h-3 w-24 rounded" />
         )}
@@ -388,47 +362,6 @@ function Panel({
       </header>
       {children}
     </section>
-  );
-}
-
-function Todo({
-  icon: Icon,
-  tint,
-  to,
-  count,
-  label,
-}: {
-  icon: LucideIcon;
-  tint: string;
-  to: string;
-  count: number;
-  label: string;
-}) {
-  const done = count === 0;
-  return (
-    <li>
-      <Link
-        to={to}
-        className="flex items-center gap-3 rounded-2xl bg-surface-secondary px-3 py-2.5 outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--surface-secondary)_70%,var(--foreground)_6%)] focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <span
-          className={`grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-surface text-muted" : tint}`}
-        >
-          <Icon className="size-[18px]" aria-hidden />
-        </span>
-        <span className={`min-w-0 flex-1 text-sm ${done ? "text-muted" : "text-foreground"}`}>
-          {label}
-        </span>
-        <span
-          className={`min-w-7 rounded-full px-2 text-center text-sm font-semibold leading-7 tabular-nums ${
-            done ? "text-muted" : "bg-foreground text-background"
-          }`}
-        >
-          {formatNumber(count)}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted rtl:-scale-x-100" aria-hidden />
-      </Link>
-    </li>
   );
 }
 
@@ -520,14 +453,11 @@ function StockDonut({ counts, total }: { counts: Record<StatusKey, number>; tota
               />
               <span className="truncate">{t(s.label)}</span>
             </span>
-            <span
-              className="text-xl font-bold tabular-nums text-foreground"
-              title={`${formatNumber(counts[s.key])} ${t("véhicules")}`}
-            >
-              {formatNumber(share(counts[s.key]), { style: "percent" })}
+            <span className="text-xl font-bold tabular-nums text-foreground">
+              {formatNumber(counts[s.key])}
             </span>
             <span className="text-[11px] tabular-nums text-muted">
-              {formatNumber(counts[s.key])}
+              {formatNumber(share(counts[s.key]), { style: "percent" })}
             </span>
           </li>
         ))}
@@ -540,7 +470,7 @@ function PriceFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-surface-secondary px-3 py-2.5">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-0.5 break-words text-base font-semibold leading-snug tabular-nums text-foreground sm:text-lg">
+      <dd className="mt-0.5 text-base font-semibold leading-snug tabular-nums text-foreground sm:text-lg lg:text-[15px] 2xl:text-lg">
         {value}
       </dd>
     </div>
@@ -570,7 +500,7 @@ function RecentLeads({
       </p>
     );
   return (
-    <ul className={`grid gap-1 ${fadeIn}`}>
+    <ul className={`grid grid-cols-1 gap-1 ${fadeIn}`}>
       {latest.map((lead) => {
         const car = lead.car_slug ? bySlug.get(lead.car_slug) : undefined;
         return (
@@ -593,7 +523,9 @@ function RecentLeads({
               )}
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-foreground">{lead.name}</span>
+                  <span dir="auto" className="truncate text-sm font-medium text-foreground">
+                    {lead.name}
+                  </span>
                   {!lead.handled && (
                     <span
                       className="size-2 shrink-0 rounded-full bg-accent"
@@ -601,7 +533,7 @@ function RecentLeads({
                     />
                   )}
                 </span>
-                <span className="block truncate text-xs text-muted">
+                <span dir="auto" className="block truncate text-xs text-muted rtl:text-right">
                   {car ? `${car.brand} ${car.name}` : lead.message || t("Demande de contact")}
                 </span>
               </span>

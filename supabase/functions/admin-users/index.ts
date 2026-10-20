@@ -26,12 +26,13 @@ const api: AdminApi = {
       if (data.users.length < 200) return all;
     }
   },
-  async createUser(email, password, role: Role) {
+  async createUser(email, password, role: Role, name) {
     const { error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       app_metadata: { role },
+      ...(name ? { user_metadata: { full_name: name } } : {}),
     });
     if (error) throw error;
   },
@@ -39,6 +40,8 @@ const api: AdminApi = {
     const { error } = await admin.auth.admin.updateUserById(id, {
       ...(changes.password ? { password: changes.password } : {}),
       ...(changes.role ? { app_metadata: { role: changes.role } } : {}),
+      // Merged with the rest of the profile (the photo is kept).
+      ...(changes.name !== undefined ? { user_metadata: { full_name: changes.name } } : {}),
     });
     if (error) throw error;
   },

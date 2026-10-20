@@ -85,7 +85,7 @@ export function AdminBar() {
           <span className="sm:hidden">Vue administrateur</span>
           <span className="hidden sm:inline">
             Vous consultez le site en tant qu’administrateur —{" "}
-            <strong className="font-semibold">{session.data.email}</strong>
+            <strong className="font-semibold">{session.data.name || session.data.email}</strong>
           </span>
         </p>
         {car?.id && (

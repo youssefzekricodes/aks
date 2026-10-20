@@ -9,6 +9,7 @@ export type AuthUser = {
   id: string;
   email?: string | undefined;
   app_metadata?: Record<string, unknown> | undefined;
+  user_metadata?: Record<string, unknown> | undefined;
   created_at?: string | undefined;
   last_sign_in_at?: string | null | undefined;
   factors?: { status: string; factor_type: string }[] | undefined;
@@ -18,8 +19,12 @@ export type AuthUser = {
 export type AdminApi = {
   getUser(token: string): Promise<AuthUser | null>;
   listUsers(): Promise<AuthUser[]>;
-  createUser(email: string, password: string, role: Role): Promise<void>;
-  updateUser(id: string, changes: { password?: string; role?: Role }): Promise<void>;
+  createUser(email: string, password: string, role: Role, name: string | null): Promise<void>;
+  /** `name`: display name (null removes it). */
+  updateUser(
+    id: string,
+    changes: { password?: string; role?: Role; name?: string | null },
+  ): Promise<void>;
   deleteUser(id: string): Promise<void>;
   revokeSessions(id: string): Promise<void>;
   /** Session confirmed with an e-mail code (public.admin_second_factor). */
@@ -32,6 +37,22 @@ const fail = (status: number, error: string): Result => ({ status, body: { error
 const roleOf = (user: AuthUser) => user.app_metadata?.["role"] as Role | undefined;
 const isRole = (value: unknown): value is Role => ROLES.includes(value as Role);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Longest display name accepted. */
+export const NAME_MAX = 60;
+/** Display name saved on the account (`user_metadata.full_name`), or null. */
+const nameOf = (user: AuthUser) => {
+  const name = user.user_metadata?.["full_name"];
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+};
+/** A submitted name: spaces tidied, "" means none; undefined when invalid. */
+function cleanName(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const name = value.trim().replace(/\s+/g, " ");
+  if (name.length > NAME_MAX) return undefined;
+  return name || null;
+}
 
 function checkPassword(password: unknown) {
   return typeof password === "string" && password.length >= 12 && password.length <= 256;
@@ -77,6 +98,7 @@ export async function handle(token: string | null, body: unknown, api: AdminApi)
             .map((u) => ({
               id: u.id,
               email: u.email ?? "",
+              name: nameOf(u),
               role: roleOf(u),
               createdAt: u.created_at ?? null,
               lastSignInAt: u.last_sign_in_at ?? null,
@@ -97,9 +119,11 @@ export async function handle(token: string | null, body: unknown, api: AdminApi)
       if (!checkPassword(input["password"]))
         return fail(400, "Mot de passe : 12 à 256 caractères.");
       if (!isRole(input["role"])) return fail(400, "Rôle non valide.");
+      const name = cleanName(input["name"]);
+      if (name === undefined) return fail(400, `Nom : ${NAME_MAX} caractères maximum.`);
       if (users.some((u) => u.email?.toLowerCase() === email))
         return fail(409, "Un compte existe déjà avec cette adresse.");
-      await api.createUser(email, input["password"] as string, input["role"]);
+      await api.createUser(email, input["password"] as string, input["role"], name);
       return { status: 200, body: { ok: true } };
     }
 
@@ -111,6 +135,14 @@ export async function handle(token: string | null, body: unknown, api: AdminApi)
       // Everyone using the old password is signed out (the caller keeps their session).
       if (target.id !== caller.id) await api.revokeSessions(target.id);
       return { status: 200, body: { ok: true } };
+    }
+
+    case "set_name": {
+      if (!target) return fail(404, "Administrateur introuvable.");
+      const name = cleanName(input["name"]);
+      if (name === undefined) return fail(400, `Nom : ${NAME_MAX} caractères maximum.`);
+      await api.updateUser(target.id, { name });
+      return { status: 200, body: { ok: true, name } };
     }
 
     case "set_role": {

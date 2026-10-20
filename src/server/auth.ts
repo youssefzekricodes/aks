@@ -48,7 +48,16 @@ export type Admin = {
   factors: Factor[];
   /** Profile photo (only one of ours, in this admin's folder); null: their initial. */
   avatarUrl: string | null;
+  /** Display name ("Youssef Zekri"); null: not set, the e-mail is shown instead. */
+  name: string | null;
 };
+
+/** Longest display name accepted (same limit as the admin-users function). */
+export const NAME_MAX = 60;
+function nameOf(metadata: unknown) {
+  const name = (metadata as Record<string, unknown> | null | undefined)?.["full_name"];
+  return typeof name === "string" && name.trim() ? name.trim().slice(0, NAME_MAX) : null;
+}
 
 /** The photo saved on the account, if it is a valid file of this admin's. */
 function avatarOf(id: string, metadata: unknown) {
@@ -132,6 +141,7 @@ export async function currentAdmin(
     mfa,
     factors,
     avatarUrl: avatarOf(claims.sub, claims.user_metadata),
+    name: nameOf(claims.user_metadata),
   };
 }
 
@@ -166,6 +176,55 @@ export async function setAvatar(url: string | null) {
     if (key) await deleteObjects([key]).catch(() => undefined);
   }
   return { avatarUrl: url };
+}
+
+/**
+ * "Mon profil": the signed-in admin's name and e-mail, with the new address
+ * waiting for confirmation, if any (read from Supabase Auth, not the token).
+ */
+export async function profile() {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) throw new Error("Connexion administrateur requise.");
+  return {
+    name: nameOf(data.user.user_metadata),
+    email: data.user.email ?? "",
+    pendingEmail: data.user.new_email ?? null,
+  };
+}
+
+/** Sets (or clears, with "") the signed-in admin's display name. */
+export async function setName(name: string) {
+  const supabase = await adminClient({ write: true });
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (clean.length > NAME_MAX) throw new Error(`Nom : ${NAME_MAX} caractères maximum.`);
+  const { error } = await supabase.auth.updateUser({ data: { full_name: clean || null } });
+  if (error) throw new Error("Enregistrement du nom impossible.");
+  // The new name is in the token right away (menus, site strip).
+  await supabase.auth.refreshSession();
+  return { name: clean || null };
+}
+
+/**
+ * Asks to change the signed-in admin's e-mail. Supabase sends a confirmation link
+ * (to the new address, and to the current one when "secure e-mail change" is on);
+ * the sign-in address only changes once confirmed.
+ */
+export async function changeEmail(email: string) {
+  const supabase = await adminClient({ write: true });
+  const { data: current } = await supabase.auth.getUser();
+  if (current.user?.email?.toLowerCase() === email)
+    throw new Error("C’est déjà votre adresse actuelle.");
+  const { data, error } = await supabase.auth.updateUser({ email });
+  if (error)
+    throw new Error(
+      error.status === 422 || /already/i.test(error.message)
+        ? "Cette adresse est déjà utilisée par un autre compte."
+        : error.status === 429
+          ? "Trop de demandes. Réessayez dans quelques minutes."
+          : "Changement d’adresse impossible.",
+    );
+  return { pendingEmail: data.user?.new_email ?? email };
 }
 
 export async function login(email: string, password: string) {

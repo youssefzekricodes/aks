@@ -1,7 +1,13 @@
 import { gtagSnippet } from "@/lib/analytics";
 import { WhatsAppButton } from "@/components/aks/WhatsAppButton";
 import { AdminBar } from "@/components/aks/AdminBar";
-import { hideSplash, SPLASH_HTML, SPLASH_ID } from "@/lib/splash";
+import {
+  FROM_ADMIN_PARAM,
+  hideSplash,
+  SITE_SPLASH_HTML,
+  SPLASH_HTML,
+  SPLASH_ID,
+} from "@/lib/splash";
 import {
   brandLogosQuery,
   brandSettingsQuery,
@@ -148,8 +154,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const startsOnAdmin = useRouterState({
-    select: (state) => state.location.pathname.startsWith("/admin"),
+  // Splash on the first load: the admin app, or the site opened from the admin.
+  const splash = useRouterState({
+    select: (state) =>
+      state.location.pathname.startsWith("/admin")
+        ? "admin"
+        : (state.location.search as Record<string, unknown>)[FROM_ADMIN_PARAM] === "admin"
+          ? "site"
+          : null,
   });
   return (
     // Light theme only; the header and footer bands are dark by design.
@@ -158,14 +170,19 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-background text-foreground">
-        {startsOnAdmin && (
-          // Admin app launch screen (phones): static markup, faded out by hideSplash().
+        {splash && (
+          // Launch screen: static markup, faded out by hideSplash(). The admin's
+          // only on phones; the site's (opened from the admin) everywhere.
           <div
             id={SPLASH_ID}
             role="status"
             aria-live="polite"
-            className="fixed inset-0 z-[100] grid place-items-center bg-[#1c1c1f] transition-opacity duration-300 lg:hidden"
-            dangerouslySetInnerHTML={{ __html: SPLASH_HTML }}
+            className={`fixed inset-0 z-[100] grid place-items-center bg-[#1c1c1f] transition-opacity duration-300 ${
+              splash === "admin" ? "lg:hidden" : ""
+            }`}
+            dangerouslySetInnerHTML={{
+              __html: splash === "admin" ? SPLASH_HTML : SITE_SPLASH_HTML,
+            }}
           />
         )}
         {children}
@@ -186,7 +203,31 @@ function RootComponent() {
   // The admin splash only covers the very first load of an admin page: the public
   // site never shows it, and it can never stay stuck (slow network, error).
   useEffect(() => {
-    if (!window.location.pathname.startsWith("/admin")) hideSplash();
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(FROM_ADMIN_PARAM) === "admin") {
+      // Site opened from the admin: the splash stays until the page and its images
+      // have loaded (at least a short moment, so it reads as a transition). Then
+      // the marker leaves the address, so a shared or reloaded link is a normal
+      // visit (only after the fade: the shell drops the splash when it changes).
+      const shown = performance.now();
+      const done = () =>
+        window.setTimeout(
+          () => {
+            hideSplash();
+            window.setTimeout(() => {
+              url.searchParams.delete(FROM_ADMIN_PARAM);
+              window.history.replaceState(
+                window.history.state,
+                "",
+                url.pathname + url.search + url.hash,
+              );
+            }, 400);
+          },
+          Math.max(0, 900 - (performance.now() - shown)),
+        );
+      if (document.readyState === "complete") done();
+      else window.addEventListener("load", done, { once: true });
+    } else if (!window.location.pathname.startsWith("/admin")) hideSplash();
     const timer = window.setTimeout(hideSplash, 10_000);
     return () => window.clearTimeout(timer);
   }, []);

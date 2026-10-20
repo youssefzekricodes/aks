@@ -16,7 +16,7 @@ import {
   LayoutDashboard,
   ExternalLink,
   Globe,
-  ImagePlus,
+  UserRound,
   FileText,
   Inbox,
   LogOut,
@@ -31,11 +31,13 @@ import {
 import { signOut as clearSession } from "@/features/auth/auth.functions";
 import { useSiteText } from "@/lib/site-content";
 import { brandInfo } from "@/features/catalog/brands";
-import { hideSplash } from "@/lib/splash";
+import { hideSplash, SITE_FROM_ADMIN } from "@/lib/splash";
 import { markAdminDevice } from "@/components/aks/AdminBar";
 import {
   ADMIN_SECTIONS,
+  PROFILE_PATH,
   ROLE_LABELS,
+  displayName,
   SECTION_LABELS,
   SECTION_PATHS,
   SUPER_ADMIN_SECTIONS,
@@ -46,7 +48,6 @@ import {
   type AdminSection,
   type Session,
 } from "./model";
-import { AvatarDialog } from "./AvatarDialog";
 import { AdminAvatar, BottomSheet, SheetOption, useIsPhone } from "./ui";
 import { formatDate, intlLocale, setLocale, t, useLocale } from "./i18n";
 import { I18nProvider } from "react-aria-components";
@@ -109,6 +110,7 @@ function parentOf(pathname: string, from: unknown): { href: string; label: strin
 function pageTitle(pathname: string, section: AdminSection) {
   if (/^\/admin\/vehicules\/marque\//.test(pathname)) return "Ordre des véhicules";
   if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) return "Fiche véhicule";
+  if (pathname.startsWith(PROFILE_PATH)) return "Mon profil";
   return SECTION_LABELS[section];
 }
 
@@ -174,7 +176,6 @@ export function AdminShell({
   const previous = useRef<string | null>(null);
   const current = useRef(pathname);
   const [direction, setDirection] = useState<"forward" | "back">("forward");
-  const [avatarOpen, setAvatarOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const phone = useIsPhone();
   const locale = useLocale();
@@ -390,6 +391,10 @@ export function AdminShell({
   }
 
   const email = session.data?.email ?? "";
+  const name = session.data?.name ?? null;
+  /** Name shown for the account (its display name, or else the e-mail). */
+  const shownName = session.data ? displayName(session.data) : "";
+  const onProfile = pathname.startsWith(PROFILE_PATH);
 
   const avatarUrl = session.data?.avatarUrl ?? null;
   /** Account button and menu; `large`: the bigger photo of the phone home screen. */
@@ -398,12 +403,12 @@ export function AdminShell({
       <button
         type="button"
         onClick={() => setAccountOpen(true)}
-        aria-label={`Compte ${email}`.trim()}
+        aria-label={`${t("Compte")} ${shownName}`.trim()}
         aria-haspopup="dialog"
         className="rounded-full outline-none active:opacity-80 focus-visible:ring-2 focus-visible:ring-focus"
       >
         <AdminAvatar
-          email={email}
+          email={shownName}
           url={avatarUrl}
           className={
             large
@@ -418,10 +423,10 @@ export function AdminShell({
           variant="ghost"
           size={large ? "md" : "sm"}
           className={large ? "h-auto rounded-full p-0.5" : ""}
-          aria-label={`Compte ${email}`.trim()}
+          aria-label={`${t("Compte")} ${shownName}`.trim()}
         >
           <AdminAvatar
-            email={email}
+            email={shownName}
             url={avatarUrl}
             className={
               large
@@ -429,7 +434,7 @@ export function AdminShell({
                 : "size-7 text-xs"
             }
           />
-          <span className="hidden max-w-56 truncate lg:inline">{email || "Compte"}</span>
+          <span className="hidden max-w-56 truncate lg:inline">{shownName || t("Compte")}</span>
           <ChevronDown className="size-4 text-muted max-lg:hidden" aria-hidden />
         </Button>
         <Dropdown.Popover placement="bottom end" className="min-w-60">
@@ -438,7 +443,7 @@ export function AdminShell({
             onAction={(key) => {
               if (key === "logout") void signOut();
               if (key === "language") setLocale(locale === "ar" ? "fr" : "ar");
-              if (key === "avatar") setAvatarOpen(true);
+              if (key === "profile") void navigate({ to: PROFILE_PATH });
               if (key === "security")
                 void navigate({ to: "/admin/administrateurs", hash: "ma-securite" });
             }}
@@ -446,6 +451,11 @@ export function AdminShell({
             <Dropdown.Section>
               <Header>
                 <span className="block text-xs text-muted">{t("Connecté en tant que")}</span>
+                {name && (
+                  <span dir="auto" className="block truncate text-sm font-semibold text-foreground">
+                    {name}
+                  </span>
+                )}
                 <span className="block truncate text-sm text-foreground">
                   {email || t("Administrateur")}
                 </span>
@@ -455,9 +465,9 @@ export function AdminShell({
                   </span>
                 )}
               </Header>
-              <Dropdown.Item id="avatar" textValue={t("Ma photo")}>
-                <ImagePlus className="size-4 shrink-0 text-muted" aria-hidden />
-                <Label>{avatarUrl ? t("Changer ma photo") : t("Ajouter ma photo")}</Label>
+              <Dropdown.Item id="profile" textValue={t("Mon profil")}>
+                <UserRound className="size-4 shrink-0 text-muted" aria-hidden />
+                <Label>{t("Mon profil")}</Label>
               </Dropdown.Item>
               {isSuperAdmin ? (
                 <Dropdown.Item id="security" textValue={t("Ma sécurité")}>
@@ -465,7 +475,12 @@ export function AdminShell({
                   <Label>{t("Ma sécurité")}</Label>
                 </Dropdown.Item>
               ) : null}
-              <Dropdown.Item id="site" textValue={t("Voir le site")} href="/" target="_blank">
+              <Dropdown.Item
+                id="site"
+                textValue={t("Voir le site")}
+                href={SITE_FROM_ADMIN}
+                target="_blank"
+              >
                 <ExternalLink className="size-4 shrink-0 text-muted" aria-hidden />
                 <Label>{t("Voir le site")}</Label>
               </Dropdown.Item>
@@ -498,11 +513,11 @@ export function AdminShell({
         <aside className="vt-sidebar sticky top-0 hidden h-dvh flex-col border-r border-separator bg-surface lg:flex">
           <Brand />
           <div className="flex-1 overflow-y-auto px-4 py-4">
-            <SectionNav section={section} sections={sections} counts={counts} />
+            <SectionNav section={onProfile ? null : section} sections={sections} counts={counts} />
           </div>
           <div className="border-t border-separator p-4">
             <a
-              href="/"
+              href={SITE_FROM_ADMIN}
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-muted outline-none hover:bg-surface-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
@@ -520,7 +535,9 @@ export function AdminShell({
             <div className="flex h-16 items-center gap-2 px-8">
               <p className="min-w-0 flex-1 truncate text-sm">
                 <span className="text-muted">{t("Administration")} / </span>
-                <span className="font-semibold text-foreground">{t(SECTION_LABELS[section])}</span>
+                <span className="font-semibold text-foreground">
+                  {t(onProfile ? "Mon profil" : SECTION_LABELS[section])}
+                </span>
               </p>
               {accountMenu()}
             </div>
@@ -555,7 +572,9 @@ export function AdminShell({
                     {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}
                   </p>
                   <h1 className="mt-0.5 text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
-                    {t("Bonjour !")}
+                    {name
+                      ? t("Bonjour {name} !", { name: name.split(" ")[0] ?? name })
+                      : t("Bonjour !")}
                   </h1>
                 </div>
                 {accountMenu(true)}
@@ -603,12 +622,21 @@ export function AdminShell({
         <BottomSheet
           isOpen={accountOpen}
           onOpenChange={setAccountOpen}
-          title={email || t("Compte")}
-          description={session.data ? t(ROLE_LABELS[session.data.role]) : undefined}
+          title={shownName || t("Compte")}
+          description={
+            session.data
+              ? name
+                ? `${email} · ${t(ROLE_LABELS[session.data.role])}`
+                : t(ROLE_LABELS[session.data.role])
+              : undefined
+          }
         >
           <div className="grid gap-0.5">
-            <SheetOption icon={ImagePlus} onPress={() => fromSheet(() => setAvatarOpen(true))}>
-              {avatarUrl ? t("Changer ma photo") : t("Ajouter ma photo")}
+            <SheetOption
+              icon={UserRound}
+              onPress={() => fromSheet(() => void navigate({ to: PROFILE_PATH }))}
+            >
+              {t("Mon profil")}
             </SheetOption>
             {isSuperAdmin && (
               <SheetOption
@@ -624,7 +652,7 @@ export function AdminShell({
             )}
             <SheetOption
               icon={ExternalLink}
-              href="/"
+              href={SITE_FROM_ADMIN}
               external
               onPress={() => setAccountOpen(false)}
             >
@@ -645,13 +673,6 @@ export function AdminShell({
             </SheetOption>
           </div>
         </BottomSheet>
-
-        <AvatarDialog
-          email={email}
-          url={avatarUrl}
-          isOpen={avatarOpen}
-          onOpenChange={setAvatarOpen}
-        />
       </div>
     </I18nProvider>
   );
@@ -681,7 +702,8 @@ function SectionNav({
   counts,
   onNavigate,
 }: {
-  section: AdminSection;
+  /** Highlighted section; null on pages outside the sections ("Mon profil"). */
+  section: AdminSection | null;
   sections: readonly AdminSection[];
   counts: Partial<Record<AdminSection, { value: number; label: string; highlight?: boolean }>>;
   onNavigate?: (() => void) | undefined;

@@ -78,6 +78,8 @@ export {
   ShoppingBag as Store,
   Persons as Users,
   PersonGear as UserCog,
+  Person as UserRound,
+  PersonPencil as UserPen,
   PersonPlus as UserPlus,
   Picture as ImagePlus,
   Picture as ImageUp,

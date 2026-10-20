@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Label, SearchField, Spinner, Table, toast, Tooltip } from "@heroui/react";
 import {
@@ -134,7 +134,11 @@ function sortCars(cars: AdminCar[], sort: Sort) {
 export function CarsTab() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<Status>("all");
+  // Opened from a to-do item (home, dashboard): starts on that filter.
+  const initialFilter = useLocation({
+    select: (location) => (location.search as { filtre?: Status }).filtre,
+  });
+  const [status, setStatus] = useState<Status>(initialFilter ?? "all");
   const [sort, setSort] = useState<Sort>("order");
   const [publishing, setPublishing] = useState<ReadonlySet<string>>(new Set());
   const deletion = useDialogTarget<AdminCar>();

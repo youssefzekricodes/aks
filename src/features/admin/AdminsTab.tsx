@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import {
   KeyRound,
+  UserPen,
   Mail,
   MessageSquare,
   Plus,
@@ -32,6 +33,7 @@ import {
   deleteAdmin,
   mfaRemove,
   resetAdminPassword,
+  setAdminName,
   setAdminRole,
   type AdminAccount,
 } from "@/features/auth/auth.functions";
@@ -43,6 +45,7 @@ import {
   ROLE_LABELS,
   adminsQuery,
   dateTimeFormat,
+  displayName,
   emptyPasswordDraft,
   errorMessage,
   passwordProblem,
@@ -88,6 +91,7 @@ export function AdminsTab({ session }: { session: Session }) {
   const admins = useQuery(adminsQuery);
   const [adding, setAdding] = useState(false);
   const reset = useDialogTarget<AdminAccount>();
+  const renaming = useDialogTarget<AdminAccount>();
   const roleChange = useDialogTarget<AdminAccount>();
   const deletion = useDialogTarget<AdminAccount>();
 
@@ -122,6 +126,12 @@ export function AdminsTab({ session }: { session: Session }) {
   );
 
   const menuFor = (admin: AdminAccount): (RowAction | false)[] => [
+    {
+      id: "name",
+      label: admin.name ? t("Modifier le nom") : t("Ajouter un nom"),
+      icon: UserPen,
+      onAction: () => renaming.open(admin),
+    },
     {
       id: "reset",
       label: t("Réinitialiser le mot de passe"),
@@ -191,13 +201,22 @@ export function AdminsTab({ session }: { session: Session }) {
                   aria-hidden
                   className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold uppercase text-accent"
                 >
-                  {admin.email.charAt(0)}
+                  {displayName(admin).charAt(0)}
                 </span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
-                  <p className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium text-foreground">{admin.email}</span>
-                    {admin.isSelf && <StatusChip tone="accent">{t("Vous")}</StatusChip>}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="flex min-w-0 items-center gap-2">
+                      <span dir="auto" className="truncate font-medium text-foreground">
+                        {displayName(admin)}
+                      </span>
+                      {admin.isSelf && <StatusChip tone="accent">{t("Vous")}</StatusChip>}
+                    </p>
+                    {admin.name && (
+                      <p dir="ltr" className="truncate text-start text-xs text-muted">
+                        {admin.email}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     <StatusChip tone={admin.role === "super_admin" ? "warning" : "default"}>
                       {t(ROLE_LABELS[admin.role])}
@@ -243,8 +262,13 @@ export function AdminsTab({ session }: { session: Session }) {
                     <Table.Row key={admin.id} id={admin.id}>
                       <Table.Cell>
                         <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate font-medium text-foreground">
-                            {admin.email}
+                          <span className="grid min-w-0">
+                            <span dir="auto" className="truncate font-medium text-foreground">
+                              {displayName(admin)}
+                            </span>
+                            {admin.name && (
+                              <span className="truncate text-xs text-muted">{admin.email}</span>
+                            )}
                           </span>
                           {admin.isSelf && <StatusChip tone="accent">{t("Vous")}</StatusChip>}
                         </div>
@@ -280,6 +304,17 @@ export function AdminsTab({ session }: { session: Session }) {
       <MySecurity session={session} />
 
       <AddAdminModal isOpen={adding} onOpenChange={setAdding} onCreated={refresh} />
+
+      <RenameModal
+        isOpen={renaming.isOpen}
+        onOpenChange={renaming.onOpenChange}
+        admin={renaming.target}
+        onSaved={async () => {
+          await refresh();
+          // Your own name is also in your session (menus, greeting).
+          await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+        }}
+      />
 
       <ResetPasswordModal
         isOpen={reset.isOpen}
@@ -405,6 +440,82 @@ function ErrorAlert({ message }: { message: string }) {
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_MAX = 60;
+
+/** Name of an admin (super admin): set, changed, or removed when left empty. */
+function RenameModal({
+  isOpen,
+  onOpenChange,
+  admin,
+  onSaved,
+}: {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  admin: AdminAccount | null;
+  onSaved: () => unknown;
+}) {
+  const [name, setName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const value = name ?? admin?.name ?? "";
+  const tooLong = value.trim().length > NAME_MAX;
+  const save = useMutation({
+    mutationFn: () => setAdminName({ data: { userId: admin!.id, name: value.trim() } }),
+    onSuccess: async () => {
+      await onSaved();
+      toast.success(value.trim() ? t("Nom enregistré.") : t("Nom retiré."));
+      close(false);
+    },
+    onError: (e: Error) =>
+      setError(
+        /inconnue/i.test(e.message)
+          ? t("La fonction « admin-users » doit être redéployée sur Supabase pour gérer les noms.")
+          : t(e.message),
+      ),
+  });
+
+  function close(open: boolean) {
+    onOpenChange(open);
+    if (!open) {
+      setName(null);
+      setError(null);
+    }
+  }
+
+  return (
+    <FormModal
+      isOpen={isOpen}
+      onOpenChange={close}
+      pending={save.isPending}
+      icon={UserPen}
+      title={admin?.name ? t("Modifier le nom") : t("Ajouter un nom")}
+      description={admin?.email ?? ""}
+      submitLabel={t("Enregistrer")}
+      pendingLabel={t("Enregistrement…")}
+      onSubmit={(event) => {
+        event.preventDefault();
+        setError(null);
+        if (!admin || tooLong) return;
+        save.mutate();
+      }}
+    >
+      {error && <ErrorAlert message={error} />}
+      <TextField
+        name="name"
+        autoComplete="off"
+        value={value}
+        onChange={setName}
+        isInvalid={tooLong}
+        fullWidth
+        autoFocus
+      >
+        <Label>{t("Nom et prénom")}</Label>
+        <Input dir="auto" placeholder={t("Ex. : Youssef Zekri")} />
+        <Description>{t("Laissez vide pour afficher l’adresse e-mail.")}</Description>
+        <FieldError>{t("60 caractères maximum.")}</FieldError>
+      </TextField>
+    </FormModal>
+  );
+}
 
 function AddAdminModal({
   isOpen,
@@ -416,6 +527,7 @@ function AddAdminModal({
   onCreated: () => unknown;
 }) {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("admin");
   const [password, setPassword] = useState<PasswordDraft>(emptyPasswordDraft);
   const [submitted, setSubmitted] = useState(false);
@@ -423,7 +535,14 @@ function AddAdminModal({
 
   const create = useMutation({
     mutationFn: () =>
-      createAdmin({ data: { email: email.trim(), password: password.password, role } }),
+      createAdmin({
+        data: {
+          email: email.trim(),
+          password: password.password,
+          role,
+          ...(name.trim() ? { name: name.trim() } : {}),
+        },
+      }),
     onSuccess: async () => {
       await onCreated();
       toast.success(t("Compte {email} créé.", { email: email.trim() }));
@@ -436,6 +555,7 @@ function AddAdminModal({
     onOpenChange(open);
     if (!open) {
       setEmail("");
+      setName("");
       setRole("admin");
       setPassword(emptyPasswordDraft);
       setSubmitted(false);
@@ -444,6 +564,7 @@ function AddAdminModal({
   }
 
   const emailInvalid = !EMAIL.test(email.trim());
+  const nameTooLong = name.trim().length > NAME_MAX;
 
   return (
     <FormModal
@@ -459,11 +580,25 @@ function AddAdminModal({
         event.preventDefault();
         setSubmitted(true);
         setError(null);
-        if (emailInvalid || passwordProblem(password)) return;
+        if (emailInvalid || nameTooLong || passwordProblem(password)) return;
         create.mutate();
       }}
     >
       {error && <ErrorAlert message={error} />}
+      <TextField
+        name="name"
+        autoComplete="off"
+        value={name}
+        onChange={setName}
+        isInvalid={nameTooLong}
+        fullWidth
+        autoFocus
+      >
+        <Label>{t("Nom et prénom")}</Label>
+        <Input dir="auto" placeholder={t("Ex. : Youssef Zekri")} />
+        <Description>{t("Facultatif. Affiché à la place de l’adresse e-mail.")}</Description>
+        <FieldError>{t("60 caractères maximum.")}</FieldError>
+      </TextField>
       <TextField
         name="email"
         type="email"
@@ -473,7 +608,6 @@ function AddAdminModal({
         onChange={setEmail}
         isInvalid={submitted && emailInvalid}
         fullWidth
-        autoFocus
       >
         <Label>{t("E-mail")}</Label>
         <Input dir="ltr" placeholder="prenom.nom@exemple.com" />

@@ -77,7 +77,7 @@ function ContactPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="container-page grid flex-1 content-center gap-8 py-8 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-14 lg:py-12">
+      <main className="container-page grid flex-1 grid-cols-1 content-center gap-8 py-8 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-14 lg:py-12">
         <section>
           <p className="text-sm font-medium text-accent">{text("contact.text_1", "Contact")}</p>
           <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
@@ -150,7 +150,7 @@ function ContactPage() {
                 className="h-14 w-[4.6rem] shrink-0 rounded-md object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{carTitle(car)}</p>
+                <p className="line-clamp-2 text-sm font-semibold leading-snug">{carTitle(car)}</p>
                 <p className="tabular truncate text-xs text-muted">
                   {car.year} · {formatKm(car.km_value)} ·{" "}
                   {car.price_on_request ? "Prix sur demande" : formatPrice(salePrice(car))}

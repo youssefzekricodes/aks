@@ -15,9 +15,14 @@ function fakeApi(caller: AuthUser | null, users: AuthUser[]) {
   const api: AdminApi = {
     getUser: async () => caller,
     listUsers: async () => users,
-    createUser: async (email, _password, role) => void calls.push(`create ${email} ${role}`),
+    createUser: async (email, _password, role, name) =>
+      void calls.push(`create ${email} ${role}${name ? ` ${name}` : ""}`),
     updateUser: async (id, changes) =>
-      void calls.push(`update ${id} ${changes.password ? "password" : ""}${changes.role ?? ""}`),
+      void calls.push(
+        `update ${id} ${changes.password ? "password" : ""}${changes.role ?? ""}${
+          changes.name !== undefined ? `name=${changes.name}` : ""
+        }`,
+      ),
     deleteUser: async (id) => void calls.push(`delete ${id}`),
     revokeSessions: async (id) => void calls.push(`revoke ${id}`),
     hasEmailSecondFactor: async (sessionId, userId) =>
@@ -32,7 +37,12 @@ const superAdmin: AuthUser = {
   app_metadata: { role: "super_admin" },
   factors: [{ status: "verified", factor_type: "totp" }],
 };
-const admin: AuthUser = { id: "a1", email: "staff@aks.tn", app_metadata: { role: "admin" } };
+const admin: AuthUser = {
+  id: "a1",
+  email: "staff@aks.tn",
+  app_metadata: { role: "admin" },
+  user_metadata: { full_name: "Sami" },
+};
 const customer: AuthUser = { id: "c1", email: "someone@example.tn", app_metadata: {} };
 const everyone = [superAdmin, admin, customer];
 
@@ -160,4 +170,37 @@ test("a session confirmed by e-mail code counts as the second factor", async () 
     fakeApi(superAdmin, everyone).api,
   );
   assert.equal(pending.status, 403);
+});
+
+test("names: listed, set on creation, renamed and cleared", async () => {
+  const { api, calls } = fakeApi(superAdmin, everyone);
+  const list = await handle(AAL2, { action: "list" }, api);
+  const names = (list.body as { admins: { name: string | null }[] }).admins.map((a) => a.name);
+  assert.deepEqual(names, [null, "Sami"]);
+  await handle(
+    AAL2,
+    {
+      action: "create",
+      email: "new@aks.tn",
+      password: "a-long-password-1",
+      role: "admin",
+      name: "  Lina   Ben Salah ",
+    },
+    api,
+  );
+  assert.equal(
+    (await handle(AAL2, { action: "set_name", userId: "a1", name: "x".repeat(61) }, api)).status,
+    400,
+  );
+  assert.equal(
+    (await handle(AAL2, { action: "set_name", userId: "c1", name: "Client" }, api)).status,
+    404,
+  );
+  await handle(AAL2, { action: "set_name", userId: "a1", name: "Sami Trabelsi" }, api);
+  await handle(AAL2, { action: "set_name", userId: "s1", name: "  " }, api);
+  assert.deepEqual(calls, [
+    "create new@aks.tn admin Lina Ben Salah",
+    "update a1 name=Sami Trabelsi",
+    "update s1 name=null",
+  ]);
 });
