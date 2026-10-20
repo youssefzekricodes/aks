@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
   useRouter,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Dropdown, Header, Label, Separator, toast } from "@heroui/react";
@@ -124,6 +125,15 @@ function parentOf(
   return pathname.replace(/\/$/, "") === "/admin" ? null : { href: "/admin", label: "Accueil" };
 }
 
+/** How far back in history "back" looks for the page it leads to. */
+const BACK_SEARCH = 10;
+
+/** Position of the current page in the browser history (router-managed). */
+function historyIndex(router: { history: { location: { state: unknown } } }) {
+  const index = (router.history.location.state as { __TSR_index?: unknown } | null)?.__TSR_index;
+  return typeof index === "number" ? index : null;
+}
+
 /** Title of the phone top bar. */
 function pageTitle(pathname: string, section: AdminSection, mailOpen = false) {
   if (mailOpen) return "Message";
@@ -203,10 +213,12 @@ export function AdminShell({
   const unreadMail = mail.data?.configured ? mail.data.unread : 0;
   if (unreadMail > 0) counts.mail = { value: unreadMail, label: "non lus", highlight: true };
 
-  // Back: to the previous page when that is the parent (keeps the history tidy),
-  // otherwise straight to the parent.
-  const previous = useRef<string | null>(null);
-  const current = useRef(pathname);
+  // Back: returns through the browser history to the page "back" leads to (the
+  // list from a message, the home screen from a section), so the next "back"
+  // never reopens what was just closed; straight to it when it is not in history.
+  // Each history entry's full address (query included) is remembered by position.
+  const href = useRouterState({ select: (state) => state.location.href });
+  const entries = useRef(new Map<number, string>());
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [accountOpen, setAccountOpen] = useState(false);
   const phone = useIsPhone();
@@ -230,15 +242,24 @@ export function AdminShell({
     window.setTimeout(action, 180);
   };
   useEffect(() => {
-    if (current.current === pathname) return;
-    previous.current = current.current;
-    current.current = pathname;
-  }, [pathname]);
+    const index = historyIndex(router);
+    if (index === null) return;
+    // A new page here: whatever was "forward" of it is gone.
+    if (entries.current.get(index) !== href)
+      for (const key of [...entries.current.keys()]) if (key > index) entries.current.delete(key);
+    entries.current.set(index, href);
+  }, [href, router]);
   const goBack = useCallback(() => {
     if (!parent) return;
     setDirection("back");
-    if (previous.current === parent.href) router.history.back();
-    else void navigate({ href: parent.href });
+    const index = historyIndex(router);
+    if (index !== null)
+      for (let i = index - 1; i >= Math.max(0, index - BACK_SEARCH); i--)
+        if (entries.current.get(i) === parent.href) {
+          router.history.go(i - index);
+          return;
+        }
+    void navigate({ href: parent.href, replace: true });
   }, [parent, navigate, router]);
   useEffect(() => {
     // The next page opened slides in from the right again.
