@@ -144,3 +144,6 @@ export const removePushSubscription = createServerFn({ method: "POST" })
 export const sendTestPush = createServerFn({ method: "POST" }).handler(async () =>
   (await push()).sendTest(),
 );
+export const getNotificationHealth = createServerFn({ method: "GET" }).handler(async () =>
+  (await push()).health(),
+);

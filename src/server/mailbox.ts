@@ -66,15 +66,29 @@ function mailError(error: unknown): Error {
  * (logging in takes most of the time of a request). Requests take turns on it; a
  * dropped connection is replaced and the request tried again once.
  */
-let pooled: { client: ImapFlow; key: string } | null = null;
+let pooled: { client: ImapFlow; key: string; usedAt: number } | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let queue: Promise<unknown> = Promise.resolve();
 /** Closed after this long without use (the server may also be frozen sooner). */
 const IDLE_MS = 45_000;
+/**
+ * Reused only if used this recently: a hosting server frozen between requests can
+ * leave a connection that looks open but no longer answers (waiting on it would
+ * outlast the request time limit).
+ */
+const REUSE_MS = 15_000;
 
 async function connection(settings: NonNullable<ReturnType<typeof config>>) {
   const key = `${settings.user}@${settings.imapHost}:${settings.imapPort}`;
-  if (pooled && pooled.key === key && pooled.client.usable) return pooled.client;
+  if (
+    pooled &&
+    pooled.key === key &&
+    pooled.client.usable &&
+    Date.now() - pooled.usedAt < REUSE_MS
+  ) {
+    pooled.usedAt = Date.now();
+    return pooled.client;
+  }
   pooled?.client.close();
   const client = openImap(settings);
   client.on("error", () => {
@@ -84,7 +98,7 @@ async function connection(settings: NonNullable<ReturnType<typeof config>>) {
     if (pooled?.client === client) pooled = null;
   });
   await client.connect();
-  pooled = { client, key };
+  pooled = { client, key, usedAt: Date.now() };
   return client;
 }
 
@@ -106,6 +120,7 @@ async function withImap<T>(work: (client: ImapFlow) => Promise<T>): Promise<T> {
         }
       }
     } finally {
+      if (pooled) pooled.usedAt = Date.now();
       idleTimer = setTimeout(() => {
         const current = pooled;
         pooled = null;
@@ -178,8 +193,9 @@ export async function sendMail(mail: OutgoingMail) {
       port: settings.smtpPort,
       secure: settings.smtpPort === 465,
       auth: { user: settings.user, pass: settings.pass },
-      connectionTimeout: 10_000,
-      socketTimeout: 30_000,
+      connectionTimeout: 6_000,
+      greetingTimeout: 5_000,
+      socketTimeout: 20_000,
     });
     await transport.sendMail({
       envelope: { from: settings.user, to: [...mail.to, ...mail.cc] },

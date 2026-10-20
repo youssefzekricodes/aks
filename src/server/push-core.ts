@@ -19,7 +19,7 @@ export type PushSubscriptionRecord = {
 
 export type PushMessage = {
   /** Kind of news: the app refreshes the matching data when it is open. */
-  type: "mail" | "lead" | "test";
+  type: "mail" | "lead" | "car" | "welcome" | "admin" | "test";
   title: { fr: string; ar: string };
   body: { fr: string; ar: string };
   /** Page opened when the notification is tapped. */
@@ -30,6 +30,8 @@ export type PushMessage = {
 
 /** Small key-value store: Netlify Blobs on Netlify, a local file in development. */
 type Store = {
+  /** "netlify": shared by every server function; "file": this machine only (development). */
+  kind: "netlify" | "file";
   get<T>(key: string): Promise<T | null>;
   set(key: string, value: unknown): Promise<void>;
 };
@@ -43,12 +45,16 @@ export function pushStore(): Promise<Store> {
       // Throws outside Netlify (no Blobs environment).
       await store.get("probe");
       return {
+        kind: "netlify",
         get: async <T>(key: string) => ((await store.get(key, { type: "json" })) as T) ?? null,
         set: async (key, value) => {
           await store.setJSON(key, value);
         },
       };
-    } catch {
+    } catch (error) {
+      // On Netlify this must not happen (devices would not be shared): say so loudly.
+      if (process.env["NETLIFY"] || process.env["SITE_ID"])
+        console.error("[push] Netlify Blobs indisponible", error);
       const { readFile, writeFile } = await import("node:fs/promises");
       const { join } = await import("node:path");
       const { tmpdir } = await import("node:os");
@@ -56,6 +62,7 @@ export function pushStore(): Promise<Store> {
       const read = async () =>
         JSON.parse(await readFile(file, "utf8").catch(() => "{}")) as Record<string, unknown>;
       return {
+        kind: "file",
         get: async <T>(key: string) => ((await read())[key] as T) ?? null,
         set: async (key, value) => {
           const all = await read();
@@ -108,13 +115,18 @@ export async function removeSubscription(endpoint: string, userId?: string) {
  * no longer accept notifications are forgotten. Never throws: a notification
  * must not break what triggered it.
  */
-export async function notifyAdmins(message: PushMessage, onlyUserId?: string) {
+export async function notifyAdmins(
+  message: PushMessage,
+  who: { onlyUserId?: string; exceptUserId?: string } = {},
+) {
   const keys = pushKeys();
   if (!keys) return { sent: 0 };
   try {
     webpush.setVapidDetails(keys.subject, keys.publicKey, keys.privateKey);
     const targets = (await listSubscriptions()).filter(
-      (s) => !onlyUserId || s.userId === onlyUserId,
+      (s) =>
+        (!who.onlyUserId || s.userId === who.onlyUserId) &&
+        (!who.exceptUserId || s.userId !== who.exceptUserId),
     );
     const gone: string[] = [];
     let sent = 0;

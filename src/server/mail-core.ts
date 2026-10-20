@@ -78,9 +78,10 @@ export function openImap(settings: MailboxSettings) {
     secure: settings.imapPort === 993,
     auth: { user: settings.user, pass: settings.pass },
     logger: false,
-    connectionTimeout: 10_000,
-    greetingTimeout: 8_000,
-    socketTimeout: 30_000,
+    // Within the hosting request time limit (10 s): fail clearly rather than hang.
+    connectionTimeout: 6_000,
+    greetingTimeout: 5_000,
+    socketTimeout: 9_000,
   });
 }
 

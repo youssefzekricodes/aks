@@ -325,6 +325,7 @@ export function AdminShell({
           void queryClient.invalidateQueries({ queryKey: ["mail-status"] });
         }
         if (data.type === "lead") void queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+        if (data.type === "car") void queryClient.invalidateQueries({ queryKey: ["admin-cars"] });
       }
       if (data?.kind === "admin-open" && data.url) {
         const url = new URL(data.url);

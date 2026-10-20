@@ -10,6 +10,8 @@ import {
 } from "./schemas";
 
 const repository = () => import("@/server/repository");
+/** Notifications to the other admins about vehicle changes (after success only). */
+const activity = () => import("@/server/activity");
 
 /** Published cars for listings (first photo only, no description). */
 export const listPublicCars = createServerFn({ method: "GET" }).handler(async () =>
@@ -53,19 +55,43 @@ export const createUploadUrl = createServerFn({ method: "POST" })
   );
 export const saveCar = createServerFn({ method: "POST" })
   .validator(carSchema)
-  .handler(async ({ data }) => (await repository()).saveCar(data));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).saveCar(data);
+    await (await activity()).notifyCarActivity(data.id ? "edited" : "added", [result.id]);
+    return result;
+  });
 export const deleteCar = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema }))
-  .handler(async ({ data }) => (await repository()).deleteCar(data.id));
+  .handler(async ({ data }) => {
+    const { carNames, notifyCarActivity } = await activity();
+    const names = await carNames([data.id]);
+    const result = await (await repository()).deleteCar(data.id);
+    await notifyCarActivity("deleted", [data.id], names);
+    return result;
+  });
 export const setCarPublished = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, published: z.boolean() }))
-  .handler(async ({ data }) => (await repository()).publishCar(data.id, data.published));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).publishCar(data.id, data.published);
+    await (
+      await activity()
+    ).notifyCarActivity(data.published ? "published" : "unpublished", [data.id]);
+    return result;
+  });
 export const setCarSold = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, sold: z.boolean() }))
-  .handler(async ({ data }) => (await repository()).setCarSold(data.id, data.sold));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).setCarSold(data.id, data.sold);
+    await (await activity()).notifyCarActivity(data.sold ? "sold" : "unsold", [data.id]);
+    return result;
+  });
 export const setCarDiscount = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema, discountPrice: z.number().int().min(0).max(1e9).nullable() }))
-  .handler(async ({ data }) => (await repository()).setCarDiscount(data.id, data.discountPrice));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).setCarDiscount(data.id, data.discountPrice);
+    await (await activity()).notifyCarActivity("discount", [data.id]);
+    return result;
+  });
 const idsSchema = z.array(idSchema).min(1).max(500);
 export const bulkCars = createServerFn({ method: "POST" })
   .validator(
@@ -75,7 +101,30 @@ export const bulkCars = createServerFn({ method: "POST" })
       percent: z.number().int().min(0).max(90).optional(),
     }),
   )
-  .handler(async ({ data }) => (await repository()).bulkCars(data.ids, data.action, data.percent));
+  .handler(async ({ data }) => {
+    const { carNames, notifyCarActivity } = await activity();
+    const names = data.action === "delete" ? await carNames(data.ids) : undefined;
+    const result = await (await repository()).bulkCars(data.ids, data.action, data.percent);
+    const failed = new Set(result.failed.map((f) => f.id));
+    const done = data.ids.filter((id) => !failed.has(id));
+    const kind = (
+      {
+        publish: "published",
+        unpublish: "unpublished",
+        sold: "sold",
+        unsold: "unsold",
+        delete: "deleted",
+        discount: "discount",
+      } as const
+    )[data.action];
+    if (done.length)
+      await notifyCarActivity(
+        kind,
+        done,
+        names && done.length === data.ids.length ? names : undefined,
+      );
+    return result;
+  });
 export const completeCars = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -107,7 +156,13 @@ export const completeCars = createServerFn({ method: "POST" })
         .max(500),
     }),
   )
-  .handler(async ({ data }) => (await repository()).completeCars(data.updates));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).completeCars(data.updates);
+    const failed = new Set(result.failed.map((f) => f.id));
+    const done = data.updates.map((u) => u.id).filter((id) => !failed.has(id));
+    if (done.length) await (await activity()).notifyCarActivity("edited", done);
+    return result;
+  });
 export const shareCars = createServerFn({ method: "POST" })
   .validator(
     z.object({
@@ -231,4 +286,8 @@ export const importFacebookPost = createServerFn({ method: "POST" })
       publish: z.boolean(),
     }),
   )
-  .handler(async ({ data }) => (await repository()).importFacebookPost(data));
+  .handler(async ({ data }) => {
+    const result = await (await repository()).importFacebookPost(data);
+    await (await activity()).notifyCarActivity("added", [result.carId]);
+    return result;
+  });

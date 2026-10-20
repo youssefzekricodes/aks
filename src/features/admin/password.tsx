@@ -162,12 +162,15 @@ export function NewPasswordFields({
   onChange,
   showErrors,
   label,
+  generateFirst = false,
 }: {
   value: PasswordDraft;
   onChange: (value: PasswordDraft) => void;
   /** Show errors for empty/short fields too (after a submit attempt). */
   showErrors: boolean;
   label?: string;
+  /** The generator first, as the easy choice (new accounts). */
+  generateFirst?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const strength = passwordStrength(value.password);
@@ -185,8 +188,29 @@ export function NewPasswordFields({
       ? t("Les deux mots de passe ne correspondent pas.")
       : null;
 
+  const generator = (
+    <div>
+      <Button
+        size="sm"
+        variant="secondary"
+        onPress={() => {
+          const password = generatePassword(16);
+          onChange({ password, confirm: password });
+          setVisible(true);
+        }}
+      >
+        <Wand2 className="size-4" aria-hidden />
+        {t("Générer un mot de passe")}
+      </Button>
+      <p className="mt-2 text-xs text-muted">
+        {t("Transmettez-le par un canal sûr ; il ne sera plus affiché après validation.")}
+      </p>
+    </div>
+  );
+
   return (
     <div className="grid gap-4">
+      {generateFirst && generator}
       <PasswordField
         label={label ?? t("Mot de passe")}
         name="new-password"
@@ -234,23 +258,7 @@ export function NewPasswordFields({
         isInvalid={confirmError !== null}
         errorMessage={confirmError}
       />
-      <div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onPress={() => {
-            const password = generatePassword(16);
-            onChange({ password, confirm: password });
-            setVisible(true);
-          }}
-        >
-          <Wand2 className="size-4" aria-hidden />
-          {t("Générer un mot de passe")}
-        </Button>
-        <p className="mt-2 text-xs text-muted">
-          {t("Transmettez-le par un canal sûr ; il ne sera plus affiché après validation.")}
-        </p>
-      </div>
+      {!generateFirst && generator}
     </div>
   );
 }

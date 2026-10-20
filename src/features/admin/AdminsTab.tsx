@@ -56,8 +56,9 @@ import {
   type Session,
 } from "./model";
 import { NewPasswordFields } from "./password";
-import { t } from "./i18n";
+import { formatNumber, t } from "./i18n";
 import {
+  BottomSheet,
   ConfirmDialog,
   EmptyState,
   LoadError,
@@ -67,6 +68,7 @@ import {
   SectionCard,
   StatusChip,
   TableSkeleton,
+  useIsPhone,
 } from "./ui";
 import { AdminCardsSkeleton, fadeIn } from "./skeletons";
 
@@ -392,6 +394,35 @@ function FormModal({
   submitLabel: string;
   pendingLabel: string;
 }) {
+  const phone = useIsPhone();
+  if (phone)
+    return (
+      <BottomSheet
+        isOpen={isOpen}
+        onOpenChange={(open) => !pending && onOpenChange(open)}
+        title={title}
+        description={description}
+        avoidKeyboard
+      >
+        <Form onSubmit={onSubmit} className="grid gap-5 px-2">
+          {children}
+          {/* Always reachable, even with the keyboard open. */}
+          <div className="sticky bottom-0 -mx-2 grid gap-2 border-t border-separator bg-surface px-2 pb-1 pt-3">
+            <Button type="submit" isPending={pending} className="h-12 w-full text-base">
+              {pending ? pendingLabel : submitLabel}
+            </Button>
+            <Button
+              variant="ghost"
+              isDisabled={pending}
+              className="w-full"
+              onPress={() => onOpenChange(false)}
+            >
+              {t("Annuler")}
+            </Button>
+          </div>
+        </Form>
+      </BottomSheet>
+    );
   return (
     <Modal.Backdrop
       isOpen={isOpen}
@@ -436,6 +467,21 @@ function ErrorAlert({ message }: { message: string }) {
         <Alert.Title>{message}</Alert.Title>
       </Alert.Content>
     </Alert>
+  );
+}
+
+/** Numbered part of a form ("1 Qui est-ce ?"): easier to follow than one long form. */
+function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <fieldset className="grid min-w-0 gap-3">
+      <legend className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-foreground">
+        <span className="grid size-6 place-items-center rounded-full bg-foreground text-xs font-bold text-background tabular-nums">
+          {formatNumber(n)}
+        </span>
+        {title}
+      </legend>
+      {children}
+    </fieldset>
   );
 }
 
@@ -573,7 +619,7 @@ function AddAdminModal({
       pending={create.isPending}
       icon={UserPlus}
       title={t("Ajouter un administrateur")}
-      description={t("Le compte peut se connecter immédiatement avec ce mot de passe.")}
+      description={t("Trois étapes. Il pourra se connecter tout de suite.")}
       submitLabel={t("Créer le compte")}
       pendingLabel={t("Création…")}
       onSubmit={(event) => {
@@ -585,53 +631,74 @@ function AddAdminModal({
       }}
     >
       {error && <ErrorAlert message={error} />}
-      <TextField
-        name="name"
-        autoComplete="off"
-        value={name}
-        onChange={setName}
-        isInvalid={nameTooLong}
-        fullWidth
-        autoFocus
-      >
-        <Label>{t("Nom et prénom")}</Label>
-        <Input dir="auto" placeholder={t("Ex. : Youssef Zekri")} />
-        <Description>{t("Facultatif. Affiché à la place de l’adresse e-mail.")}</Description>
-        <FieldError>{t("60 caractères maximum.")}</FieldError>
-      </TextField>
-      <TextField
-        name="email"
-        type="email"
-        autoComplete="off"
-        isRequired
-        value={email}
-        onChange={setEmail}
-        isInvalid={submitted && emailInvalid}
-        fullWidth
-      >
-        <Label>{t("E-mail")}</Label>
-        <Input dir="ltr" placeholder="prenom.nom@exemple.com" />
-        <FieldError>{t("Saisissez une adresse e-mail valide.")}</FieldError>
-      </TextField>
-      <RadioGroup
-        name="role"
-        value={role}
-        onChange={(value) => setRole(value === "super_admin" ? "super_admin" : "admin")}
-      >
-        <Label>{t("Rôle")}</Label>
-        {(["admin", "super_admin"] as const).map((value) => (
-          <Radio key={value} value={value}>
-            <Radio.Content>
-              <Radio.Control>
-                <Radio.Indicator />
-              </Radio.Control>
-              {t(ROLE_LABELS[value])}
-            </Radio.Content>
-            <Description>{t(ROLE_HELP[value])}</Description>
-          </Radio>
-        ))}
-      </RadioGroup>
-      <NewPasswordFields value={password} onChange={setPassword} showErrors={submitted} />
+      <Step n={1} title={t("Qui est-ce ?")}>
+        <TextField
+          name="name"
+          autoComplete="off"
+          value={name}
+          onChange={setName}
+          isInvalid={nameTooLong}
+          fullWidth
+        >
+          <Label>{t("Nom et prénom")}</Label>
+          <Input dir="auto" placeholder={t("Ex. : Youssef Zekri")} />
+          <Description>{t("Facultatif. Affiché à la place de l’adresse e-mail.")}</Description>
+          <FieldError>{t("60 caractères maximum.")}</FieldError>
+        </TextField>
+        <TextField
+          name="email"
+          type="email"
+          autoComplete="off"
+          isRequired
+          value={email}
+          onChange={setEmail}
+          isInvalid={submitted && emailInvalid}
+          fullWidth
+        >
+          <Label>{t("E-mail")}</Label>
+          <Input
+            dir="ltr"
+            inputMode="email"
+            autoCapitalize="none"
+            placeholder="prenom.nom@exemple.com"
+          />
+          <Description>{t("Il se connectera avec cette adresse.")}</Description>
+          <FieldError>{t("Saisissez une adresse e-mail valide.")}</FieldError>
+        </TextField>
+      </Step>
+      <Step n={2} title={t("Que peut-il faire ?")}>
+        <RadioGroup
+          name="role"
+          aria-label={t("Rôle")}
+          value={role}
+          onChange={(value) => setRole(value === "super_admin" ? "super_admin" : "admin")}
+          className="grid gap-2"
+        >
+          {(["admin", "super_admin"] as const).map((value) => (
+            <Radio
+              key={value}
+              value={value}
+              className="rounded-2xl border border-separator p-3 transition-colors data-[selected=true]:border-accent data-[selected=true]:bg-accent-soft/40"
+            >
+              <Radio.Content>
+                <Radio.Control>
+                  <Radio.Indicator />
+                </Radio.Control>
+                <span className="font-medium">{t(ROLE_LABELS[value])}</span>
+              </Radio.Content>
+              <Description>{t(ROLE_HELP[value])}</Description>
+            </Radio>
+          ))}
+        </RadioGroup>
+      </Step>
+      <Step n={3} title={t("Son mot de passe")}>
+        <NewPasswordFields
+          value={password}
+          onChange={setPassword}
+          showErrors={submitted}
+          generateFirst
+        />
+      </Step>
     </FormModal>
   );
 }

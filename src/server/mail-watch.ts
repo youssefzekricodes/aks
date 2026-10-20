@@ -16,9 +16,36 @@ const MAX_SEPARATE = 3;
 const short = (value: string, max: number) =>
   value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
 
+/** Last run of the check (shown in "Mon profil" → Notifications → Vérifier). */
+export type WatchStatus = {
+  at: string;
+  result?: Record<string, string | number | boolean>;
+  error?: string;
+};
+export const WATCH_STATUS = "watch-status";
+
+/** Runs the check and records how it went. */
 export async function checkNewMail() {
+  const store = await pushStore();
+  try {
+    const result = await check();
+    await store.set(WATCH_STATUS, { at: new Date().toISOString(), result });
+    return result;
+  } catch (error) {
+    await store
+      .set(WATCH_STATUS, {
+        at: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error),
+      })
+      .catch(() => undefined);
+    throw error;
+  }
+}
+
+async function check() {
   const settings = mailboxSettings();
-  if (!settings || !pushKeys()) return { skipped: true };
+  if (!settings) return { skipped: "mailbox" };
+  if (!pushKeys()) return { skipped: "push" };
   const store = await pushStore();
   const client = openImap(settings);
   client.on("error", () => undefined);

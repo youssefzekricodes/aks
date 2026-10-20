@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { notifyAdmins } from "./push-core";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "./env";
 import { isAllowedOrigin } from "./origin";
@@ -242,7 +243,52 @@ export async function login(email: string, password: string) {
   }
   setResponseHeader("Cache-Control", "no-store");
   const admin = await currentAdmin(supabase);
+  await announceFirstLogin(supabase, data.user);
   return { mfa: admin?.mfa ?? "ok", factors: admin?.factors ?? [] };
+}
+
+/** An account signing in for the first time within this delay is announced. */
+const NEW_ACCOUNT_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * First sign-in of an admin account: the other admins are told someone joined
+ * (remembered on the account, so only once). Never blocks the sign-in.
+ */
+async function announceFirstLogin(
+  supabase: Db,
+  user: {
+    id: string;
+    email?: string;
+    created_at?: string;
+    user_metadata?: Record<string, unknown>;
+  },
+) {
+  try {
+    if (user.user_metadata?.["joined_at"]) return;
+    await supabase.auth.updateUser({ data: { joined_at: new Date().toISOString() } });
+    // Accounts that existed before this notice: marked quietly, not announced.
+    const age = Date.now() - new Date(user.created_at ?? 0).getTime();
+    if (!(age < NEW_ACCOUNT_MS)) return;
+    const who = nameOf(user.user_metadata) || user.email || "";
+    await Promise.race([
+      notifyAdmins(
+        {
+          type: "admin",
+          title: { fr: "Nouvel administrateur", ar: "مسؤول جديد" },
+          body: {
+            fr: `${who} s’est connecté pour la première fois.`,
+            ar: `${who} دخل لأول مرة.`,
+          },
+          url: "/admin/administrateurs",
+          tag: "admin-joined",
+        },
+        { exceptUserId: user.id },
+      ),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
+  } catch (error) {
+    console.error("[auth] first login notice", error);
+  }
 }
 
 export async function logout() {

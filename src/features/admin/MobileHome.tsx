@@ -146,11 +146,13 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         ? t("{count} à traiter", { count: formatNumber(openLeads) })
         : t("Aucune en attente")
       : t("Messages clients"),
-    mail: !mail.data?.configured
-      ? t("Boîte de la boutique")
-      : unreadMail
-        ? t("{count} non lus", { count: formatNumber(unreadMail) })
-        : t("Tout est lu"),
+    mail: mail.isError
+      ? t("Connexion à vérifier")
+      : !mail.data?.configured
+        ? t("Boîte de la boutique")
+        : unreadMail
+          ? t("{count} non lus", { count: formatNumber(unreadMail) })
+          : t("Tout est lu"),
     facebook: t("Importer des annonces"),
     content: t("Textes du site"),
     connectors: t("Réseaux sociaux"),
