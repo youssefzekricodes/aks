@@ -23,7 +23,9 @@ import {
   plural,
   type StockStatus,
 } from "./model";
+import { NotificationPrompt } from "./NotificationsCard";
 import { TodoList } from "./TodoList";
+import { mailStatusQuery } from "@/features/mailbox/queries";
 import { BodyBreakdownSkeleton, MostViewedSkeleton, StockSplitSkeleton, fadeIn } from "./skeletons";
 import { LoadError } from "./ui";
 
@@ -45,6 +47,8 @@ export function Dashboard() {
   const cars = useQuery(adminCarsQuery);
   const stats = useQuery(dashboardStatsQuery);
   const leads = useQuery(leadsQueryOptions);
+  const mail = useQuery(mailStatusQuery);
+  const unreadMail = mail.data?.configured ? mail.data.unread : 0;
 
   if (cars.isError)
     return (
@@ -101,6 +105,11 @@ export function Dashboard() {
         </button>
       </header>
 
+      {/* Computers (phones have it on the home screen). */}
+      <div className="max-lg:hidden">
+        <NotificationPrompt />
+      </div>
+
       {/* Key figures. */}
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Metric
@@ -155,7 +164,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
         {/* What needs doing. */}
         <Panel title={t("À faire")} hint={t("Touchez une ligne pour vous en occuper")}>
-          <TodoList cars={cars.data} leads={leads.data} />
+          <TodoList cars={cars.data} leads={leads.data} unreadMail={unreadMail} />
         </Panel>
 
         {/* Stock split. */}

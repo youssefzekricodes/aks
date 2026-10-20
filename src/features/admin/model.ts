@@ -29,6 +29,7 @@ export const ADMIN_SECTIONS = [
   "brands",
   "content",
   "leads",
+  "mail",
   "connectors",
   "admins",
 ] as const;
@@ -44,6 +45,7 @@ export const SECTION_LABELS: Record<AdminSection, string> = {
   brands: "Marques",
   content: "Contenu du site",
   leads: "Demandes",
+  mail: "Messagerie",
   connectors: "Connecteurs",
   admins: "Administrateurs",
 };
@@ -57,6 +59,7 @@ export const SECTION_PATHS = {
   brands: "/admin/marques",
   content: "/admin/contenu",
   leads: "/admin/demandes",
+  mail: "/admin/messagerie",
   connectors: "/admin/connecteurs",
   admins: "/admin/administrateurs",
 } as const satisfies Record<AdminSection, string>;

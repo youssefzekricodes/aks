@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { notifyAdmins } from "./push-core";
 import { formatKm, slugify, type Car } from "@/lib/cars";
 import type { CarInput, Lead } from "@/features/catalog/types";
 import {
@@ -688,7 +689,35 @@ export async function createLead(data: {
     p_car_slug: data.car_slug || null,
   });
   if (error) failure(error, "Envoi impossible.");
+  await notifyNewLead(data.name, data.car_slug);
   return { ok: true };
+}
+
+/** Push notification to the admins: a new request has arrived (never blocks it). */
+async function notifyNewLead(name: string, carSlug: string | undefined) {
+  let car = "";
+  if (carSlug) {
+    const { data } = await publicClient()
+      .from("cars")
+      .select("brand, name")
+      .eq("slug", carSlug)
+      .maybeSingle();
+    if (data) car = `${data.brand} ${data.name}`.trim();
+  }
+  const who = name.trim().slice(0, 60);
+  await Promise.race([
+    notifyAdmins({
+      type: "lead",
+      title: { fr: "Nouvelle demande", ar: "طلب جديد" },
+      body: {
+        fr: car ? `${who} · ${car}` : `${who} vous a écrit depuis le site.`,
+        ar: car ? `${who} · ${car}` : `${who} بعثلك من السيت.`,
+      },
+      url: "/admin/demandes",
+      tag: "lead",
+    }),
+    new Promise((resolve) => setTimeout(resolve, 4000)),
+  ]).catch(() => undefined);
 }
 
 export async function leads(): Promise<Lead[]> {

@@ -6,7 +6,7 @@ import { telHref } from "@/features/content/definition";
 /** Facebook, Instagram and e-mail links (URLs editable under Contenu du site → Contact). */
 export function SocialLinks({ className }: { className?: string }) {
   const text = useSiteText();
-  const email = text("identity.email", "contact@autokontorsfax.tn");
+  const email = text("identity.email", "contact@autokontorsfax.com");
   const links = [
     {
       href: text("contact.link_1", "https://www.facebook.com/profile.php?id=61560475294948"),
@@ -122,10 +122,10 @@ export function SiteFooter() {
             ))}
             <li>
               <a
-                href={`mailto:${text("identity.email", "contact@autokontorsfax.tn")}`}
+                href={`mailto:${text("identity.email", "contact@autokontorsfax.com")}`}
                 className="hover:text-foreground"
               >
-                {text("identity.email", "contact@autokontorsfax.tn")}
+                {text("identity.email", "contact@autokontorsfax.com")}
               </a>
             </li>
           </ul>

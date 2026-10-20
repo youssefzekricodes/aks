@@ -14,8 +14,10 @@
 [build.environment]
   NODE_VERSION = "24"
   NITRO_PRESET = "netlify"
-  # APP_ORIGIN is the public site address (in links, sitemap, docs), not a secret.
-  SECRETS_SCAN_OMIT_KEYS = "APP_ORIGIN"
+  # Public values, not secrets: APP_ORIGIN is the site address (links, sitemap, docs),
+  # MAILBOX_USER the shop's e-mail address shown on the site. MAILBOX_PASSWORD and
+  # VAPID_PRIVATE_KEY stay scanned: they must never appear in the code or the build.
+  SECRETS_SCAN_OMIT_KEYS = "APP_ORIGIN,MAILBOX_USER"
 
 # /assets/* (hashed build files) is cached for a year by Nitro's generated dist/_headers.
 

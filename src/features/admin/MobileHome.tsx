@@ -10,6 +10,7 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  Mail,
   Plug,
   Plus,
   RefreshCw,
@@ -22,6 +23,7 @@ import {
 import { carTitle, salePrice } from "@/lib/cars";
 import { SITE_FROM_ADMIN } from "@/lib/splash";
 import { Notch } from "./Notch";
+import { NotificationPrompt } from "./NotificationsCard";
 import { TodoList, todoItems } from "./TodoList";
 import { formatNumber, t } from "./i18n";
 import { socialStatusQuery } from "./SocialCard";
@@ -36,6 +38,7 @@ import {
   type StockStatus,
 } from "./model";
 import { onSale } from "./VitrinePage";
+import { mailStatusQuery } from "@/features/mailbox/queries";
 
 /*
  * Phone / installed-app home screen of the admin, written for people who are not
@@ -56,7 +59,13 @@ type Tile = {
   short?: string;
 };
 
-const GROUPS: { title: string; hint: string; tiles: Tile[] }[] = [
+const GROUPS: {
+  title: string;
+  hint: string;
+  tiles: Tile[];
+  /** Small link at the end of the group title. */
+  more?: { label: string; to: string };
+}[] = [
   {
     title: "Catalogue",
     hint: "Vos véhicules et leur présentation",
@@ -68,15 +77,12 @@ const GROUPS: { title: string; hint: string; tiles: Tile[] }[] = [
   },
   {
     title: "Activité",
-    hint: "Clients, visites et Facebook",
+    hint: "Clients, e-mails et Facebook",
+    // The statistics also open from the two figure cards above.
+    more: { label: "Statistiques", to: MOBILE_DASHBOARD_PATH },
     tiles: [
       { id: "leads", icon: Inbox, tint: "bg-emerald-500" },
-      {
-        id: "dashboard",
-        icon: LayoutDashboard,
-        tint: "bg-indigo-500",
-        short: "Statistiques",
-      },
+      { id: "mail", icon: Mail, tint: "bg-indigo-500", short: "E-mails" },
       { id: "facebook", icon: RefreshCw, tint: "bg-blue-500", short: "Facebook" },
     ],
   },
@@ -123,7 +129,9 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
   const views30 = views.reduce((sum, v) => sum + v.last30, 0);
   const top = [...views].sort((a, b) => b.last30 - a.last30)[0];
   const topCar = top && top.last30 > 0 ? all.find((car) => car.id === top.carId) : undefined;
-  const todoCount = cars.data && leads.data ? todoItems(all, leads.data).length : 0;
+  const mail = useQuery(mailStatusQuery);
+  const unreadMail = mail.data?.configured ? mail.data.unread : 0;
+  const todoCount = cars.data && leads.data ? todoItems(all, leads.data, unreadMail).length : 0;
 
   // What each tile is for, with a figure when there is one.
   const meta: Partial<Record<AdminSection, string>> = {
@@ -138,6 +146,11 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         ? t("{count} à traiter", { count: formatNumber(openLeads) })
         : t("Aucune en attente")
       : t("Messages clients"),
+    mail: !mail.data?.configured
+      ? t("Boîte de la boutique")
+      : unreadMail
+        ? t("{count} non lus", { count: formatNumber(unreadMail) })
+        : t("Tout est lu"),
     facebook: t("Importer des annonces"),
     content: t("Textes du site"),
     connectors: t("Réseaux sociaux"),
@@ -216,6 +229,8 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         </Notch>
       </section>
 
+      <NotificationPrompt />
+
       {/* What is waiting, in plain sentences. */}
       <section className="admin-card p-3 pt-0">
         <h2 className="flex items-center gap-2 px-2 pb-3 pt-4 text-base font-semibold text-foreground">
@@ -226,7 +241,7 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
             </span>
           )}
         </h2>
-        <TodoList cars={cars.data} leads={leads.data} />
+        <TodoList cars={cars.data} leads={leads.data} unreadMail={unreadMail} />
       </section>
 
       {/* Two key figures; each opens the statistics. */}
@@ -274,9 +289,20 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
         if (!tiles.length) return null;
         return (
           <section key={group.title} className="admin-card p-3 pt-0">
-            <header className="px-2 pb-3 pt-4">
-              <h2 className="text-base font-semibold text-foreground">{t(group.title)}</h2>
-              <p className="text-xs text-muted">{t(group.hint)}</p>
+            <header className="flex items-start justify-between gap-3 px-2 pb-3 pt-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-foreground">{t(group.title)}</h2>
+                <p className="text-xs text-muted">{t(group.hint)}</p>
+              </div>
+              {group.more && (
+                <Link
+                  to={group.more.to}
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 outline-none active:bg-indigo-100 focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <LayoutDashboard className="size-3.5" aria-hidden />
+                  {t(group.more.label)}
+                </Link>
+              )}
             </header>
             <ul className="grid grid-cols-3 gap-2">
               {tiles.map((tile) => (
@@ -284,7 +310,7 @@ export function MobileHome({ sections }: { sections: readonly AdminSection[] }) 
                   <TileLink
                     tile={tile}
                     meta={meta[tile.id] ?? ""}
-                    badge={tile.id === "leads" ? openLeads : 0}
+                    badge={tile.id === "leads" ? openLeads : tile.id === "mail" ? unreadMail : 0}
                   />
                 </li>
               ))}

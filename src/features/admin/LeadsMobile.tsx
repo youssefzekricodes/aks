@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SearchField, Skeleton, Spinner } from "@heroui/react";
-import { Car, CheckCircle2, Inbox, Phone, RotateCcw } from "@/components/icons";
+import { Link } from "@tanstack/react-router";
+import { Car, CheckCircle2, Inbox, Mail, Phone, RotateCcw } from "@/components/icons";
+import { LEAD_REPLY_SUBJECT, mailToSearch } from "@/features/mailbox/queries";
 import { WhatsAppLogo } from "@/components/aks/SocialLogos";
 import { carImage } from "@/lib/cars";
 import type { Lead } from "@/lib/data";
@@ -392,6 +394,17 @@ function LeadItem({
         >
           <WhatsAppLogo className="size-5" />
         </a>
+        {lead.email && (
+          // Opens the shop's mailbox, ready to write to this client.
+          <Link
+            to="/admin/messagerie"
+            search={mailToSearch(lead.email, LEAD_REPLY_SUBJECT)}
+            aria-label={t("Répondre à {name} par e-mail", { name: lead.name })}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-50 text-indigo-700 outline-none active:bg-indigo-100 focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Mail className="size-5" aria-hidden />
+          </Link>
+        )}
         <button
           type="button"
           disabled={pending}

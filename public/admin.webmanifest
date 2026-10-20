@@ -5,7 +5,7 @@
   "description": "Administration du site Auto Kontor Sfax.",
   "lang": "fr",
   "dir": "ltr",
-  "start_url": "/admin",
+  "start_url": "/lancement.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

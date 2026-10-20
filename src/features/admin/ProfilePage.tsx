@@ -16,6 +16,7 @@ import {
 import { ChevronRight, ImagePlus, Mail, ShieldCheck, UserCog } from "@/components/icons";
 import { changeEmail, setName } from "@/features/auth/auth.functions";
 import { AvatarDialog } from "./AvatarDialog";
+import { NotificationSettings } from "./NotificationsCard";
 import { t } from "./i18n";
 import {
   ROLE_LABELS,
@@ -103,6 +104,8 @@ export function ProfilePage({ session: initial }: { session: Session }) {
           <Skeleton className="h-56 rounded-[1.25rem]" />
         </div>
       )}
+
+      <NotificationSettings />
 
       {isSuperAdmin && (
         <Link

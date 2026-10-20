@@ -20,6 +20,7 @@ import {
   FileText,
   Inbox,
   LogOut,
+  Mail,
   Plug,
   ShieldCheck,
   RefreshCw,
@@ -29,6 +30,9 @@ import {
   type LucideIcon,
 } from "@/components/icons";
 import { signOut as clearSession } from "@/features/auth/auth.functions";
+import { mailStatusQuery } from "@/features/mailbox/queries";
+import { clearAdminCache, persistAdminCache } from "./persist";
+import { disablePush, pushSupported } from "./push";
 import { useSiteText } from "@/lib/site-content";
 import { brandInfo } from "@/features/catalog/brands";
 import { hideSplash, SITE_FROM_ADMIN } from "@/lib/splash";
@@ -70,6 +74,7 @@ const SECTION_ICONS: Record<AdminSection, LucideIcon> = {
   brands: Tags,
   content: FileText,
   leads: Inbox,
+  mail: Mail,
   connectors: Plug,
   admins: UserCog,
 };
@@ -91,7 +96,20 @@ export function AdminLayout() {
 }
 
 /** Where "back" leads on a phone (back arrow and swipe from the left edge). */
-function parentOf(pathname: string, from: unknown): { href: string; label: string } | null {
+function parentOf(
+  pathname: string,
+  from: unknown,
+  mail?: { message: unknown; folder: unknown },
+): { href: string; label: string } | null {
+  // A message open in the mailbox: back to its folder.
+  if (pathname.startsWith("/admin/messagerie") && mail?.message)
+    return {
+      href:
+        typeof mail.folder === "string"
+          ? `/admin/messagerie?dossier=${encodeURIComponent(mail.folder)}`
+          : "/admin/messagerie",
+      label: "Messagerie",
+    };
   if (/^\/admin\/vehicules\/marque\//.test(pathname))
     return { href: "/admin/vehicules", label: "Véhicules" };
   if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) {
@@ -107,12 +125,16 @@ function parentOf(pathname: string, from: unknown): { href: string; label: strin
 }
 
 /** Title of the phone top bar. */
-function pageTitle(pathname: string, section: AdminSection) {
+function pageTitle(pathname: string, section: AdminSection, mailOpen = false) {
+  if (mailOpen) return "Message";
   if (/^\/admin\/vehicules\/marque\//.test(pathname)) return "Ordre des véhicules";
   if (/^\/admin\/vehicules\/[^/]+\/?$/.test(pathname)) return "Fiche véhicule";
   if (pathname.startsWith(PROFILE_PATH)) return "Mon profil";
   return SECTION_LABELS[section];
 }
+
+/** Longest the launch splash waits for the first screen's data. */
+const SPLASH_MAX_MS = 6000;
 
 /** A swipe that starts this close to the left edge (px) and goes this far goes back. */
 const EDGE = 28;
@@ -148,14 +170,20 @@ export function AdminShell({
   const sections = ADMIN_SECTIONS.filter(
     (id) => isSuperAdmin || !SUPER_ADMIN_SECTIONS.includes(id),
   );
-  const { pathname, from } = useLocation({
-    select: (location) => ({
-      pathname: location.pathname,
-      from: (location.search as Record<string, unknown>)["from"],
-    }),
+  const { pathname, from, mailMessage, mailFolder } = useLocation({
+    select: (location) => {
+      const search = location.search as Record<string, unknown>;
+      return {
+        pathname: location.pathname,
+        from: search["from"],
+        mailMessage: search["message"],
+        mailFolder: search["dossier"],
+      };
+    },
   });
   const section = sectionAt(pathname);
-  const parent = parentOf(pathname, from);
+  const mailOpen = pathname.startsWith("/admin/messagerie") && Boolean(mailMessage);
+  const parent = parentOf(pathname, from, { message: mailMessage, folder: mailFolder });
 
   // Signed out elsewhere, or 2FA no longer satisfied (password reset, factor removed).
   const lost = session.isSuccess && (!session.data || session.data.mfa !== "ok");
@@ -170,6 +198,10 @@ export function AdminShell({
   if (cars.data) counts.cars = { value: cars.data.length, label: "véhicules" };
   const openLeads = (leads.data ?? []).filter((lead) => !lead.handled).length;
   if (openLeads > 0) counts.leads = { value: openLeads, label: "à traiter", highlight: true };
+  // Unread e-mails (checked every two minutes; nothing when the mailbox is not set up).
+  const mail = useQuery(mailStatusQuery);
+  const unreadMail = mail.data?.configured ? mail.data.unread : 0;
+  if (unreadMail > 0) counts.mail = { value: unreadMail, label: "non lus", highlight: true };
 
   // Back: to the previous page when that is the parent (keeps the history tidy),
   // otherwise straight to the parent.
@@ -257,13 +289,63 @@ export function AdminShell({
       showPull(0, true);
     }
   }
+  // Saved copy of the admin's data on this device: instant start, then refreshed.
+  useEffect(() => persistAdminCache(queryClient), [queryClient]);
+
+  // Notifications: one arriving while the app is open refreshes what it is about,
+  // and tapping one while the app is open goes to its page.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { kind?: string; type?: string; url?: string } | null;
+      if (data?.kind === "admin-push") {
+        if (data.type === "mail") {
+          void queryClient.invalidateQueries({ queryKey: ["mail-list"] });
+          void queryClient.invalidateQueries({ queryKey: ["mail-status"] });
+        }
+        if (data.type === "lead") void queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      }
+      if (data?.kind === "admin-open" && data.url) {
+        const url = new URL(data.url);
+        void navigate({ href: url.pathname + url.search });
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [queryClient, navigate]);
+
   // This device belongs to an admin: the public site may then show its admin strip.
   useEffect(() => markAdminDevice(true), []);
 
-  // The admin is on screen: the launch splash fades out (next frame, once painted).
+  // Launch splash: it stays until the first screen is complete (its data loaded,
+  // no loading placeholder left), so the app opens straight onto a finished page.
+  // Never longer than SPLASH_MAX_MS (slow network, error).
   useEffect(() => {
-    const frame = requestAnimationFrame(() => hideSplash());
-    return () => cancelAnimationFrame(frame);
+    const started = performance.now();
+    let timer = 0;
+    const check = () => {
+      if (performance.now() - started > SPLASH_MAX_MS || firstScreenReady()) {
+        // Next frame: the finished page is painted under the splash first.
+        requestAnimationFrame(() => hideSplash());
+        return;
+      }
+      timer = window.setTimeout(check, 60);
+    };
+    const firstScreenReady = () => {
+      const main = document.getElementById("admin-main");
+      if (!main?.textContent?.trim()) return false;
+      // Data shown from the device's saved copy counts as ready (it refreshes behind).
+      if (queryClient.isFetching({ type: "active" }) > 0 && performance.now() - started < 400)
+        return false;
+      // Placeholders on screen (those of the computer layout are hidden on phones).
+      return ![...main.querySelectorAll(".skeleton, [aria-busy='true']")].some(
+        (el) => el.getClientRects().length > 0,
+      );
+    };
+    check();
+    return () => window.clearTimeout(timer);
+    // Once, at launch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Every section's code (and data) loads in the background once the app is idle,
@@ -378,6 +460,8 @@ export function AdminShell({
   };
 
   async function signOut() {
+    // A signed-out device stops receiving the admin's notifications.
+    if (pushSupported()) await disablePush().catch(() => undefined);
     try {
       await clearSession();
     } catch {
@@ -387,6 +471,7 @@ export function AdminShell({
     markAdminDevice(false);
     await queryClient.cancelQueries();
     queryClient.clear();
+    await clearAdminCache();
     void navigate({ to: "/auth", replace: true });
   }
 
@@ -556,7 +641,7 @@ export function AdminShell({
                   <ChevronLeft className="size-5 rtl:-scale-x-100" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-                  {t(pageTitle(pathname, section))}
+                  {t(pageTitle(pathname, section, mailOpen))}
                 </p>
                 <span className="grid size-10 shrink-0 place-items-center">{accountMenu()}</span>
               </div>

@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileClock,
   Inbox,
+  Mail,
   type LucideIcon,
 } from "@/components/icons";
 import type { Lead } from "@/features/catalog/types";
@@ -32,7 +33,7 @@ type Item = {
   filter?: CarFilter;
 };
 
-export function todoItems(cars: AdminCar[], leads: Lead[]): Item[] {
+export function todoItems(cars: AdminCar[], leads: Lead[], unreadMail = 0): Item[] {
   const openLeads = leads.filter((lead) => !lead.handled).length;
   const toFill = cars.filter((car) => missingFields(car).length > 0).length;
   const drafts = cars.filter((car) => !car.published && !car.sold).length;
@@ -48,6 +49,18 @@ export function todoItems(cars: AdminCar[], leads: Lead[]): Item[] {
           : t("1 client attend une réponse"),
       hint: t("Rappelez-les ou répondez par WhatsApp"),
       to: SECTION_PATHS.leads,
+    },
+    {
+      key: "mail",
+      count: unreadMail,
+      icon: Mail,
+      tint: "bg-indigo-500",
+      title:
+        unreadMail > 1
+          ? t("{count} e-mails non lus", { count: formatNumber(unreadMail) })
+          : t("1 e-mail non lu"),
+      hint: t("Dans la boîte de la boutique"),
+      to: SECTION_PATHS.mail,
     },
     {
       key: "fill",
@@ -82,9 +95,12 @@ export function todoItems(cars: AdminCar[], leads: Lead[]): Item[] {
 export function TodoList({
   cars,
   leads,
+  unreadMail = 0,
 }: {
   cars: AdminCar[] | undefined;
   leads: Lead[] | undefined;
+  /** Unread e-mails of the shop's mailbox (0 when it is not set up). */
+  unreadMail?: number;
 }) {
   if (!cars || !leads)
     return (
@@ -94,7 +110,7 @@ export function TodoList({
         ))}
       </div>
     );
-  const items = todoItems(cars, leads);
+  const items = todoItems(cars, leads, unreadMail);
   if (!items.length)
     return (
       <p

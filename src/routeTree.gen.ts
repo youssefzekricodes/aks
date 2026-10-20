@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminContenuRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDemandesRouteImport } from './routes/_authenticated/admin/demandes'
 import { Route as AuthenticatedAdminImportFacebookRouteImport } from './routes/_authenticated/admin/import-facebook'
 import { Route as AuthenticatedAdminMarquesRouteImport } from './routes/_authenticated/admin/marques'
+import { Route as AuthenticatedAdminMessagerieRouteImport } from './routes/_authenticated/admin/messagerie'
 import { Route as AuthenticatedAdminProfilRouteImport } from './routes/_authenticated/admin/profil'
 import { Route as AuthenticatedAdminTableauDeBordRouteImport } from './routes/_authenticated/admin/tableau-de-bord'
 import { Route as AuthenticatedAdminVehiculesRouteImport } from './routes/_authenticated/admin/vehicules'
@@ -165,6 +166,12 @@ const AuthenticatedAdminMarquesRoute =
     path: '/marques',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminMessagerieRoute =
+  AuthenticatedAdminMessagerieRouteImport.update({
+    id: '/messagerie',
+    path: '/messagerie',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminProfilRoute =
   AuthenticatedAdminProfilRouteImport.update({
     id: '/profil',
@@ -225,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/messagerie': typeof AuthenticatedAdminMessagerieRoute
   '/admin/profil': typeof AuthenticatedAdminProfilRoute
   '/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
@@ -255,6 +263,7 @@ export interface FileRoutesByTo {
   '/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/admin/messagerie': typeof AuthenticatedAdminMessagerieRoute
   '/admin/profil': typeof AuthenticatedAdminProfilRoute
   '/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
@@ -288,6 +297,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/demandes': typeof AuthenticatedAdminDemandesRoute
   '/_authenticated/admin/import-facebook': typeof AuthenticatedAdminImportFacebookRoute
   '/_authenticated/admin/marques': typeof AuthenticatedAdminMarquesRoute
+  '/_authenticated/admin/messagerie': typeof AuthenticatedAdminMessagerieRoute
   '/_authenticated/admin/profil': typeof AuthenticatedAdminProfilRoute
   '/_authenticated/admin/tableau-de-bord': typeof AuthenticatedAdminTableauDeBordRoute
   '/_authenticated/admin/vehicules': typeof AuthenticatedAdminVehiculesRoute
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/import-facebook'
     | '/admin/marques'
+    | '/admin/messagerie'
     | '/admin/profil'
     | '/admin/tableau-de-bord'
     | '/admin/vehicules'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/demandes'
     | '/admin/import-facebook'
     | '/admin/marques'
+    | '/admin/messagerie'
     | '/admin/profil'
     | '/admin/tableau-de-bord'
     | '/admin/vehicules'
@@ -383,6 +395,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/demandes'
     | '/_authenticated/admin/import-facebook'
     | '/_authenticated/admin/marques'
+    | '/_authenticated/admin/messagerie'
     | '/_authenticated/admin/profil'
     | '/_authenticated/admin/tableau-de-bord'
     | '/_authenticated/admin/vehicules'
@@ -581,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMarquesRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/messagerie': {
+      id: '/_authenticated/admin/messagerie'
+      path: '/messagerie'
+      fullPath: '/admin/messagerie'
+      preLoaderRoute: typeof AuthenticatedAdminMessagerieRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/profil': {
       id: '/_authenticated/admin/profil'
       path: '/profil'
@@ -633,6 +653,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminDemandesRoute: typeof AuthenticatedAdminDemandesRoute
   AuthenticatedAdminImportFacebookRoute: typeof AuthenticatedAdminImportFacebookRoute
   AuthenticatedAdminMarquesRoute: typeof AuthenticatedAdminMarquesRoute
+  AuthenticatedAdminMessagerieRoute: typeof AuthenticatedAdminMessagerieRoute
   AuthenticatedAdminProfilRoute: typeof AuthenticatedAdminProfilRoute
   AuthenticatedAdminTableauDeBordRoute: typeof AuthenticatedAdminTableauDeBordRoute
   AuthenticatedAdminVehiculesRoute: typeof AuthenticatedAdminVehiculesRoute
@@ -652,6 +673,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminImportFacebookRoute:
       AuthenticatedAdminImportFacebookRoute,
     AuthenticatedAdminMarquesRoute: AuthenticatedAdminMarquesRoute,
+    AuthenticatedAdminMessagerieRoute: AuthenticatedAdminMessagerieRoute,
     AuthenticatedAdminProfilRoute: AuthenticatedAdminProfilRoute,
     AuthenticatedAdminTableauDeBordRoute: AuthenticatedAdminTableauDeBordRoute,
     AuthenticatedAdminVehiculesRoute: AuthenticatedAdminVehiculesRoute,

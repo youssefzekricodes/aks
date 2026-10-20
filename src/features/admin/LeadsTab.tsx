@@ -21,6 +21,8 @@ import {
   RotateCcw,
   Trash2,
 } from "@/components/icons";
+import { Link } from "@tanstack/react-router";
+import { LEAD_REPLY_SUBJECT, mailToSearch } from "@/features/mailbox/queries";
 import { deleteLead, setLeadHandled, type Lead } from "@/lib/data";
 import { useDialogTarget } from "./hooks";
 import { t } from "./i18n";
@@ -417,12 +419,15 @@ function LeadRow({
           <bdi dir="ltr">{lead.phone}</bdi>
         </a>
         {lead.email && (
-          <a
-            href={`mailto:${lead.email}`}
+          // Opens the shop's mailbox, ready to write to this client.
+          <Link
+            to="/admin/messagerie"
+            search={mailToSearch(lead.email, LEAD_REPLY_SUBJECT)}
+            title={t("Répondre par e-mail")}
             className="block break-all text-sm text-accent hover:underline"
           >
             {lead.email}
-          </a>
+          </Link>
         )}
       </Table.Cell>
       <Table.Cell className="text-sm">

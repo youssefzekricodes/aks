@@ -7,14 +7,20 @@
  */
 export const SPLASH_ID = "admin-splash";
 
-/** Address of the public site when opened from the admin: it starts with the splash. */
-export const SITE_FROM_ADMIN = "/?depuis=admin";
+/**
+ * "Voir le site" from the admin: a static page (public/ouverture.html, kept by the
+ * service worker) shows the splash at once, then opens "/?depuis=admin".
+ */
+export const SITE_FROM_ADMIN = "/ouverture.html";
 /** Search parameter marking that visit (removed from the address once shown). */
 export const FROM_ADMIN_PARAM = "depuis";
 
+// Same look as public/lancement.html and public/ouverture.html (the static launch
+// screens that hand over to this one): keep the three in step. No entrance
+// animation here, so the hand-over shows no flicker.
 const splashHtml = (label: string, loading: string) => `
 <div class="flex flex-col items-center gap-5 px-8">
-  <img src="/images/aks-logo.png" alt="Auto Kontor Sfax" width="168" height="56" class="h-14 w-auto animate-in fade-in-0 zoom-in-95 duration-500" />
+  <img src="/images/aks-logo.png" alt="Auto Kontor Sfax" width="168" height="56" class="h-14 w-auto" />
   <p class="text-sm tracking-wide text-white/60">${label}</p>
   <span class="relative h-1 w-28 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
     <span class="splash-bar absolute inset-y-0 w-1/3 rounded-full bg-[oklch(0.62_0.2_27)]"></span>

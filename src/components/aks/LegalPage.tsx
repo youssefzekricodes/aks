@@ -60,7 +60,7 @@ export function LegalSection({ title, children }: { title: string; children: Rea
 export function LegalContact() {
   const text = useSiteText();
   const { primary } = usePhones();
-  const email = text("identity.email", "contact@autokontorsfax.tn");
+  const email = text("identity.email", "contact@autokontorsfax.com");
   return (
     <ul className="grid gap-1">
       <li>

@@ -123,3 +123,24 @@ export const setAdminRole = createServerFn({ method: "POST" })
 export const deleteAdmin = createServerFn({ method: "POST" })
   .validator(z.object({ userId }))
   .handler(async ({ data }) => (await auth()).manageAdmins({ action: "delete", ...data }));
+
+/* Push notifications (new e-mails, new requests) on this device. */
+const push = () => import("@/server/push");
+export const getPushConfig = createServerFn({ method: "GET" }).handler(async () =>
+  (await push()).pushConfig(),
+);
+export const savePushSubscription = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      endpoint: z.string().url().max(2000).startsWith("https://"),
+      keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(8).max(100) }),
+      locale: z.enum(["fr", "ar"]),
+    }),
+  )
+  .handler(async ({ data }) => (await push()).subscribe(data));
+export const removePushSubscription = createServerFn({ method: "POST" })
+  .validator(z.object({ endpoint: z.string().max(2000) }))
+  .handler(async ({ data }) => (await push()).unsubscribe(data.endpoint));
+export const sendTestPush = createServerFn({ method: "POST" }).handler(async () =>
+  (await push()).sendTest(),
+);

@@ -655,14 +655,14 @@
     "group": "identity",
     "label": "Lien e-mail",
     "type": "link",
-    "value": "mailto:contact@autokontorsfax.tn"
+    "value": "mailto:contact@autokontorsfax.com"
   },
   {
     "key": "identity.email",
     "group": "identity",
     "label": "E-mail affiché",
     "type": "text",
-    "value": "contact@autokontorsfax.tn"
+    "value": "contact@autokontorsfax.com"
   },
   {
     "key": "contact.text_18",

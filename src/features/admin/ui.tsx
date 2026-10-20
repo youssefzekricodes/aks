@@ -69,6 +69,31 @@ export function useIsPhone() {
   );
 }
 
+/**
+ * Height (px) of the on-screen keyboard while `active`: phones that draw the
+ * keyboard over the page (iPhone) shrink the visual viewport only.
+ */
+function useKeyboardInset(active: boolean) {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!active || !viewport) {
+      setInset(0);
+      return undefined;
+    }
+    const update = () =>
+      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, [active]);
+  return inset;
+}
+
 /** Drag (px) or flick speed (px/ms) that closes a bottom sheet. */
 const SHEET_CLOSE_DISTANCE = 110;
 const SHEET_CLOSE_SPEED = 0.6;
@@ -83,14 +108,24 @@ export function BottomSheet({
   onOpenChange,
   title,
   description,
+  action,
+  avoidKeyboard = false,
+  tall = false,
   children,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
+  /** Button at the end of the title row (e.g. "Envoyer"). */
+  action?: ReactNode;
+  /** Writing sheets: the sheet rises above the on-screen keyboard. */
+  avoidKeyboard?: boolean;
+  /** Use most of the screen height (forms). */
+  tall?: boolean;
   children: ReactNode;
 }) {
+  const keyboard = useKeyboardInset(isOpen && avoidKeyboard);
   const drag = useRef<{ y: number; t: number; dy: number; active: boolean } | null>(null);
   const sheet = useRef<HTMLElement | null>(null);
   const move = (dy: number, animate: boolean) => {
@@ -102,7 +137,20 @@ export function BottomSheet({
   return (
     <Drawer.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
       <Drawer.Content placement="bottom">
-        <Drawer.Dialog className="max-h-[85dvh] rounded-t-[1.75rem] px-[env(safe-area-inset-left)] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
+        <Drawer.Dialog
+          className={`rounded-t-[1.75rem] px-[env(safe-area-inset-left)] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 ${
+            tall ? "h-[92dvh] max-h-[92dvh]" : "max-h-[85dvh]"
+          }`}
+          style={
+            keyboard
+              ? {
+                  marginBottom: keyboard,
+                  maxHeight: `calc(100dvh - ${keyboard}px - 1rem)`,
+                  ...(tall ? { height: `calc(100dvh - ${keyboard}px - 1rem)` } : {}),
+                }
+              : {}
+          }
+        >
           <div
             ref={(el) => {
               sheet.current = el?.closest<HTMLElement>("[role='dialog']") ?? null;
@@ -111,6 +159,9 @@ export function BottomSheet({
             onTouchStart={(event) => {
               const t = event.touches[0];
               if (!t) return;
+              // Typing or selecting text in a field never drags the sheet.
+              if ((event.target as HTMLElement).closest("textarea, input, [contenteditable]"))
+                return;
               // Inside a list scrolled down: that list scrolls, the sheet stays.
               const list = (event.target as HTMLElement).closest<HTMLElement>(
                 "[data-sheet-scroll]",
@@ -151,10 +202,15 @@ export function BottomSheet({
           >
             <Drawer.Handle />
             <Drawer.Header className="px-5 pb-1 pt-2">
-              <Drawer.Heading className="text-base font-semibold text-foreground">
-                {title}
-              </Drawer.Heading>
-              {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <Drawer.Heading className="text-base font-semibold text-foreground">
+                    {title}
+                  </Drawer.Heading>
+                  {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+                </div>
+                {action}
+              </div>
             </Drawer.Header>
             <Drawer.Body data-sheet-scroll className="overscroll-contain px-3 pb-1 pt-2">
               {children}
