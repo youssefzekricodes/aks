@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
-import { ArrowRight, Phone, Search, Sparkles } from "@/components/icons";
+import { ArrowRight, Compass, Phone, Search } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import { useSiteText, usePhones } from "@/lib/site-content";
 import { telHref } from "@/features/content/definition";
@@ -148,7 +148,7 @@ export function Hero() {
             to="/trouver-ma-voiture"
             className="group flex items-center gap-3 rounded-xl bg-accent-soft/60 px-3 py-2.5 text-sm transition-colors hover:bg-accent-soft sm:col-span-2 lg:col-span-4"
           >
-            <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
+            <Compass className="size-4 shrink-0 text-accent" aria-hidden />
             <span className="min-w-0 flex-1">
               <strong className="font-semibold">Vous ne savez pas quoi choisir ?</strong>{" "}
               <span className="text-muted">Trouvez votre voiture en quelques questions.</span>

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { Alert, Button, Label, Spinner, TextArea, TextField, toast } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, RotateCw, Sparkles } from "@/components/icons";
+import { ExternalLink, FileText, RotateCw } from "@/components/icons";
 import { FacebookLogo, InstagramLogo } from "@/components/aks/SocialLogos";
 import {
   buildSocialCaption,
@@ -216,7 +216,7 @@ export function SocialCard({
               variant="ghost"
               onPress={() => onChange((car) => ({ ...car, social_caption: generate() }))}
             >
-              <Sparkles className="size-4" aria-hidden />
+              <FileText className="size-4" aria-hidden />
               {t("Générer à partir de la fiche")}
             </Button>
           </div>

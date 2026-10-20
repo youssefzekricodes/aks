@@ -20,7 +20,7 @@ const TITLES: Record<CarActivity, Texts> = {
   edited: { fr: "Véhicule modifié", ar: "كرهبة تبدّلت" },
   published: { fr: "Véhicule mis en vente", ar: "كرهبة تحطّت للبيع" },
   unpublished: { fr: "Véhicule retiré du site", ar: "كرهبة تنحّات من السيت" },
-  sold: { fr: "Véhicule vendu 🎉", ar: "كرهبة تباعت 🎉" },
+  sold: { fr: "Véhicule vendu", ar: "كرهبة تباعت" },
   unsold: { fr: "Véhicule remis en vente", ar: "كرهبة رجعت للبيع" },
   deleted: { fr: "Véhicule supprimé", ar: "كرهبة تفسخت" },
   discount: { fr: "Prix modifié", ar: "السوم تبدّل" },

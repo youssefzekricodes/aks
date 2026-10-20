@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Breadcrumbs, Button, Drawer, Label, ListBox, Pagination, Select } from "@heroui/react";
-import { ArrowRight, ArrowUpDown, SlidersHorizontal, Sparkles } from "@/components/icons";
+import { ArrowRight, ArrowUpDown, Compass, SlidersHorizontal } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import {
   activeFilterCount,
@@ -186,7 +186,7 @@ export function SearchPage({
                 className="group flex items-center gap-4 rounded-2xl border border-border bg-surface p-4 transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-focus"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-                  <Sparkles className="size-5" aria-hidden />
+                  <Compass className="size-5" aria-hidden />
                 </span>
                 <span className="grid min-w-0 flex-1">
                   <span className="font-semibold">Vous hésitez ? Laissez-vous guider</span>

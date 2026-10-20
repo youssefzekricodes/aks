@@ -17,8 +17,8 @@ export {
   ShieldCheck,
   ShieldExclamation as ShieldOff,
   Medal as Award,
-  Sparkles,
   Star,
+  Compass,
   StarFill,
   Thunderbolt as Zap,
   // Arrows and navigation
@@ -62,7 +62,6 @@ export {
   EyeSlash as EyeOff,
   Link as Link2,
   Key as KeyRound,
-  MagicWand as Wand2,
   Tag,
   Tags,
   Shapes4 as Shapes,

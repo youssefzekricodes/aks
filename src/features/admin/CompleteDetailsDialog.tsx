@@ -16,7 +16,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ImagePlus,
-  Wand2,
+  ClipboardList,
 } from "@/components/icons";
 import {
   CAR_BODIES,
@@ -301,7 +301,7 @@ function Wizard({
             aria-expanded={bulkOpen}
             className="inline-flex items-center gap-1 text-sm font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <Wand2 className="size-4" aria-hidden />
+            <ClipboardList className="size-4" aria-hidden />
             {t("Remplir pour tous")}
             <ChevronDown
               className={`size-4 transition-transform ${bulkOpen ? "rotate-180" : ""}`}

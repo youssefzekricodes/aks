@@ -12,7 +12,8 @@ import {
   Fuel,
   Gauge,
   RotateCcw,
-  Sparkles,
+  ClipboardList,
+  Compass,
 } from "@/components/icons";
 import { publicCarsQuery } from "@/lib/queries";
 import {
@@ -93,7 +94,7 @@ export function CarFinder() {
           </button>
         ) : (
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-accent">
-            <Sparkles className="size-4" aria-hidden />
+            <Compass className="size-4" aria-hidden />
             Trouver ma voiture
           </p>
         )}
@@ -298,7 +299,7 @@ function Selection({
   return (
     <section className="mt-6 animate-in fade-in-0 duration-300 sm:mt-10">
       <p className="inline-flex items-center gap-2 text-sm font-semibold text-accent">
-        <Sparkles className="size-4" aria-hidden />
+        <ClipboardList className="size-4" aria-hidden />
         Votre sélection
       </p>
       <h1 className="mt-2 text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">

@@ -9,7 +9,7 @@ import {
   Tooltip,
   toast,
 } from "@heroui/react";
-import { Check, Copy, Eye, EyeOff, Wand2 } from "@/components/icons";
+import { Check, Copy, Eye, EyeOff, KeyRound } from "@/components/icons";
 import {
   PASSWORD_MAX,
   PASSWORD_MIN,
@@ -199,7 +199,7 @@ export function NewPasswordFields({
           setVisible(true);
         }}
       >
-        <Wand2 className="size-4" aria-hidden />
+        <KeyRound className="size-4" aria-hidden />
         {t("Générer un mot de passe")}
       </Button>
       <p className="mt-2 text-xs text-muted">
